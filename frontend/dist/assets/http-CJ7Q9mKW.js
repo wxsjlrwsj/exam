@@ -1,0 +1,1 @@
+import{a as o}from"./index-ngrFHoWO.js";const r=o.create({baseURL:"",timeout:1e4});r.interceptors.request.use(e=>{const t=localStorage.getItem("token");return t&&(e.headers.Authorization=`Bearer ${t}`),e});r.interceptors.response.use(e=>e.data,e=>Promise.reject(e));export{r as i};
