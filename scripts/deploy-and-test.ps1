@@ -5,6 +5,10 @@ Write-Host "========================================" -ForegroundColor Magenta
 Write-Host "   教师端功能完整部署与测试" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 
+# 获取项目根目录（scripts 的父目录）
+$projectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $projectRoot
+
 $ErrorActionPreference = "Continue"
 $startTime = Get-Date
 

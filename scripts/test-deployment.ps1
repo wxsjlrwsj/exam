@@ -5,6 +5,10 @@ Write-Host "========================================" -ForegroundColor Magenta
 Write-Host "  教师端API全面测试" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 
+# 获取项目根目录（scripts 的父目录）
+$projectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $projectRoot
+
 $baseUrl = "http://localhost:8083"
 $frontendUrl = "http://localhost:8080"
 

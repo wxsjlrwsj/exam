@@ -43,7 +43,7 @@ Write-Host "✓ 修复完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "`n已处理 $unblocked 个脚本文件" -ForegroundColor Cyan
 Write-Host "`n现在可以正常运行部署脚本了：" -ForegroundColor Yellow
-Write-Host "  .\deploy-all.ps1" -ForegroundColor Cyan
-Write-Host "  .\deploy-frontend.ps1" -ForegroundColor Cyan
-Write-Host "  .\deploy-backend.ps1`n" -ForegroundColor Cyan
+Write-Host "  .\scripts\deploy-fast.ps1        # 快速部署（推荐）" -ForegroundColor Cyan
+Write-Host "  .\scripts\deploy-all.ps1         # 完整部署" -ForegroundColor Cyan
+Write-Host "  .\scripts\start-dev.ps1          # 开发模式`n" -ForegroundColor Cyan
 

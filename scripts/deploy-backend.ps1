@@ -5,8 +5,11 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "开始部署后端..." -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
+# 获取项目根目录（scripts 的父目录）
+$projectRoot = Split-Path -Parent $PSScriptRoot
+
 # 1. 进入后端目录
-Set-Location $PSScriptRoot\backend
+Set-Location "$projectRoot\backend"
 
 # 2. 使用 Maven 构建项目
 Write-Host "`n[1/4] 正在使用 Maven 构建后端项目..." -ForegroundColor Yellow
@@ -18,7 +21,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "`n✖ 未找到 Maven！正在尝试使用容器构建..." -ForegroundColor Yellow
     
     # 使用 Maven Docker 镜像构建
-    docker run --rm -v "${PSScriptRoot}\backend:/app" -w /app maven:3.9-eclipse-temurin-17 mvn clean package -DskipTests
+    docker run --rm -v "${projectRoot}\backend:/app" -w /app maven:3.9-eclipse-temurin-17 mvn clean package -DskipTests
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "`n✖ 构建失败！请检查错误信息。" -ForegroundColor Red
@@ -38,7 +41,7 @@ Write-Host "✓ 后端构建完成！" -ForegroundColor Green
 
 # 3. 将新的 JAR 文件复制到容器中
 Write-Host "`n[2/4] 正在更新容器中的应用..." -ForegroundColor Yellow
-$jarFile = Get-ChildItem -Path "$PSScriptRoot\backend\target\*.jar" | Select-Object -First 1
+$jarFile = Get-ChildItem -Path "$projectRoot\backend\target\*.jar" | Select-Object -First 1
 
 if (-not $jarFile) {
     Write-Host "`n✖ 未找到构建的 JAR 文件！" -ForegroundColor Red
@@ -57,7 +60,7 @@ Write-Host "✓ JAR 文件已更新！" -ForegroundColor Green
 
 # 4. 重启后端容器
 Write-Host "`n[3/4] 正在重启后端容器..." -ForegroundColor Yellow
-Set-Location $PSScriptRoot
+Set-Location $projectRoot
 docker restart chaoxing-backend
 
 if ($LASTEXITCODE -ne 0) {

@@ -6,6 +6,9 @@ Write-Host "========================================" -ForegroundColor Magenta
 Write-Host "      开发模式（热更新）" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 
+# 获取项目根目录（scripts 的父目录）
+$projectRoot = Split-Path -Parent $PSScriptRoot
+
 Write-Host "`n💡 开发模式说明：" -ForegroundColor Cyan
 Write-Host "  • 前端：使用 Vite 开发服务器（修改代码后自动刷新）" -ForegroundColor White
 Write-Host "  • 后端：使用 Spring Boot DevTools（修改代码后自动重启）" -ForegroundColor White
@@ -57,10 +60,10 @@ if ($startBackend) {
     Write-Host "[后端] 正在启动..." -ForegroundColor Cyan
     
     # 检查是否已构建
-    $jarExists = Test-Path "$PSScriptRoot\backend\target\*.jar"
+    $jarExists = Test-Path "$projectRoot\backend\target\*.jar"
     if (-not $jarExists) {
         Write-Host "  ⚠️  未找到 JAR 文件，正在首次构建..." -ForegroundColor Yellow
-        Set-Location $PSScriptRoot\backend
+        Set-Location "$projectRoot\backend"
         mvn package -DskipTests
         if ($LASTEXITCODE -ne 0) {
             Write-Host "`n✖ 后端构建失败！" -ForegroundColor Red
@@ -69,7 +72,7 @@ if ($startBackend) {
     }
     
     # 在新窗口启动后端
-    $jarFile = Get-ChildItem -Path "$PSScriptRoot\backend\target\*.jar" | Select-Object -First 1
+    $jarFile = Get-ChildItem -Path "$projectRoot\backend\target\*.jar" | Select-Object -First 1
     
     $backendCmd = @"
 Write-Host '========================================' -ForegroundColor Cyan
@@ -81,7 +84,7 @@ Write-Host 'API 地址: http://localhost:8083/api' -ForegroundColor Yellow
 Write-Host ''
 Write-Host '按 Ctrl+C 停止服务' -ForegroundColor Gray
 Write-Host ''
-Set-Location '$($PSScriptRoot)\backend'
+Set-Location '$($projectRoot)\backend'
 java -jar '$($jarFile.FullName)'
 "@
     
@@ -97,9 +100,9 @@ if ($startFrontend) {
     Write-Host "`n[前端] 正在启动..." -ForegroundColor Green
     
     # 检查依赖
-    if (-not (Test-Path "$PSScriptRoot\frontend\node_modules")) {
+    if (-not (Test-Path "$projectRoot\frontend\node_modules")) {
         Write-Host "  ⚠️  未找到依赖，正在安装..." -ForegroundColor Yellow
-        Set-Location $PSScriptRoot\frontend
+        Set-Location "$projectRoot\frontend"
         npm install
     }
     
@@ -118,7 +121,7 @@ Write-Host '⚠️  注意: 开发模式使用 5173 端口，不是 8080' -Foreg
 Write-Host ''
 Write-Host '按 Ctrl+C 停止服务' -ForegroundColor Gray
 Write-Host ''
-Set-Location '$PSScriptRoot\frontend'
+Set-Location '$projectRoot\frontend'
 npm run dev
 "@
     

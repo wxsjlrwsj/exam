@@ -5,8 +5,11 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "开始部署前端..." -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
+# 获取项目根目录（scripts 的父目录）
+$projectRoot = Split-Path -Parent $PSScriptRoot
+
 # 1. 进入前端目录
-Set-Location $PSScriptRoot\frontend
+Set-Location "$projectRoot\frontend"
 
 # 2. 构建前端项目
 Write-Host "`n[1/3] 正在构建前端项目..." -ForegroundColor Yellow
@@ -21,7 +24,7 @@ Write-Host "✓ 前端构建完成！" -ForegroundColor Green
 
 # 3. 重启前端容器（重新加载 dist 目录）
 Write-Host "`n[2/3] 正在重启前端容器..." -ForegroundColor Yellow
-Set-Location $PSScriptRoot
+Set-Location $projectRoot
 docker restart chaoxing-frontend
 
 if ($LASTEXITCODE -ne 0) {

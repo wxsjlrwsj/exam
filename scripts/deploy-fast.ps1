@@ -5,6 +5,8 @@ Write-Host "========================================" -ForegroundColor Magenta
 Write-Host "      快速部署模式（增量构建）" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 
+# 获取项目根目录（scripts 的父目录）
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $startTime = Get-Date
 
 # 询问部署选项
@@ -75,7 +77,7 @@ if ($deployFrontend -and $deployBackend) {
         
         Write-Output "[后端] ✖ 构建失败"
         return $false
-    } -ArgumentList $PSScriptRoot
+    } -ArgumentList $projectRoot
     
     # 创建前端构建任务
     $frontendJob = Start-Job -ScriptBlock {
@@ -99,7 +101,7 @@ if ($deployFrontend -and $deployBackend) {
         
         Write-Output "[前端] ✖ 构建失败"
         return $false
-    } -ArgumentList $PSScriptRoot
+    } -ArgumentList $projectRoot
     
     Write-Host "`n⏳ 正在并行构建，请稍候..." -ForegroundColor Yellow
     Write-Host "   （前端和后端同时进行，可以节省 30-50% 时间）`n" -ForegroundColor Gray
@@ -155,7 +157,7 @@ elseif ($deployBackend) {
         mvn package -DskipTests
     } else {
         Write-Host "未找到 Maven，使用 Docker Maven 镜像..." -ForegroundColor Yellow
-        docker run --rm -v "${PSScriptRoot}\backend:/app" -w /app maven:3.9-eclipse-temurin-17 mvn package -DskipTests
+        docker run --rm -v "${projectRoot}\backend:/app" -w /app maven:3.9-eclipse-temurin-17 mvn package -DskipTests
     }
     
     if ($LASTEXITCODE -ne 0) {
@@ -166,11 +168,11 @@ elseif ($deployBackend) {
     Write-Host "✓ 构建完成！" -ForegroundColor Green
     
     Write-Host "`n[2/3] 更新容器..." -ForegroundColor Yellow
-    $jarFile = Get-ChildItem -Path "$PSScriptRoot\backend\target\*.jar" | Select-Object -First 1
+    $jarFile = Get-ChildItem -Path "$projectRoot\backend\target\*.jar" | Select-Object -First 1
     docker cp $jarFile.FullName chaoxing-backend:/app/app.jar
     
     Write-Host "`n[3/3] 重启后端..." -ForegroundColor Yellow
-    Set-Location $PSScriptRoot
+    Set-Location $projectRoot
     docker restart chaoxing-backend
     
     Start-Sleep -Seconds 3
@@ -195,7 +197,7 @@ elseif ($deployFrontend) {
     Write-Host "✓ 构建完成！" -ForegroundColor Green
     
     Write-Host "`n[2/2] 重启前端..." -ForegroundColor Yellow
-    Set-Location $PSScriptRoot
+    Set-Location $projectRoot
     docker restart chaoxing-frontend
     
     Start-Sleep -Seconds 2
