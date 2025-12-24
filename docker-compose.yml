@@ -44,6 +44,9 @@ services:
     container_name: chaoxing-frontend
     depends_on:
       - backend
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "8080:8080"
 
