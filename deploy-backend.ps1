@@ -1,0 +1,83 @@
+# 后端部署脚本
+# 用于在修改后端代码后重新部署
+
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "开始部署后端..." -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
+# 1. 进入后端目录
+Set-Location $PSScriptRoot\backend
+
+# 2. 使用 Maven 构建项目
+Write-Host "`n[1/4] 正在使用 Maven 构建后端项目..." -ForegroundColor Yellow
+Write-Host "这可能需要几分钟，请稍候..." -ForegroundColor Gray
+
+# 检查是否安装了 Maven
+$mvnVersion = mvn -v 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`n✖ 未找到 Maven！正在尝试使用容器构建..." -ForegroundColor Yellow
+    
+    # 使用 Maven Docker 镜像构建
+    docker run --rm -v "${PSScriptRoot}\backend:/app" -w /app maven:3.9-eclipse-temurin-17 mvn clean package -DskipTests
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`n✖ 构建失败！请检查错误信息。" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    # 使用本地 Maven 构建
+    mvn clean package -DskipTests
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`n✖ 构建失败！请检查错误信息。" -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host "✓ 后端构建完成！" -ForegroundColor Green
+
+# 3. 将新的 JAR 文件复制到容器中
+Write-Host "`n[2/4] 正在更新容器中的应用..." -ForegroundColor Yellow
+$jarFile = Get-ChildItem -Path "$PSScriptRoot\backend\target\*.jar" | Select-Object -First 1
+
+if (-not $jarFile) {
+    Write-Host "`n✖ 未找到构建的 JAR 文件！" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "找到 JAR 文件: $($jarFile.Name)" -ForegroundColor Gray
+docker cp $jarFile.FullName chaoxing-backend:/app/app.jar
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`n✖ 文件复制失败！" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "✓ JAR 文件已更新！" -ForegroundColor Green
+
+# 4. 重启后端容器
+Write-Host "`n[3/4] 正在重启后端容器..." -ForegroundColor Yellow
+Set-Location $PSScriptRoot
+docker restart chaoxing-backend
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`n✖ 容器重启失败！" -ForegroundColor Red
+    exit 1
+}
+
+# 5. 等待容器启动并检查日志
+Write-Host "`n[4/4] 等待应用启动（约10秒）..." -ForegroundColor Yellow
+Start-Sleep -Seconds 10
+
+Write-Host "`n最近的日志:" -ForegroundColor Cyan
+docker logs chaoxing-backend --tail 20
+
+# 6. 检查容器状态
+$status = docker ps --filter "name=chaoxing-backend" --format "{{.Status}}"
+Write-Host "`n容器状态: $status" -ForegroundColor Cyan
+
+Write-Host "`n========================================" -ForegroundColor Green
+Write-Host "✓ 后端部署完成！" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "`n后端API地址: http://localhost:8083/api`n" -ForegroundColor Yellow
+
