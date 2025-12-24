@@ -59,12 +59,14 @@ service.interceptors.response.use(
     }
   },
   error => {
-    console.log('err' + error) // for debug
-    ElMessage({
-      message: error.message,
-      type: 'error',
-      duration: 5 * 1000
-    })
+    console.log('err' + error)
+    const status = error.response?.status
+    const msg = error.response?.data?.message || error.message
+    ElMessage({ message: msg, type: 'error', duration: 5 * 1000 })
+    if (status === 401) {
+      localStorage.removeItem('token')
+      router.push('/login')
+    }
     return Promise.reject(error)
   }
 )

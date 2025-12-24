@@ -13,6 +13,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import java.util.List;
 import org.example.chaoxingsystem.user.dto.UserResponse;
+import org.example.chaoxingsystem.user.dto.SendCodeRequest;
+import org.example.chaoxingsystem.user.dto.VerifyCodeRequest;
 
 /**
  * 鉴权接口：注册、登录、重置密码、获取当前用户信息、管理员用户列表
@@ -23,10 +25,14 @@ import org.example.chaoxingsystem.user.dto.UserResponse;
 public class AuthController {
   private final UserService userService;
   private final TokenService tokenService;
+  private final EmailVerificationService verificationService;
+  private final MailService mailService;
 
-  public AuthController(UserService userService, TokenService tokenService) {
+  public AuthController(UserService userService, TokenService tokenService, EmailVerificationService verificationService, MailService mailService) {
     this.userService = userService;
     this.tokenService = tokenService;
+    this.verificationService = verificationService;
+    this.mailService = mailService;
   }
 
   @PostMapping("/register")
@@ -38,6 +44,29 @@ public class AuthController {
   @PostMapping("/auth/register")
   public ResponseEntity<ApiResponse<Void>> registerAlias(@Valid @RequestBody RegisterRequest request) {
     return register(request);
+  }
+
+  @PostMapping("/auth/send-code")
+  public ResponseEntity<ApiResponse<Void>> sendCode(@Valid @RequestBody SendCodeRequest request) {
+    var r = verificationService.generate(request.getEmail());
+    if (!r.ok) {
+      return ResponseEntity.status(429).body(ApiResponse.error(429, "发送过于频繁，请稍后再试"));
+    }
+    try {
+      mailService.sendCode(request.getEmail(), r.code);
+    } catch (Exception ex) {
+      return ResponseEntity.status(502).body(ApiResponse.error(502, "邮件发送失败"));
+    }
+    return ResponseEntity.ok(ApiResponse.success("验证码已发送", null));
+  }
+
+  @PostMapping("/auth/verify-code")
+  public ResponseEntity<ApiResponse<Void>> verifyCode(@Valid @RequestBody VerifyCodeRequest request) {
+    boolean ok = verificationService.verify(request.getEmail(), request.getCode());
+    if (!ok) {
+      return ResponseEntity.status(400).body(ApiResponse.error(400, "验证码错误或已失效"));
+    }
+    return ResponseEntity.ok(ApiResponse.success("验证通过", null));
   }
 
   @PostMapping("/login")

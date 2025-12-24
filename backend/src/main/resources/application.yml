@@ -9,6 +9,18 @@ spring:
       mode: always
       schema-locations: classpath:schema.sql
       data-locations: classpath:seed.sql
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
 
 mybatis:
   mapper-locations: classpath*:mapper/*.xml

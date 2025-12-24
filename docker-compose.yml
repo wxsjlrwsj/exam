@@ -9,6 +9,8 @@ services:
       MYSQL_DATABASE: chaoxing
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/src/main/resources/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
     command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
@@ -28,6 +30,9 @@ services:
       DB_DRIVER: com.mysql.cj.jdbc.Driver
       DB_USER: root
       DB_PASSWORD: root
+      SPRING_SQL_INIT_MODE: never
+      SPRING_MAIL_USERNAME: 3444505236@qq.com
+      SPRING_MAIL_PASSWORD: jxtzdnobgylpchhc
       SECURITY_TOKEN_SECRET: change-me-prod
       SECURITY_CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:5173
     ports:

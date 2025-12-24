@@ -34,11 +34,19 @@
             size="large"
           />
         </el-form-item>
-      <el-form-item prop="email">
+      <el-form-item prop="email" label="QQ邮箱">
         <el-input 
           v-model="registerForm.email" 
-          placeholder="邮箱 (选填)" 
+          placeholder="例如: 123456@qq.com" 
           :prefix-icon="Message"
+          size="large"
+        />
+        <el-button class="send-code-btn" :disabled="sendDisabled" @click="sendCode">{{ sendDisabled ? `重新发送(${countdown}s)` : '发送验证码' }}</el-button>
+      </el-form-item>
+      <el-form-item prop="verificationCode">
+        <el-input
+          v-model="registerForm.verificationCode"
+          placeholder="验证码"
           size="large"
         />
       </el-form-item>
@@ -76,7 +84,8 @@ const registerForm = reactive({
   password: '',
   confirmPassword: '',
   email: '',
-  userType: ''
+  userType: '',
+  verificationCode: ''
 })
 
 const validatePass2 = (rule, value, callback) => {
@@ -102,9 +111,42 @@ const registerRules = {
     { required: true, message: '请确认密码', trigger: 'blur' },
     { validator: validatePass2, trigger: 'blur' }
   ],
+  email: [
+    { required: true, message: '请输入QQ邮箱', trigger: 'blur' },
+    { pattern: /@qq\.com$/, message: '必须为QQ邮箱', trigger: 'blur' }
+  ],
   userType: [
     { required: true, message: '请选择用户类型', trigger: 'change' }
+  ],
+  verificationCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { pattern: /^[0-9]{6}$/, message: '验证码为6位数字', trigger: 'blur' }
   ]
+}
+
+const sendDisabled = ref(false)
+const countdown = ref(60)
+
+const sendCode = async () => {
+  if (!registerForm.email || !/@qq\.com$/.test(registerForm.email)) {
+    showMessage('请填写有效的QQ邮箱', 'error')
+    return
+  }
+  try {
+    await request.post('/auth/send-code', { email: registerForm.email })
+    showMessage('验证码已发送', 'success')
+    sendDisabled.value = true
+    countdown.value = 60
+    const timer = setInterval(() => {
+      countdown.value -= 1
+      if (countdown.value <= 0) {
+        clearInterval(timer)
+        sendDisabled.value = false
+      }
+    }, 1000)
+  } catch (e) {
+    showMessage('发送验证码失败，请稍后重试', 'error')
+  }
 }
 
 const handleRegister = async () => {
@@ -118,7 +160,8 @@ const handleRegister = async () => {
         username: registerForm.username,
         password: registerForm.password,
         userType: registerForm.userType,
-        email: registerForm.email
+        email: registerForm.email,
+        verificationCode: registerForm.verificationCode
       })
       
       showMessage('注册成功，请登录', 'success')

@@ -1,3 +1,7 @@
+SET NAMES utf8mb4;
+CREATE DATABASE IF NOT EXISTS chaoxing;
+USE chaoxing;
+
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(50) NOT NULL UNIQUE,
@@ -8,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   real_name VARCHAR(50) NOT NULL,
   avatar VARCHAR(255),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- 题型字典
 CREATE TABLE IF NOT EXISTS biz_question_type (
@@ -19,8 +23,8 @@ CREATE TABLE IF NOT EXISTS biz_question_type (
   config_json JSON NOT NULL,
   is_active TINYINT NOT NULL DEFAULT 1,
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS system_modules (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -35,7 +39,7 @@ CREATE TABLE IF NOT EXISTS system_modules (
   dependencies VARCHAR(500) NOT NULL,
   description VARCHAR(500),
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- 组织机构
 CREATE TABLE IF NOT EXISTS sys_organization (
@@ -50,7 +54,7 @@ CREATE TABLE IF NOT EXISTS sys_organization (
   leader VARCHAR(50) NULL,
   phone VARCHAR(50) NULL,
   description VARCHAR(255) NULL
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- 学生档案
 CREATE TABLE IF NOT EXISTS biz_student (
@@ -62,7 +66,7 @@ CREATE TABLE IF NOT EXISTS biz_student (
   major_code VARCHAR(50) NOT NULL,
   enrollment_year INT NOT NULL,
   politics_status VARCHAR(20) NULL
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- 教师档案
 CREATE TABLE IF NOT EXISTS biz_teacher (
@@ -72,7 +76,7 @@ CREATE TABLE IF NOT EXISTS biz_teacher (
   dept_id BIGINT NOT NULL,
   title VARCHAR(50) NULL,
   entry_date DATE NULL
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- RBAC 角色
 CREATE TABLE IF NOT EXISTS sys_role (
@@ -83,7 +87,7 @@ CREATE TABLE IF NOT EXISTS sys_role (
   status TINYINT NOT NULL DEFAULT 1,
   remark VARCHAR(500) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- RBAC 菜单（目录/菜单/按钮）
 CREATE TABLE IF NOT EXISTS sys_menu (
@@ -97,21 +101,21 @@ CREATE TABLE IF NOT EXISTS sys_menu (
   icon VARCHAR(100) NULL,
   sort_order INT NOT NULL DEFAULT 1,
   visible TINYINT NOT NULL DEFAULT 1
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- 用户-角色关联
 CREATE TABLE IF NOT EXISTS sys_user_role (
   user_id BIGINT NOT NULL,
   role_id BIGINT NOT NULL,
   PRIMARY KEY (user_id, role_id)
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- 角色-菜单关联
 CREATE TABLE IF NOT EXISTS sys_role_menu (
   role_id BIGINT NOT NULL,
   menu_id BIGINT NOT NULL,
   PRIMARY KEY (role_id, menu_id)
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
 -- 操作日志
 CREATE TABLE IF NOT EXISTS sys_oper_log (
@@ -130,7 +134,7 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
   error_msg VARCHAR(2000) NULL,
   oper_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   cost_time BIGINT NULL
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+);
 
   -- 教师模块：题目审核
   CREATE TABLE IF NOT EXISTS biz_question_audit (
@@ -146,15 +150,15 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     audit_comment VARCHAR(500) NULL,
     auditor_id BIGINT NULL,
     audit_time DATETIME NULL
-  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  );
 
   -- 题目
   CREATE TABLE IF NOT EXISTS biz_question (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     type_id TINYINT NOT NULL,
     content TEXT NOT NULL,
-    options JSON NULL,
-    answer JSON NOT NULL,
+    options CLOB NULL,
+    answer CLOB NOT NULL,
     analysis TEXT NULL,
     difficulty TINYINT NOT NULL,
     subject VARCHAR(50) NOT NULL,
@@ -163,7 +167,7 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     creator_id BIGINT NOT NULL,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status TINYINT NOT NULL DEFAULT 1
-  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  );
 
   -- 试卷主表
   CREATE TABLE IF NOT EXISTS biz_paper (
@@ -176,7 +180,7 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     status TINYINT NOT NULL DEFAULT 0,
     creator_id BIGINT NOT NULL,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  );
 
   -- 试卷-题目关联
   CREATE TABLE IF NOT EXISTS biz_paper_question (
@@ -185,7 +189,7 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     score INT NOT NULL,
     sort_order INT NOT NULL,
     PRIMARY KEY (paper_id, question_id)
-  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  );
 
   -- 考试主表
   CREATE TABLE IF NOT EXISTS biz_exam (
@@ -195,10 +199,11 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     start_time DATETIME NOT NULL,
     end_time DATETIME NULL,
     duration INT NOT NULL,
+    semester VARCHAR(20) NULL,
     status TINYINT NOT NULL DEFAULT 0,
     creator_id BIGINT NOT NULL,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  );
 
   -- 考试记录
   CREATE TABLE IF NOT EXISTS biz_exam_record (
@@ -209,16 +214,16 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     status TINYINT NOT NULL DEFAULT 0,
     start_time DATETIME NULL,
     submit_time DATETIME NULL
-  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  );
 
   -- 答题明细
   CREATE TABLE IF NOT EXISTS biz_exam_answer (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     record_id BIGINT NOT NULL,
     question_id BIGINT NOT NULL,
-    student_answer JSON NOT NULL,
+    student_answer CLOB NOT NULL,
     file_id VARCHAR(64) NULL,
     score INT NULL,
     is_correct TINYINT(1) NULL,
     comment VARCHAR(500) NULL
-  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  );

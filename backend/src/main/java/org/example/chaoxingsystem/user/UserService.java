@@ -22,14 +22,20 @@ public class UserService {
   private final UserMapper userMapper;
   private final org.example.chaoxingsystem.admin.perm.UserRoleMapper userRoleMapper;
   private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+  private final EmailVerificationService emailVerificationService;
 
-  public UserService(UserMapper userMapper, org.example.chaoxingsystem.admin.perm.UserRoleMapper userRoleMapper) {
+  public UserService(UserMapper userMapper, org.example.chaoxingsystem.admin.perm.UserRoleMapper userRoleMapper, EmailVerificationService emailVerificationService) {
     this.userMapper = userMapper;
     this.userRoleMapper = userRoleMapper;
+    this.emailVerificationService = emailVerificationService;
   }
 
   @Transactional
   public User register(RegisterRequest request) {
+    boolean verified = emailVerificationService.verify(request.getEmail(), request.getVerificationCode());
+    if (!verified) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "QQ邮箱验证码错误或已失效");
+    }
     // 唯一性校验：用户名/邮箱不可重复
     if (userMapper.countByUsername(request.getUsername()) > 0) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户名已存在");

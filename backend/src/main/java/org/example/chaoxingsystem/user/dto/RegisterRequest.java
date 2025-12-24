@@ -3,6 +3,7 @@ package org.example.chaoxingsystem.user.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 
 public class RegisterRequest {
   @NotBlank
@@ -12,6 +13,7 @@ public class RegisterRequest {
   @NotBlank
   @Email
   @Size(max = 100)
+  @Pattern(regexp = ".*@qq\\.com$")
   private String email;
 
   @NotBlank
@@ -21,6 +23,12 @@ public class RegisterRequest {
   @NotBlank
   @Size(max = 20)
   private String userType;
+
+  
+
+  @NotBlank
+  @Size(min = 6, max = 6)
+  private String verificationCode;
 
   public String getUsername() {
     return username;
@@ -52,5 +60,13 @@ public class RegisterRequest {
 
   public void setUserType(String userType) {
     this.userType = userType;
+  }
+
+  public String getVerificationCode() {
+    return verificationCode;
+  }
+
+  public void setVerificationCode(String verificationCode) {
+    this.verificationCode = verificationCode;
   }
 }
