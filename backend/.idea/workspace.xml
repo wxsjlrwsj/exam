@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="00518376-7aca-4f03-a2a9-f99da1e9a4b0" name="更改" comment="1209">
+      <change beforePath="$PROJECT_DIR$/API_SPECS.md" beforeDir="false" afterPath="$PROJECT_DIR$/API_SPECS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/ChaoxingSystemApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/ChaoxingSystemApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/admin/AdminApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/admin/AdminApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/admin/common/CommonController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/admin/common/CommonController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/security/JwtAuthenticationFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/security/JwtAuthenticationFilter.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/student/StudentApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/student/StudentApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/student/common/CommonController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/student/common/CommonController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/teacher/TeacherApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/teacher/TeacherApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/teacher/common/CommonController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/teacher/common/CommonController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/user/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/user/AuthController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/user/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/user/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/user/TokenService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/user/TokenService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/user/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/chaoxingsystem/user/UserService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/schema.sql" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ChangesViewManager" show_ignored="true" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="REBASE" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;wxsjlrwsj&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/wxsjlrwsj/backend.git&quot;,
+    &quot;accountId&quot;: &quot;d0ffbb28-1b8f-4b4e-be76-ebf6abf2b803&quot;
+  }
+}</component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
+  <component name="ProjectId" id="36aeDnHw0K1yZOGYOoPDU8iciv2" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor": "Run",
+    "Maven.backend [clean].executor": "Run",
+    "Maven.backend [install].executor": "Run",
+    "Maven.backend [validate].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/45121/IdeaProjects/backend",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\45121\IdeaProjects\backend" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="ChaoxingSystemApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="backend" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="org.example.chaoxingsystem.ChaoxingSystemApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.26199.169" />
+        <option value="bundled-js-predefined-d6986cc7102b-9c94529fcfe0-JavaScript-IU-252.26199.169" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="StructureViewState">
+    <option name="selectedTab" value="逻辑" />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="00518376-7aca-4f03-a2a9-f99da1e9a4b0" name="更改" comment="" />
+      <created>1765248995795</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1765248995795</updated>
+      <workItem from="1765248997268" duration="11387000" />
+    </task>
+    <task id="LOCAL-00001" summary="1209">
+      <option name="closed" value="true" />
+      <created>1765249365147</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1765249365147</updated>
+    </task>
+    <task id="LOCAL-00002" summary="1209">
+      <option name="closed" value="true" />
+      <created>1765249859829</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1765249859829</updated>
+    </task>
+    <task id="LOCAL-00003" summary="1209">
+      <option name="closed" value="true" />
+      <created>1765250368005</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1765250368005</updated>
+    </task>
+    <task id="LOCAL-00004" summary="1209">
+      <option name="closed" value="true" />
+      <created>1765251416095</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1765251416095</updated>
+    </task>
+    <task id="LOCAL-00005" summary="1209">
+      <option name="closed" value="true" />
+      <created>1765253649740</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1765253649740</updated>
+    </task>
+    <task id="LOCAL-00006" summary="1209">
+      <option name="closed" value="true" />
+      <created>1765253968043</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1765253968043</updated>
+    </task>
+    <task id="LOCAL-00007" summary="1209">
+      <option name="closed" value="true" />
+      <created>1765260765568</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1765260765568</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="1209" />
+    <option name="LAST_COMMIT_MESSAGE" value="1209" />
+  </component>
+</project>
