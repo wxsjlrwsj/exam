@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -83,6 +84,101 @@ public class PaperService {
     }
     String name = subject + "智能组卷";
     return create(creatorId, name, subject, items, null);
+  }
+
+  public Map<String, Object> getDetail(Long id) {
+    Paper paper = paperMapper.selectById(id);
+    if (paper == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "试卷不存在");
+    }
+    
+    // 获取试卷题目列表
+    List<Map<String, Object>> questions = paperMapper.selectPaperQuestionViews(id);
+    
+    Map<String, Object> data = new HashMap<>();
+    data.put("id", paper.getId());
+    data.put("name", paper.getName());
+    data.put("subject", paper.getSubject());
+    data.put("totalScore", paper.getTotalScore());
+    data.put("passScore", paper.getPassScore());
+    data.put("questionCount", paper.getQuestionCount());
+    data.put("status", getStatusText(paper.getStatus()));
+    data.put("creatorId", paper.getCreatorId());
+    data.put("createTime", paper.getCreateTime());
+    data.put("questions", questions);
+    
+    return data;
+  }
+
+  @Transactional
+  public void delete(Long id) {
+    Paper paper = paperMapper.selectById(id);
+    if (paper == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "试卷不存在");
+    }
+    
+    // 只能删除未被使用的试卷
+    if (paper.getStatus() != 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "已被使用的试卷不能删除");
+    }
+    
+    // 检查是否有考试使用该试卷
+    long examCount = paperMapper.countExamsByPaperId(id);
+    if (examCount > 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "已被考试使用的试卷不能删除");
+    }
+    
+    // 删除试卷题目关联
+    paperMapper.deletePaperQuestions(id);
+    // 删除试卷
+    paperMapper.deleteById(id);
+  }
+
+  @Transactional
+  public void update(Long id, String name, String subject, List<QuestionItem> items, Integer passScore) {
+    Paper paper = paperMapper.selectById(id);
+    if (paper == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "试卷不存在");
+    }
+    
+    // 只能更新未被使用的试卷
+    if (paper.getStatus() != 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "已被使用的试卷不能修改");
+    }
+    
+    if (items != null && !items.isEmpty()) {
+      int totalScore = items.stream().mapToInt(i -> i.score).sum();
+      paper.setTotalScore(totalScore);
+      paper.setQuestionCount(items.size());
+      
+      // 更新试卷题目
+      paperMapper.deletePaperQuestions(id);
+      List<PaperQuestion> rels = new ArrayList<>();
+      int order = 1;
+      for (QuestionItem i : items) {
+        PaperQuestion r = new PaperQuestion();
+        r.setQuestionId(i.id);
+        r.setScore(i.score);
+        r.setSortOrder(order++);
+        rels.add(r);
+      }
+      paperMapper.insertPaperQuestions(id, rels);
+    }
+    
+    if (name != null) paper.setName(name);
+    if (subject != null) paper.setSubject(subject);
+    if (passScore != null) paper.setPassScore(passScore);
+    
+    paperMapper.updateById(paper);
+  }
+
+  private String getStatusText(Integer status) {
+    if (status == null) return "draft";
+    return switch (status) {
+      case 0 -> "draft";
+      case 1 -> "used";
+      default -> "draft";
+    };
   }
 
   /** 组卷题目项 */

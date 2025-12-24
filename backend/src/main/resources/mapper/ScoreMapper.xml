@@ -80,4 +80,22 @@
     WHERE r.exam_id = #{examId}
   </select>
 
+  <select id="selectRecordById" resultMap="RecordMap">
+    SELECT * FROM biz_exam_record WHERE id = #{id}
+  </select>
+
+  <insert id="insertScoreAdjustment">
+    INSERT INTO biz_score_adjustment (score_id, original_score, new_score, reason)
+    VALUES (#{scoreId}, #{originalScore}, #{newScore}, #{reason})
+  </insert>
+
+  <update id="batchUpdateStatus">
+    UPDATE biz_exam_record 
+    SET status = #{status}
+    WHERE id IN
+    <foreach collection="scoreIds" item="sid" open="(" separator="," close=")">
+      #{sid}
+    </foreach>
+  </update>
+
 </mapper>

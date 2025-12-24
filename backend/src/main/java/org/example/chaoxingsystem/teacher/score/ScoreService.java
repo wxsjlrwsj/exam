@@ -57,4 +57,56 @@ public class ScoreService {
     data.put("passRate", rate);
     return data;
   }
+
+  @Transactional
+  public Map<String, Object> adjustScore(Long scoreId, Integer newScore, String reason) {
+    ExamRecord record = mapper.selectRecordById(scoreId);
+    if (record == null) {
+      throw new org.springframework.web.server.ResponseStatusException(
+        org.springframework.http.HttpStatus.NOT_FOUND, "成绩记录不存在"
+      );
+    }
+    
+    Integer originalScore = record.getScore();
+    
+    // 插入调整记录
+    mapper.insertScoreAdjustment(scoreId, originalScore, newScore, reason);
+    
+    // 更新成绩
+    mapper.updateRecordScore(scoreId, newScore, record.getStatus());
+    
+    Map<String, Object> data = new HashMap<>();
+    data.put("scoreId", scoreId);
+    data.put("originalScore", originalScore);
+    data.put("newScore", newScore);
+    data.put("adjustTime", java.time.LocalDateTime.now().format(
+      java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    ));
+    
+    return data;
+  }
+
+  @Transactional
+  public int batchPublish(List<Long> scoreIds, boolean published) {
+    int status = published ? 2 : 1; // 2=已发布, 1=未发布
+    return mapper.batchUpdateStatus(scoreIds, status);
+  }
+
+  public byte[] exportScores(Long examId, String format) {
+    // 简化实现：生成空的Excel文件
+    // 实际应用中应使用Apache POI或其他Excel库生成真实的Excel文件
+    String content = "学号,姓名,班级,成绩\n";
+    List<Map<String, Object>> scores = mapper.selectPage(examId, null, null, 0, 1000);
+    
+    for (Map<String, Object> score : scores) {
+      content += String.format("%s,%s,%s,%s\n",
+        score.get("studentId"),
+        score.get("name"),
+        score.get("className"),
+        score.get("score")
+      );
+    }
+    
+    return content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+  }
 }

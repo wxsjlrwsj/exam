@@ -3,7 +3,6 @@ package org.example.chaoxingsystem.teacher.paper;
 import jakarta.validation.Valid;
 import org.example.chaoxingsystem.config.ModuleCheck;
 import org.example.chaoxingsystem.teacher.paper.dto.CreatePaperRequest;
-import org.example.chaoxingsystem.teacher.paper.dto.QuestionScore;
 import org.example.chaoxingsystem.user.UserService;
 import org.example.chaoxingsystem.user.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -61,11 +60,35 @@ public class PaperController {
     String subject = (String) body.get("subject");
     Integer difficulty = body.get("difficulty") instanceof Number ? ((Number) body.get("difficulty")).intValue() : null;
     Integer totalScore = body.get("totalScore") instanceof Number ? ((Number) body.get("totalScore")).intValue() : null;
+    @SuppressWarnings("unchecked")
     Map<String, Integer> typeDistribution = (Map<String, Integer>) body.get("typeDistribution");
     Long id = service.autoGenerate(me.getId(), subject, difficulty, totalScore, typeDistribution);
     HashMap<String, Object> data = new HashMap<>();
     data.put("id", id);
     return ResponseEntity.ok(ApiResponse.success("智能组卷成功", data));
+  }
+
+  @GetMapping("/papers/{id}")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> detail(@PathVariable("id") Long id) {
+    Map<String, Object> data = service.getDetail(id);
+    return ResponseEntity.ok(ApiResponse.success("获取成功", data));
+  }
+
+  @DeleteMapping("/papers/{id}")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {
+    service.delete(id);
+    return ResponseEntity.ok(ApiResponse.success("删除成功", null));
+  }
+
+  @PutMapping("/papers/{id}")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Void>> update(@PathVariable("id") Long id, @Valid @RequestBody CreatePaperRequest req) {
+    List<PaperService.QuestionItem> items = req.getQuestions().stream()
+      .map(q -> new PaperService.QuestionItem(q.getId(), q.getScore())).toList();
+    service.update(id, req.getName(), req.getSubject(), items, req.getPassScore());
+    return ResponseEntity.ok(ApiResponse.success("更新成功", null));
   }
 }
 

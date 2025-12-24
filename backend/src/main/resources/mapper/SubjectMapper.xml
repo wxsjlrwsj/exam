@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.common.SubjectMapper">
+
+  <resultMap id="SubjectMap" type="org.example.chaoxingsystem.common.Subject">
+    <id property="id" column="id"/>
+    <result property="name" column="name"/>
+    <result property="code" column="code"/>
+    <result property="description" column="description"/>
+    <result property="createTime" column="create_time"/>
+  </resultMap>
+
+  <select id="selectAll" resultMap="SubjectMap">
+    SELECT * FROM biz_subject ORDER BY name
+  </select>
+
+  <select id="selectById" resultMap="SubjectMap">
+    SELECT * FROM biz_subject WHERE id = #{id}
+  </select>
+
+  <select id="selectByCode" resultMap="SubjectMap">
+    SELECT * FROM biz_subject WHERE code = #{code}
+  </select>
+
+  <insert id="insert" parameterType="org.example.chaoxingsystem.common.Subject" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_subject (name, code, description)
+    VALUES (#{name}, #{code}, #{description})
+  </insert>
+
+  <update id="updateById" parameterType="org.example.chaoxingsystem.common.Subject">
+    UPDATE biz_subject SET
+      name = #{name},
+      code = #{code},
+      description = #{description}
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM biz_subject WHERE id = #{id}
+  </delete>
+
+</mapper>
+

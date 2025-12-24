@@ -13,4 +13,9 @@ public interface ScoreMapper {
   int updateRecordScore(@Param("recordId") Long recordId, @Param("score") Integer score, @Param("status") Integer status);
   int updateAnswerScore(@Param("recordId") Long recordId, @Param("questionId") Long questionId, @Param("score") Integer score, @Param("comment") String comment);
   Map<String, Object> selectStats(@Param("examId") Long examId);
+  
+  ExamRecord selectRecordById(@Param("id") Long id);
+  int insertScoreAdjustment(@Param("scoreId") Long scoreId, @Param("originalScore") Integer originalScore, 
+                           @Param("newScore") Integer newScore, @Param("reason") String reason);
+  int batchUpdateStatus(@Param("scoreIds") List<Long> scoreIds, @Param("status") Integer status);
 }

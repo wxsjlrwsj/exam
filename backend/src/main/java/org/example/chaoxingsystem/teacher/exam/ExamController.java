@@ -1,6 +1,5 @@
 package org.example.chaoxingsystem.teacher.exam;
 
-import jakarta.validation.Valid;
 import org.example.chaoxingsystem.config.ModuleCheck;
 import org.example.chaoxingsystem.user.UserService;
 import org.example.chaoxingsystem.user.dto.ApiResponse;
@@ -59,16 +58,64 @@ public class ExamController {
     return ResponseEntity.ok(ApiResponse.success("创建成功", data));
   }
 
+  @GetMapping("/exams/{id}")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> detail(@PathVariable("id") Long id) {
+    Map<String, Object> data = service.getDetail(id);
+    return ResponseEntity.ok(ApiResponse.success("获取成功", data));
+  }
+
+  @DeleteMapping("/exams/{id}")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {
+    service.delete(id);
+    return ResponseEntity.ok(ApiResponse.success("删除成功", null));
+  }
+
+  @PutMapping("/exams/{id}")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Void>> update(@PathVariable("id") Long id, @RequestBody Map<String, Object> body) {
+    String name = (String) body.get("name");
+    String startTime = (String) body.get("startTime");
+    Integer duration = body.get("duration") instanceof Number ? ((Number) body.get("duration")).intValue() : null;
+    String description = (String) body.get("description");
+    service.update(id, name, startTime, duration, description);
+    return ResponseEntity.ok(ApiResponse.success("更新成功", null));
+  }
+
   @GetMapping("/monitor/{examId}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> monitor(@PathVariable("examId") Long examId) {
-    // 简化：返回静态看板数据占位
-    Map<String, Object> data = new HashMap<>();
-    data.put("examId", examId);
-    data.put("online", 0);
-    data.put("submitted", 0);
-    data.put("cheatSuspected", 0);
+    Map<String, Object> data = service.getMonitorData(examId);
     return ResponseEntity.ok(ApiResponse.success("获取成功", data));
+  }
+
+  @PostMapping("/monitor/{examId}/warning")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> sendWarning(
+    Authentication auth,
+    @PathVariable("examId") Long examId,
+    @RequestBody Map<String, Object> body
+  ) {
+    var me = userService.getByUsername(auth.getName());
+    Long studentId = body.get("studentId") instanceof Number ? ((Number) body.get("studentId")).longValue() : null;
+    String message = (String) body.get("message");
+    String type = (String) body.get("type");
+    Map<String, Object> data = service.sendWarning(examId, studentId, message, type, me.getId());
+    return ResponseEntity.ok(ApiResponse.success("警告已发送", data));
+  }
+
+  @PostMapping("/monitor/{examId}/force-submit")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> forceSubmit(
+    @PathVariable("examId") Long examId,
+    @RequestBody Map<String, Object> body
+  ) {
+    @SuppressWarnings("unchecked")
+    List<Number> studentIds = (List<Number>) body.get("studentIds");
+    String reason = (String) body.get("reason");
+    Map<String, Object> data = service.forceSubmit(examId, studentIds, reason);
+    return ResponseEntity.ok(ApiResponse.success("强制收卷成功", data));
   }
 }
 

@@ -50,4 +50,62 @@
     SELECT * FROM biz_exam WHERE id = #{id}
   </select>
 
+  <delete id="deleteById">
+    DELETE FROM biz_exam WHERE id = #{id}
+  </delete>
+
+  <!-- 考试统计 -->
+  <select id="countExamStudents" resultType="long">
+    SELECT COUNT(1) FROM biz_exam_student WHERE exam_id = #{examId}
+  </select>
+
+  <select id="countSubmittedStudents" resultType="long">
+    SELECT COUNT(1) FROM biz_exam_record 
+    WHERE exam_id = #{examId} AND status >= 1
+  </select>
+
+  <select id="countGradedStudents" resultType="long">
+    SELECT COUNT(1) FROM biz_exam_record 
+    WHERE exam_id = #{examId} AND status = 2
+  </select>
+
+  <!-- 监考相关 -->
+  <select id="selectMonitorStudents" resultType="java.util.Map">
+    SELECT 
+      u.id AS id,
+      u.username AS studentId,
+      u.real_name AS name,
+      COALESCE(c.class_name, '未分班') AS className,
+      CASE 
+        WHEN er.status = 1 THEN 'submitted'
+        WHEN er.status = 0 AND er.id IS NOT NULL THEN 'online'
+        ELSE 'offline'
+      END AS status,
+      COALESCE(er.progress, 0) AS progress,
+      COALESCE(er.switch_count, 0) AS switchCount,
+      er.last_active_time AS lastActiveTime,
+      er.submit_time AS submitTime,
+      er.ip_address AS ipAddress
+    FROM biz_exam_student es
+    JOIN sys_user u ON u.id = es.user_id
+    LEFT JOIN biz_class_student cs ON cs.user_id = u.id
+    LEFT JOIN biz_class c ON c.id = cs.class_id
+    LEFT JOIN biz_exam_record er ON er.exam_id = es.exam_id AND er.student_id = u.id
+    WHERE es.exam_id = #{examId}
+    ORDER BY u.username
+  </select>
+
+  <insert id="insertWarning">
+    INSERT INTO biz_monitor_warning (exam_id, student_id, message, type, teacher_id)
+    VALUES (#{examId}, #{studentId}, #{message}, #{type}, #{teacherId})
+  </insert>
+
+  <update id="forceSubmitExamRecord">
+    UPDATE biz_exam_record 
+    SET status = 1, 
+        submit_time = NOW(),
+        progress = 100
+    WHERE exam_id = #{examId} AND student_id = #{studentId} AND status = 0
+  </update>
+
 </mapper>
