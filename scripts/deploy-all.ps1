@@ -5,6 +5,93 @@ Write-Host "========================================" -ForegroundColor Magenta
 Write-Host "      开始部署完整应用系统" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 
+# 获取项目根目录
+$projectRoot = Split-Path -Parent $PSScriptRoot
+
+# 检查Docker是否运行
+Write-Host "`n[预检] 检查Docker状态..." -ForegroundColor Yellow
+$dockerRunning = $false
+try {
+    $null = docker ps 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $dockerRunning = $true
+        Write-Host "✓ Docker 正在运行" -ForegroundColor Green
+    }
+} catch {
+    $dockerRunning = $false
+}
+
+if (-not $dockerRunning) {
+    Write-Host "✖ Docker 未运行！" -ForegroundColor Red
+    Write-Host "`n请先启动 Docker Desktop，然后重新运行此脚本。" -ForegroundColor Yellow
+    Write-Host "启动方法：" -ForegroundColor Cyan
+    Write-Host "  1. 打开 Docker Desktop 应用程序" -ForegroundColor White
+    Write-Host "  2. 等待 Docker 引擎启动（约 30-60 秒）" -ForegroundColor White
+    Write-Host "  3. 重新运行此脚本`n" -ForegroundColor White
+    
+    $startDocker = Read-Host "是否尝试自动启动 Docker Desktop? (y/n)"
+    if ($startDocker -eq 'y') {
+        Write-Host "`n正在启动 Docker Desktop..." -ForegroundColor Yellow
+        Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe" -ErrorAction SilentlyContinue
+        
+        Write-Host "等待 Docker 引擎启动（最多等待 60 秒）..." -ForegroundColor Yellow
+        $timeout = 60
+        $elapsed = 0
+        while ($elapsed -lt $timeout) {
+            Start-Sleep -Seconds 5
+            $elapsed += 5
+            try {
+                $null = docker ps 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "✓ Docker 已启动！" -ForegroundColor Green
+                    $dockerRunning = $true
+                    break
+                }
+            } catch {
+                Write-Host "." -NoNewline -ForegroundColor Gray
+            }
+        }
+        
+        if (-not $dockerRunning) {
+            Write-Host "`n✖ Docker 启动超时，请手动启动后重试。" -ForegroundColor Red
+            exit 1
+        }
+    } else {
+        exit 1
+    }
+}
+
+# 检查容器是否存在
+Write-Host "`n[预检] 检查容器状态..." -ForegroundColor Yellow
+$containers = docker ps -a --filter "name=chaoxing" --format "{{.Names}}" 2>&1
+if ($LASTEXITCODE -ne 0 -or -not $containers) {
+    Write-Host "✖ 未找到 chaoxing 容器！" -ForegroundColor Red
+    Write-Host "`n请先运行以下命令创建容器：" -ForegroundColor Yellow
+    Write-Host "  cd $projectRoot" -ForegroundColor Cyan
+    Write-Host "  docker-compose up -d`n" -ForegroundColor Cyan
+    
+    $createContainers = Read-Host "是否现在创建容器? (y/n)"
+    if ($createContainers -eq 'y') {
+        Write-Host "`n正在创建容器..." -ForegroundColor Yellow
+        Set-Location $projectRoot
+        docker-compose up -d --build
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "`n✖ 容器创建失败！" -ForegroundColor Red
+            exit 1
+        }
+        
+        Write-Host "✓ 容器创建成功！" -ForegroundColor Green
+        Write-Host "`n等待服务启动（约 30 秒）..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 30
+    } else {
+        exit 1
+    }
+} else {
+    Write-Host "✓ 找到以下容器：" -ForegroundColor Green
+    $containers | ForEach-Object { Write-Host "  - $_" -ForegroundColor Cyan }
+}
+
 $startTime = Get-Date
 
 # 询问部署选项

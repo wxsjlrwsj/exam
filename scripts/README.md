@@ -4,24 +4,26 @@
 
 ## 📋 脚本列表
 
-### 开发和部署脚本
+### 核心部署脚本
 
-#### ⚡ `start-dev.ps1` - 开发模式（推荐开发时使用）
-**功能：** 启动热更新开发环境，无需重新构建
-- ✅ 前端自动热更新（< 20秒启动）
-- ✅ 后端使用已构建的 jar 包
-- ✅ 最快的开发体验
+#### 🔄 `deploy-all.ps1` - 完整部署（推荐首次使用）
+**功能：** 完整的部署流程，包含Docker检查
+- ✅ 自动检查Docker状态
+- ✅ 自动启动Docker（如果未运行）
+- ✅ 自动创建容器（如果不存在）
+- ✅ 支持选择性部署（前端/后端/全部）
 
-**使用场景：** 日常开发、前端调试、快速预览
+**使用场景：** 首次部署、环境重置、故障排查
 
 ```powershell
-.\scripts\start-dev.ps1
+.\scripts\deploy-all.ps1
 ```
 
 ---
 
-#### 🚀 `deploy-fast.ps1` - 快速部署（推荐日常使用）
+#### ⚡ `deploy-fast.ps1` - 快速部署（推荐日常使用）
 **功能：** 增量构建 + 并行执行，速度提升 60-70%
+- ✅ 自动检测 Docker 状态
 - ✅ 自动检测 Maven（未安装时使用 Docker Maven）
 - ✅ 只重新构建修改的部分
 - ✅ 前后端并行构建
@@ -38,33 +40,12 @@
 
 ---
 
-#### 🔄 `deploy-all.ps1` - 完整部署（推荐首次或出问题时使用）
-**功能：** 完整的部署流程，支持选择性部署
-- ✅ 完整重新构建
-- ✅ 清理旧的构建缓存
-- ✅ 交互式选择部署模块
-
-**使用场景：** 首次部署、环境重置、故障排查
-
-**选项：**
-1. 仅部署前端
-2. 仅部署后端
-3. 部署前端和后端（推荐）
-
-**耗时：** 3-13 分钟
-
-```powershell
-.\scripts\deploy-all.ps1
-```
-
----
-
 ### 独立模块部署
 
 #### 📦 `deploy-frontend.ps1` - 前端独立部署
 **功能：** 只构建和部署前端
-- ✅ npm install
-- ✅ npm run build
+- ✅ Docker 状态检查
+- ✅ npm install & build
 - ✅ 重启前端容器
 
 ```powershell
@@ -75,7 +56,8 @@
 
 #### 📦 `deploy-backend.ps1` - 后端独立部署
 **功能：** 只构建和部署后端
-- ✅ mvn clean package
+- ✅ Docker 状态检查
+- ✅ Maven 构建（支持 Docker Maven）
 - ✅ 重启后端容器
 
 ```powershell
@@ -99,70 +81,59 @@
 
 ---
 
-#### ✅ `test-deployment.ps1` - 部署验证
-**功能：** 验证当前部署状态
-- ✅ 检查所有服务是否运行
-- ✅ 测试数据库连接
-- ✅ 测试 API 可访问性
-
-```powershell
-.\scripts\test-deployment.ps1
-```
-
----
-
-### 工具脚本
-
-#### 🔧 `fix-script-permission.ps1` - 修复脚本权限
-**功能：** 解决 Windows PowerShell 脚本执行权限问题
-- ✅ 自动解除所有脚本的执行限制
-
-**使用场景：** 首次使用或遇到权限错误时
-
-```powershell
-.\scripts\fix-script-permission.ps1
-```
-
----
-
 ## 🎯 快速选择指南
 
 | 场景 | 推荐脚本 | 耗时 |
 |------|---------|------|
-| 🔥 **开发调试** | `start-dev.ps1` | < 20秒 |
+| 🆕 **首次部署** | `deploy-all.ps1` | 5-15分钟 |
 | 📝 **修改代码后部署** | `deploy-fast.ps1` | 1-4分钟 |
-| 🆕 **首次部署** | `deploy-all.ps1` | 3-13分钟 |
 | 🐛 **出现问题** | `deploy-all.ps1` | 3-13分钟 |
-| ✅ **验证部署** | `test-deployment.ps1` | < 1分钟 |
 | 🎨 **只改前端** | `deploy-frontend.ps1` | 1-3分钟 |
 | ⚙️ **只改后端** | `deploy-backend.ps1` | 2-5分钟 |
+| ✅ **部署并测试** | `deploy-and-test.ps1` | 5-20分钟 |
 
 ---
 
 ## ⚠️ 常见问题
 
-### 问题1：脚本无法执行，提示权限错误
+### 问题1：Docker 未运行
+**错误信息：** "Docker 未运行！请先启动 Docker Desktop"
+
+**解决方案：**
+1. 打开 Docker Desktop 应用程序
+2. 等待 Docker 引擎启动（约 30-60 秒）
+3. 重新运行脚本
+
+`deploy-all.ps1` 会自动尝试启动 Docker
+
+---
+
+### 问题2：容器不存在
+**错误信息：** "未找到 chaoxing 容器"
+
 **解决方案：**
 ```powershell
-.\scripts\fix-script-permission.ps1
+# 使用 deploy-all.ps1（推荐，会自动创建）
+.\scripts\deploy-all.ps1
+
+# 或手动创建容器
+docker-compose up -d --build
 ```
 
-### 问题2：mvn 命令未找到
+---
+
+### 问题3：mvn 命令未找到
 **解决方案：**
 - 使用 `deploy-fast.ps1`（自动使用 Docker Maven）
-- 或者参考 `docs/guides/MAVEN-SETUP.md` 安装 Maven
+- 或者参考文档安装 Maven
 
-### 问题3：Docker 容器启动失败
-**解决方案：**
-1. 检查 Docker Desktop 是否运行
-2. 运行 `docker ps` 查看容器状态
-3. 运行 `docker-compose logs` 查看日志
+---
 
 ### 问题4：端口被占用
 **解决方案：**
 ```powershell
 # 停止所有容器
-docker-compose down
+docker-compose stop
 
 # 重新启动
 .\scripts\deploy-fast.ps1
@@ -170,24 +141,46 @@ docker-compose down
 
 ---
 
-## 📚 更多文档
-
-- 📖 [完整部署指南](../docs/deployment/DEPLOYMENT.md)
-- ⚡ [性能优化指南](../docs/guides/PERFORMANCE-GUIDE.md)
-- 📋 [快速参考卡片](../docs/guides/QUICK-START.md)
-- 🔧 [Maven 安装配置](../docs/guides/MAVEN-SETUP.md)
+### 问题5：服务无法访问
+**解决方案：**
+1. 等待 1-2 分钟让服务完全启动
+2. 查看日志：`docker-compose logs -f`
+3. 检查容器状态：`docker ps`
+4. 重启服务：`docker-compose restart`
 
 ---
 
-## 💡 提示
+## 💡 最佳实践
 
-1. **开发时始终使用 `start-dev.ps1`** - 最快的开发体验
-2. **代码提交前使用 `deploy-fast.ps1`** - 确保完整构建通过
-3. **部署到生产前使用 `deploy-and-test.ps1`** - 自动化测试保证质量
-4. **遇到问题时使用 `deploy-all.ps1`** - 完整重新构建解决大部分问题
+1. **首次使用：** `deploy-all.ps1` → 完整部署，自动检查环境
+2. **日常开发：** `deploy-fast.ps1` → 快速增量部署
+3. **代码提交前：** `deploy-and-test.ps1` → 自动化测试保证质量
+4. **遇到问题：** `deploy-all.ps1` → 完整重新构建
+
+## 🔄 典型工作流程
+
+```powershell
+# 1. 首次部署
+.\scripts\deploy-all.ps1
+
+# 2. 修改代码后快速部署
+.\scripts\deploy-fast.ps1
+
+# 3. 提交前测试
+.\scripts\deploy-and-test.ps1
+
+# 4. 停止系统
+docker-compose stop
+```
+
+---
+
+## 📚 更多文档
+
+- 📖 [项目README](../README.md)
+- 🎯 [部署和测试指南](../DEPLOYMENT_AND_TEST_GUIDE.md)
 
 ---
 
 🎉 **祝您开发愉快！**
-
 

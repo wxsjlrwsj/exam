@@ -1,5 +1,6 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.example.chaoxingsystem.teacher.exam.ExamMapper">
 
   <resultMap id="ExamMap" type="org.example.chaoxingsystem.teacher.exam.Exam">
@@ -15,97 +16,44 @@
   </resultMap>
 
   <select id="count" resultType="long">
-    SELECT COUNT(1) FROM biz_exam
+    SELECT COUNT(*) FROM biz_exam
     <where>
-      <if test="status != null">AND status = #{status}</if>
+      <if test="status != null">
+        AND status = #{status}
+      </if>
     </where>
   </select>
 
   <select id="selectPage" resultMap="ExamMap">
     SELECT * FROM biz_exam
     <where>
-      <if test="status != null">AND status = #{status}</if>
+      <if test="status != null">
+        AND status = #{status}
+      </if>
     </where>
-    ORDER BY start_time DESC, id DESC
-    LIMIT #{limit} OFFSET #{offset}
+    ORDER BY create_time DESC
+    LIMIT #{offset}, #{limit}
   </select>
-
-  <insert id="insert" parameterType="org.example.chaoxingsystem.teacher.exam.Exam" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO biz_exam (name, paper_id, start_time, end_time, duration, status, creator_id)
-    VALUES (#{name}, #{paperId}, #{startTime}, #{endTime}, #{duration}, #{status}, #{creatorId})
-  </insert>
-
-  <update id="updateById" parameterType="org.example.chaoxingsystem.teacher.exam.Exam">
-    UPDATE biz_exam SET
-      name = #{name},
-      paper_id = #{paperId},
-      start_time = #{startTime},
-      end_time = #{endTime},
-      duration = #{duration},
-      status = #{status}
-    WHERE id = #{id}
-  </update>
 
   <select id="selectById" resultMap="ExamMap">
     SELECT * FROM biz_exam WHERE id = #{id}
   </select>
 
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_exam (name, paper_id, start_time, end_time, duration, status, creator_id)
+    VALUES (#{name}, #{paperId}, #{startTime}, #{endTime}, #{duration}, #{status}, #{creatorId})
+  </insert>
+
+  <update id="updateById">
+    UPDATE biz_exam
+    SET name = #{name}, paper_id = #{paperId}, start_time = #{startTime},
+        end_time = #{endTime}, duration = #{duration}, status = #{status}
+    WHERE id = #{id}
+  </update>
+
   <delete id="deleteById">
     DELETE FROM biz_exam WHERE id = #{id}
   </delete>
 
-  <!-- 考试统计 -->
-  <select id="countExamStudents" resultType="long">
-    SELECT COUNT(1) FROM biz_exam_student WHERE exam_id = #{examId}
-  </select>
-
-  <select id="countSubmittedStudents" resultType="long">
-    SELECT COUNT(1) FROM biz_exam_record 
-    WHERE exam_id = #{examId} AND status >= 1
-  </select>
-
-  <select id="countGradedStudents" resultType="long">
-    SELECT COUNT(1) FROM biz_exam_record 
-    WHERE exam_id = #{examId} AND status = 2
-  </select>
-
-  <!-- 监考相关 -->
-  <select id="selectMonitorStudents" resultType="java.util.Map">
-    SELECT 
-      u.id AS id,
-      u.username AS studentId,
-      u.real_name AS name,
-      COALESCE(c.class_name, '未分班') AS className,
-      CASE 
-        WHEN er.status = 1 THEN 'submitted'
-        WHEN er.status = 0 AND er.id IS NOT NULL THEN 'online'
-        ELSE 'offline'
-      END AS status,
-      COALESCE(er.progress, 0) AS progress,
-      COALESCE(er.switch_count, 0) AS switchCount,
-      er.last_active_time AS lastActiveTime,
-      er.submit_time AS submitTime,
-      er.ip_address AS ipAddress
-    FROM biz_exam_student es
-    JOIN sys_user u ON u.id = es.user_id
-    LEFT JOIN biz_class_student cs ON cs.user_id = u.id
-    LEFT JOIN biz_class c ON c.id = cs.class_id
-    LEFT JOIN biz_exam_record er ON er.exam_id = es.exam_id AND er.student_id = u.id
-    WHERE es.exam_id = #{examId}
-    ORDER BY u.username
-  </select>
-
-  <insert id="insertWarning">
-    INSERT INTO biz_monitor_warning (exam_id, student_id, message, type, teacher_id)
-    VALUES (#{examId}, #{studentId}, #{message}, #{type}, #{teacherId})
-  </insert>
-
-  <update id="forceSubmitExamRecord">
-    UPDATE biz_exam_record 
-    SET status = 1, 
-        submit_time = NOW(),
-        progress = 100
-    WHERE exam_id = #{examId} AND student_id = #{studentId} AND status = 0
-  </update>
-
 </mapper>
+

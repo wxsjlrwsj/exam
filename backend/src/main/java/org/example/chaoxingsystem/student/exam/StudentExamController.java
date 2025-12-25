@@ -61,4 +61,30 @@ public class StudentExamController {
     studentExamService.submit(examId, me.getId(), answers, durationUsed);
     return ResponseEntity.ok(ApiResponse.success("提交成功", null));
   }
+
+  @GetMapping("/{examId}/result")
+  @PreAuthorize("hasRole('STUDENT')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> getResult(Authentication auth, @PathVariable("examId") Long examId) {
+    var me = userService.getByUsername(auth.getName());
+    Map<String, Object> result = studentExamService.getResult(examId, me.getId());
+    return ResponseEntity.ok(ApiResponse.success("获取成功", result));
+  }
+
+  @GetMapping("/{examId}/review")
+  @PreAuthorize("hasRole('STUDENT')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> reviewPaper(Authentication auth, @PathVariable("examId") Long examId) {
+    var me = userService.getByUsername(auth.getName());
+    Map<String, Object> review = studentExamService.getReview(examId, me.getId());
+    return ResponseEntity.ok(ApiResponse.success("获取成功", review));
+  }
+
+  @PostMapping("/{examId}/monitor-event")
+  @PreAuthorize("hasRole('STUDENT')")
+  public ResponseEntity<ApiResponse<Void>> reportMonitorEvent(Authentication auth, @PathVariable("examId") Long examId, @RequestBody Map<String, Object> body) {
+    var me = userService.getByUsername(auth.getName());
+    String eventType = (String) body.get("eventType");
+    String eventData = (String) body.get("eventData");
+    studentExamService.recordMonitorEvent(examId, me.getId(), eventType, eventData);
+    return ResponseEntity.ok(ApiResponse.success("上报成功", null));
+  }
 }

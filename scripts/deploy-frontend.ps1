@@ -8,6 +8,37 @@ Write-Host "========================================" -ForegroundColor Cyan
 # 获取项目根目录（scripts 的父目录）
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
+# 检查Docker是否运行
+Write-Host "`n[预检] 检查Docker状态..." -ForegroundColor Yellow
+try {
+    $null = docker ps 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "✓ Docker 正在运行" -ForegroundColor Green
+} catch {
+    Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
+    exit 1
+}
+
+# 检查容器是否存在
+$containerExists = docker ps -a --filter "name=chaoxing-frontend" --format "{{.Names}}" 2>&1
+if ($LASTEXITCODE -ne 0 -or -not $containerExists) {
+    Write-Host "✖ 未找到 chaoxing-frontend 容器！" -ForegroundColor Red
+    Write-Host "请先运行: docker-compose up -d" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "✓ 找到前端容器" -ForegroundColor Green
+
+# 检查npm是否安装
+$npmInstalled = $null -ne (Get-Command npm -ErrorAction SilentlyContinue)
+if (-not $npmInstalled) {
+    Write-Host "✖ 未找到 npm！请先安装 Node.js。" -ForegroundColor Red
+    exit 1
+}
+Write-Host "✓ npm 已安装" -ForegroundColor Green
+
 # 1. 进入前端目录
 Set-Location "$projectRoot\frontend"
 

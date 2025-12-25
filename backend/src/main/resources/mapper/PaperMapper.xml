@@ -1,5 +1,6 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.example.chaoxingsystem.teacher.paper.PaperMapper">
 
   <resultMap id="PaperMap" type="org.example.chaoxingsystem.teacher.paper.Paper">
@@ -14,76 +15,34 @@
     <result property="createTime" column="create_time"/>
   </resultMap>
 
-  <select id="count" resultType="long">
-    SELECT COUNT(1) FROM biz_paper
-    <where>
-      <if test="subject != null and subject != ''">AND subject = #{subject}</if>
-    </where>
+  <select id="selectById" resultMap="PaperMap">
+    SELECT * FROM biz_paper WHERE id = #{id}
   </select>
 
-  <select id="selectPage" resultMap="PaperMap">
-    SELECT * FROM biz_paper
-    <where>
-      <if test="subject != null and subject != ''">AND subject = #{subject}</if>
-    </where>
-    ORDER BY create_time DESC, id DESC
-    LIMIT #{limit} OFFSET #{offset}
+  <select id="selectPaperQuestionViews" resultType="map">
+    SELECT pq.id, pq.question_id as questionId, pq.score,
+           q.type, q.content, q.options, q.answer, q.analysis, q.subject, q.difficulty
+    FROM biz_paper_question pq
+    LEFT JOIN biz_question q ON pq.question_id = q.id
+    WHERE pq.paper_id = #{paperId}
+    ORDER BY pq.id
   </select>
 
-  <insert id="insert" parameterType="org.example.chaoxingsystem.teacher.paper.Paper" useGeneratedKeys="true" keyProperty="id">
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO biz_paper (name, subject, total_score, pass_score, question_count, status, creator_id)
     VALUES (#{name}, #{subject}, #{totalScore}, #{passScore}, #{questionCount}, #{status}, #{creatorId})
   </insert>
 
-  <update id="updateById" parameterType="org.example.chaoxingsystem.teacher.paper.Paper">
-    UPDATE biz_paper SET
-      name = #{name},
-      subject = #{subject},
-      total_score = #{totalScore},
-      pass_score = #{passScore},
-      question_count = #{questionCount},
-      status = #{status}
+  <update id="updateById">
+    UPDATE biz_paper
+    SET name = #{name}, subject = #{subject}, total_score = #{totalScore},
+        pass_score = #{passScore}, question_count = #{questionCount}, status = #{status}
     WHERE id = #{id}
   </update>
-
-  <select id="selectById" resultMap="PaperMap">
-    SELECT * FROM biz_paper WHERE id = #{id}
-  </select>
 
   <delete id="deleteById">
     DELETE FROM biz_paper WHERE id = #{id}
   </delete>
 
-  <delete id="deletePaperQuestions">
-    DELETE FROM biz_paper_question WHERE paper_id = #{paperId}
-  </delete>
-
-  <insert id="insertPaperQuestions">
-    INSERT INTO biz_paper_question (paper_id, question_id, score, sort_order)
-    VALUES
-    <foreach collection="items" item="it" separator=",">
-      (#{paperId}, #{it.questionId}, #{it.score}, #{it.sortOrder})
-    </foreach>
-  </insert>
-
-  <select id="selectPaperQuestionViews" resultType="java.util.Map">
-    SELECT
-      pq.question_id AS id,
-      q.type_id AS type_id,
-      t.type_code AS type_code,
-      q.content AS content,
-      q.options AS options,
-      pq.score AS score,
-      pq.sort_order AS `order`
-    FROM biz_paper_question pq
-    JOIN biz_question q ON q.id = pq.question_id
-    LEFT JOIN biz_question_type t ON t.type_id = q.type_id
-    WHERE pq.paper_id = #{paperId}
-    ORDER BY pq.sort_order ASC
-  </select>
-
-  <select id="countExamsByPaperId" resultType="long">
-    SELECT COUNT(1) FROM biz_exam WHERE paper_id = #{paperId}
-  </select>
-
 </mapper>
+

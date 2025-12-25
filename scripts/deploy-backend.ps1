@@ -8,6 +8,29 @@ Write-Host "========================================" -ForegroundColor Cyan
 # 获取项目根目录（scripts 的父目录）
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
+# 检查Docker是否运行
+Write-Host "`n[预检] 检查Docker状态..." -ForegroundColor Yellow
+try {
+    $null = docker ps 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "✓ Docker 正在运行" -ForegroundColor Green
+} catch {
+    Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
+    exit 1
+}
+
+# 检查容器是否存在
+$containerExists = docker ps -a --filter "name=chaoxing-backend" --format "{{.Names}}" 2>&1
+if ($LASTEXITCODE -ne 0 -or -not $containerExists) {
+    Write-Host "✖ 未找到 chaoxing-backend 容器！" -ForegroundColor Red
+    Write-Host "请先运行: docker-compose up -d" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "✓ 找到后端容器" -ForegroundColor Green
+
 # 1. 进入后端目录
 Set-Location "$projectRoot\backend"
 

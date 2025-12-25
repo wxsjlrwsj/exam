@@ -7,6 +7,31 @@ Write-Host "========================================" -ForegroundColor Magenta
 
 # 获取项目根目录（scripts 的父目录）
 $projectRoot = Split-Path -Parent $PSScriptRoot
+
+# 检查Docker是否运行
+Write-Host "`n[预检] 检查Docker状态..." -ForegroundColor Yellow
+try {
+    $null = docker ps 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
+        Write-Host "`n启动方法：打开 Docker Desktop 应用程序`n" -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "✓ Docker 正在运行" -ForegroundColor Green
+} catch {
+    Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
+    exit 1
+}
+
+# 检查容器是否存在
+$containers = docker ps -a --filter "name=chaoxing" --format "{{.Names}}" 2>&1
+if ($LASTEXITCODE -ne 0 -or -not $containers) {
+    Write-Host "✖ 未找到 chaoxing 容器！" -ForegroundColor Red
+    Write-Host "请先运行: docker-compose up -d`n" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "✓ 找到容器" -ForegroundColor Green
+
 $startTime = Get-Date
 
 # 询问部署选项
@@ -145,7 +170,7 @@ elseif ($deployBackend) {
     Write-Host "快速部署后端" -ForegroundColor Blue
     Write-Host "========================================" -ForegroundColor Blue
     
-    Set-Location $PSScriptRoot\backend
+    Set-Location "$projectRoot\backend"
     
     Write-Host "`n[1/3] 增量构建（跳过 clean）..." -ForegroundColor Yellow
     
@@ -184,7 +209,7 @@ elseif ($deployFrontend) {
     Write-Host "快速部署前端" -ForegroundColor Blue
     Write-Host "========================================" -ForegroundColor Blue
     
-    Set-Location $PSScriptRoot\frontend
+    Set-Location "$projectRoot\frontend"
     
     Write-Host "`n[1/2] 构建前端..." -ForegroundColor Yellow
     npm run build
