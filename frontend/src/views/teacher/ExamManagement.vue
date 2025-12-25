@@ -361,6 +361,7 @@ import { Plus, Edit, MagicStick, VideoCamera, ArrowLeft, Delete } from '@element
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { getExams, createExam, deleteExam, getPapers, createPaper, deletePaper, getMonitorData, sendWarning, forceSubmit, getQuestions } from '@/api/teacher'
+import { filterValidExams, filterValidPapers, filterValidQuestions } from '@/utils/dataValidator'
 
 const router = useRouter()
 const route = useRoute()
@@ -380,7 +381,14 @@ const finishedExams = computed(() => examList.value.filter(e => e.status === 'fi
 const loadExamList = async () => {
   try {
       const res = await getExams()
-      examList.value = res.list || []
+      // 过滤掉无效数据，只显示数据库中真实存在的考试
+      const validExams = filterValidExams(res.list || [])
+      examList.value = validExams
+      
+      // 如果过滤后数据减少，提示用户
+      if (res.list && validExams.length < res.list.length) {
+        console.warn(`过滤掉 ${res.list.length - validExams.length} 条无效考试数据`)
+      }
   } catch (error) {
       console.error(error)
       examList.value = []
@@ -477,8 +485,15 @@ const loadPaperList = async () => {
           page: paperPage.value,
           size: paperPageSize.value
       })
-      paperList.value = res.list || []
+      // 过滤掉无效数据，只显示数据库中真实存在的试卷
+      const validPapers = filterValidPapers(res.list || [])
+      paperList.value = validPapers
       paperTotal.value = res.total || 0
+      
+      // 如果过滤后数据减少，提示用户
+      if (res.list && validPapers.length < res.list.length) {
+        console.warn(`过滤掉 ${res.list.length - validPapers.length} 条无效试卷数据`)
+      }
   } catch (error) {
       console.error(error)
       paperList.value = []
@@ -526,8 +541,15 @@ const handleCreatePaper = (mode) => {
   
   // Load questions if manual
   getQuestions({ size: 100 }).then(res => {
-       mockQuestions.value = res.list || []
+       // 过滤掉无效数据，只显示数据库中真实存在的题目
+       const validQuestions = filterValidQuestions(res.list || [])
+       mockQuestions.value = validQuestions
        filterQuestions()
+       
+       // 如果过滤后数据减少，提示用户
+       if (res.list && validQuestions.length < res.list.length) {
+         console.warn(`过滤掉 ${res.list.length - validQuestions.length} 条无效题目数据`)
+       }
   }).catch(() => {
        mockQuestions.value = []
        filterQuestions()
@@ -600,11 +622,24 @@ const confirmPublishExam = async () => {
   }
   
   try {
+      // 格式化时间为 yyyy-MM-dd HH:mm:ss
+      const formatDateTime = (date) => {
+        if (!date) return ''
+        const d = new Date(date)
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        const hours = String(d.getHours()).padStart(2, '0')
+        const minutes = String(d.getMinutes()).padStart(2, '0')
+        const seconds = String(d.getSeconds()).padStart(2, '0')
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+      }
+      
       const data = {
           name: examForm.name,
           subject: selectedPaperForExam.subject,
           paperId: selectedPaperForExam.id,
-          startTime: examForm.startTime,
+          startTime: formatDateTime(examForm.startTime),
           duration: examForm.duration,
           classes: examForm.classes
       }

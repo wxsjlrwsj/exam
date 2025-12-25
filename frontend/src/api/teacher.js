@@ -73,6 +73,20 @@ export function deletePaper(id) {
   })
 }
 
+export function publishPaper(id) {
+  return request({
+    url: `/papers/${id}/publish`,
+    method: 'put'
+  })
+}
+
+export function unpublishPaper(id) {
+  return request({
+    url: `/papers/${id}/unpublish`,
+    method: 'put'
+  })
+}
+
 // Exam Management
 export function getExams(params) {
   return request({

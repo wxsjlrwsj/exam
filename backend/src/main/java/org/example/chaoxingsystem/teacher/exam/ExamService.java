@@ -43,6 +43,16 @@ public class ExamService {
     e.setStatus(0);
     e.setCreatorId(creatorId);
     mapper.insert(e);
+    
+    // 更新试卷状态为已使用（1）
+    if (paperId != null) {
+      Paper paper = paperMapper.selectById(paperId);
+      if (paper != null) {
+        paper.setStatus(1); // 1 = 已使用
+        paperMapper.updateById(paper);
+      }
+    }
+    
     return e.getId();
   }
 
@@ -59,7 +69,8 @@ public class ExamService {
     data.put("startTime", exam.getStartTime());
     data.put("endTime", exam.getEndTime());
     data.put("duration", exam.getDuration());
-    data.put("status", getStatusText(exam.getStatus()));
+    // 使用动态计算的状态，而不是数据库中的静态状态
+    data.put("status", calculateStatus(exam));
     data.put("creatorId", exam.getCreatorId());
     data.put("createTime", exam.getCreateTime());
     
@@ -205,6 +216,58 @@ public class ExamService {
     data.put("details", details);
     
     return data;
+  }
+
+  /**
+   * 根据当前时间和考试的起止时间动态计算考试状态
+   * @param exam 考试对象
+   * @return 状态字符串：upcoming（未开始）、ongoing（进行中）、finished（已结束）
+   */
+  public String calculateStatus(Exam exam) {
+    if (exam == null || exam.getStartTime() == null) {
+      return "unknown";
+    }
+    
+    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    LocalDateTime now = LocalDateTime.now();
+    
+    try {
+      LocalDateTime startTime = LocalDateTime.parse(exam.getStartTime(), fmt);
+      
+      // 如果当前时间早于开始时间，考试未开始
+      if (now.isBefore(startTime)) {
+        return "upcoming";
+      }
+      
+      // 如果有结束时间，检查是否已结束
+      if (exam.getEndTime() != null && !exam.getEndTime().isEmpty()) {
+        LocalDateTime endTime = LocalDateTime.parse(exam.getEndTime(), fmt);
+        // 如果当前时间晚于结束时间，考试已结束
+        if (now.isAfter(endTime)) {
+          return "finished";
+        }
+        // 如果当前时间在开始和结束时间之间，考试进行中
+        if (!now.isBefore(startTime) && !now.isAfter(endTime)) {
+          return "ongoing";
+        }
+      } else {
+        // 如果没有结束时间，根据开始时间和时长计算
+        if (exam.getDuration() != null && exam.getDuration() > 0) {
+          LocalDateTime endTime = startTime.plusMinutes(exam.getDuration());
+          if (now.isAfter(endTime)) {
+            return "finished";
+          }
+          return "ongoing";
+        }
+        // 如果当前时间已过开始时间但没有结束时间信息，默认为进行中
+        return "ongoing";
+      }
+    } catch (Exception e) {
+      // 解析时间失败，返回unknown
+      return "unknown";
+    }
+    
+    return "unknown";
   }
 
   private String getStatusText(Integer status) {

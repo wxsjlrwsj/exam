@@ -32,14 +32,48 @@ public class ExamController {
     @RequestParam(value = "page", defaultValue = "1") int page,
     @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    Integer st = null;
-    if ("upcoming".equalsIgnoreCase(status)) st = 0;
-    if ("ongoing".equalsIgnoreCase(status)) st = 1;
-    if ("finished".equalsIgnoreCase(status)) st = 2;
-    long total = service.count(st);
-    List<Exam> list = service.page(st, page, size);
+    // 获取所有考试（不按数据库状态过滤，因为状态是动态计算的）
+    List<Exam> allExams = service.page(null, 1, 10000); // 获取足够多的考试
+    
+    // 将 Exam 对象转换为 Map，并使用动态计算的状态
+    List<Map<String, Object>> examList = allExams.stream().map(exam -> {
+      Map<String, Object> map = new HashMap<>();
+      map.put("id", exam.getId());
+      map.put("name", exam.getName());
+      map.put("paperId", exam.getPaperId());
+      map.put("startTime", exam.getStartTime());
+      map.put("endTime", exam.getEndTime());
+      map.put("duration", exam.getDuration());
+      // 使用动态计算的状态，根据当前时间和考试的起止时间
+      String calculatedStatus = service.calculateStatus(exam);
+      map.put("status", calculatedStatus);
+      map.put("creatorId", exam.getCreatorId());
+      map.put("createTime", exam.getCreateTime());
+      return map;
+    }).toList();
+    
+    // 如果指定了状态过滤，根据动态计算的状态进行过滤
+    List<Map<String, Object>> filteredList = examList;
+    if (status != null && !status.isEmpty()) {
+      String targetStatus = status.toLowerCase();
+      filteredList = examList.stream()
+        .filter(exam -> targetStatus.equals(exam.get("status")))
+        .toList();
+    }
+    
+    // 计算总数
+    long total = filteredList.size();
+    
+    // 分页处理
+    int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
+    int limit = Math.max(size, 1);
+    List<Map<String, Object>> pagedList = filteredList.stream()
+      .skip(offset)
+      .limit(limit)
+      .toList();
+    
     HashMap<String, Object> data = new HashMap<>();
-    data.put("list", list);
+    data.put("list", pagedList);
     data.put("total", total);
     return ResponseEntity.ok(ApiResponse.success("获取成功", data));
   }

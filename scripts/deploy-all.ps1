@@ -1,6 +1,21 @@
 # 一键部署脚本
 # 同时部署前端和后端
 
+# 错误处理函数 - 防止闪退
+function Exit-WithMessage {
+    param(
+        [string]$Message,
+        [int]$ExitCode = 1
+    )
+    Write-Host "`n$Message" -ForegroundColor Red
+    Write-Host "`n按任意键退出..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit $ExitCode
+}
+
+# 设置错误处理
+$ErrorActionPreference = "Continue"
+
 Write-Host "========================================" -ForegroundColor Magenta
 Write-Host "      开始部署完整应用系统" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
@@ -53,11 +68,10 @@ if (-not $dockerRunning) {
         }
         
         if (-not $dockerRunning) {
-            Write-Host "`n✖ Docker 启动超时，请手动启动后重试。" -ForegroundColor Red
-            exit 1
+            Exit-WithMessage "✖ Docker 启动超时，请手动启动 Docker Desktop 后重新运行此脚本。"
         }
     } else {
-        exit 1
+        Exit-WithMessage "✖ 部署已取消。请先启动 Docker Desktop 后重新运行此脚本。"
     }
 }
 
@@ -77,15 +91,14 @@ if ($LASTEXITCODE -ne 0 -or -not $containers) {
         docker-compose up -d --build
         
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "`n✖ 容器创建失败！" -ForegroundColor Red
-            exit 1
+            Exit-WithMessage "✖ 容器创建失败！请检查 Docker 配置和网络连接。"
         }
         
         Write-Host "✓ 容器创建成功！" -ForegroundColor Green
         Write-Host "`n等待服务启动（约 30 秒）..." -ForegroundColor Yellow
         Start-Sleep -Seconds 30
     } else {
-        exit 1
+        Exit-WithMessage "✖ 部署已取消。请先创建 Docker 容器后重新运行此脚本。"
     }
 } else {
     Write-Host "✓ 找到以下容器：" -ForegroundColor Green
@@ -128,8 +141,7 @@ if ($deployBackend) {
     & "$PSScriptRoot\deploy-backend.ps1"
     
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "`n✖ 后端部署失败！停止部署流程。" -ForegroundColor Red
-        exit 1
+        Exit-WithMessage "✖ 后端部署失败！请检查错误信息后重试。"
     }
     
     Write-Host "`n✓ 后端部署成功！" -ForegroundColor Green
@@ -145,8 +157,7 @@ if ($deployFrontend) {
     & "$PSScriptRoot\deploy-frontend.ps1"
     
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "`n✖ 前端部署失败！" -ForegroundColor Red
-        exit 1
+        Exit-WithMessage "✖ 前端部署失败！请检查错误信息后重试。"
     }
     
     Write-Host "`n✓ 前端部署成功！" -ForegroundColor Green
@@ -174,3 +185,6 @@ Write-Host "  前端: http://localhost:8080" -ForegroundColor Cyan
 Write-Host "  后端: http://localhost:8083" -ForegroundColor Cyan
 Write-Host ""
 
+# 防止窗口闪退
+Write-Host "`n按任意键退出..." -ForegroundColor Yellow
+$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

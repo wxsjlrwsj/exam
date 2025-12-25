@@ -55,5 +55,64 @@
     DELETE FROM biz_exam WHERE id = #{id}
   </delete>
 
+  <!-- 考试统计相关 -->
+  <select id="countExamStudents" resultType="long">
+    SELECT COUNT(DISTINCT er.student_id)
+    FROM biz_exam_record er
+    WHERE er.exam_id = #{examId}
+  </select>
+
+  <select id="countSubmittedStudents" resultType="long">
+    SELECT COUNT(DISTINCT er.student_id)
+    FROM biz_exam_record er
+    WHERE er.exam_id = #{examId}
+    AND er.status >= 1
+  </select>
+
+  <select id="countGradedStudents" resultType="long">
+    SELECT COUNT(DISTINCT er.student_id)
+    FROM biz_exam_record er
+    WHERE er.exam_id = #{examId}
+    AND er.status >= 2
+    AND er.score IS NOT NULL
+  </select>
+
+  <!-- 监考相关 -->
+  <select id="selectMonitorStudents" resultType="map">
+    SELECT 
+      er.student_id as studentId,
+      u.username,
+      u.real_name as realName,
+      er.start_time as startTime,
+      er.submit_time as submitTime,
+      er.status,
+      CASE 
+        WHEN er.status = 0 THEN 'not_started'
+        WHEN er.status = 1 AND er.submit_time IS NULL THEN 'online'
+        WHEN er.submit_time IS NOT NULL THEN 'submitted'
+        ELSE 'unknown'
+      END as status_text,
+      0 as switchCount,
+      0 as warningCount
+    FROM biz_exam_record er
+    LEFT JOIN users u ON er.student_id = u.id
+    WHERE er.exam_id = #{examId}
+    ORDER BY er.start_time DESC
+  </select>
+
+  <insert id="insertWarning">
+    INSERT INTO biz_exam_monitor_event 
+    (exam_id, student_id, event_type, event_data, severity)
+    VALUES 
+    (#{examId}, #{studentId}, #{type}, #{message}, 'WARNING')
+  </insert>
+
+  <update id="forceSubmitExamRecord">
+    UPDATE biz_exam_record
+    SET status = 1, submit_time = NOW()
+    WHERE exam_id = #{examId} AND student_id = #{studentId}
+    AND status = 0
+  </update>
+
 </mapper>
 

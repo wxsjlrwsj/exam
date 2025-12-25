@@ -497,6 +497,8 @@
 import { ref, reactive, onMounted, onUnmounted, inject, watch } from 'vue'
 import { VideoCamera, VideoPlay, User, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getExams, getExamPaper } from '@/api/student'
+import { filterValidExams } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage') || ElMessage
 
@@ -516,24 +518,24 @@ const filterForm = reactive({
 const studentName = '张三'
 const studentId = '2021001001'
 
-// --- Mock Data ---
-const mockExams = [
-  { id: 1, name: '2023-2024秋季高等数学期末考试', subject: '高等数学', semester: '2023_autumn', startTime: '2023-12-20 09:00:00', endTime: '2023-12-20 11:00:00', duration: 120, status: 'completed', score: 88, timeTaken: 6800, allowReview: true },
-  { id: 2, name: '2023-2024秋季Java程序设计期末考试', subject: 'Java程序设计', semester: '2023_autumn', startTime: new Date().getTime() - 3600*1000, endTime: new Date().getTime() + 3600*1000, duration: 120, status: 'in_progress' }, // Ongoing
-  { id: 3, name: '2023-2024秋季计算机网络期末考试', subject: '计算机网络', semester: '2023_autumn', startTime: '2024-01-05 14:00:00', endTime: '2024-01-05 16:00:00', duration: 120, status: 'not_started' },
-  { id: 4, name: '2022-2023秋季数据结构期末考试', subject: '数据结构', semester: '2022_autumn', startTime: '2022-12-15 09:00:00', endTime: '2022-12-15 11:00:00', duration: 120, status: 'completed', score: 92, timeTaken: 7000, allowReview: false },
-  { id: 5, name: '2023-2024春季大学英语四级模拟', subject: '大学英语', semester: '2023_spring', startTime: '2023-06-10 09:00:00', endTime: '2023-06-10 11:20:00', duration: 140, status: 'pending_grading', timeTaken: 8000 },
-]
-// --- Mock Questions for Review ---
-const mockReviewQuestions = [
-    { id: 1, type: 'single_choice', content: '函数 y=x^2 在 x=0 处的导数是？', options: '[{"key":"A","value":"0"},{"key":"B","value":"1"}]', score: 5, answer: 'A', analysis: 'x^2 导数为 2x，x=0时为0' },
-    { id: 2, type: 'multiple_choice', content: '以下哪些是Java的关键字？', options: '[{"key":"A","value":"class"},{"key":"B","value":"void"},{"key":"C","value":"hello"}]', score: 5, answer: 'A,B', analysis: 'hello 不是关键字' },
-    { id: 3, type: 'true_false', content: 'TCP协议是不可靠的传输协议。', score: 5, answer: 'F', analysis: 'TCP是可靠的' },
-    { id: 4, type: 'short_answer', content: '请简述面向对象的三大特性。', score: 10, answer: '封装、继承、多态', analysis: '略' },
-    { id: 5, type: 'single_choice', content: '1+1等于几？', options: '[{"key":"A","value":"1"},{"key":"B","value":"2"}]', score: 5, answer: 'B', analysis: '1+1=2' }
-]
-// Mock User Answers for Review
-const mockUserAnswers = { 1: 'A', 2: ['A'], 3: 'F', 4: '封装继承多态', 5: 'A' } // Q2 partial, Q5 wrong
+// --- Mock Data (已禁用，改用后端API数据) ---
+// const mockExams = [
+//   { id: 1, name: '2023-2024秋季高等数学期末考试', subject: '高等数学', semester: '2023_autumn', startTime: '2023-12-20 09:00:00', endTime: '2023-12-20 11:00:00', duration: 120, status: 'completed', score: 88, timeTaken: 6800, allowReview: true },
+//   { id: 2, name: '2023-2024秋季Java程序设计期末考试', subject: 'Java程序设计', semester: '2023_autumn', startTime: new Date().getTime() - 3600*1000, endTime: new Date().getTime() + 3600*1000, duration: 120, status: 'in_progress' }, // Ongoing
+//   { id: 3, name: '2023-2024秋季计算机网络期末考试', subject: '计算机网络', semester: '2023_autumn', startTime: '2024-01-05 14:00:00', endTime: '2024-01-05 16:00:00', duration: 120, status: 'not_started' },
+//   { id: 4, name: '2022-2023秋季数据结构期末考试', subject: '数据结构', semester: '2022_autumn', startTime: '2022-12-15 09:00:00', endTime: '2022-12-15 11:00:00', duration: 120, status: 'completed', score: 92, timeTaken: 7000, allowReview: false },
+//   { id: 5, name: '2023-2024春季大学英语四级模拟', subject: '大学英语', semester: '2023_spring', startTime: '2023-06-10 09:00:00', endTime: '2023-06-10 11:20:00', duration: 140, status: 'pending_grading', timeTaken: 8000 },
+// ]
+// --- Mock Questions for Review (已禁用，改用后端API数据) ---
+// const mockReviewQuestions = [
+//     { id: 1, type: 'single_choice', content: '函数 y=x^2 在 x=0 处的导数是？', options: '[{"key":"A","value":"0"},{"key":"B","value":"1"}]', score: 5, answer: 'A', analysis: 'x^2 导数为 2x，x=0时为0' },
+//     { id: 2, type: 'multiple_choice', content: '以下哪些是Java的关键字？', options: '[{"key":"A","value":"class"},{"key":"B","value":"void"},{"key":"C","value":"hello"}]', score: 5, answer: 'A,B', analysis: 'hello 不是关键字' },
+//     { id: 3, type: 'true_false', content: 'TCP协议是不可靠的传输协议。', score: 5, answer: 'F', analysis: 'TCP是可靠的' },
+//     { id: 4, type: 'short_answer', content: '请简述面向对象的三大特性。', score: 10, answer: '封装、继承、多态', analysis: '略' },
+//     { id: 5, type: 'single_choice', content: '1+1等于几？', options: '[{"key":"A","value":"1"},{"key":"B","value":"2"}]', score: 5, answer: 'B', analysis: '1+1=2' }
+// ]
+// // Mock User Answers for Review
+// const mockUserAnswers = { 1: 'A', 2: ['A'], 3: 'F', 4: '封装继承多态', 5: 'A' } // Q2 partial, Q5 wrong
 
 // --- Helpers ---
 const formatDate = (ts) => {
@@ -572,20 +574,31 @@ const parseOptions = (str) => {
 }
 
 // --- List Logic ---
-const loadExamList = () => {
+const loadExamList = async () => {
     loading.value = true
-    setTimeout(() => {
-        let list = mockExams.filter(e => {
-            let match = true
-            if(filterForm.subject && !e.subject.includes(filterForm.subject)) match = false
-            if(filterForm.semester && e.semester !== filterForm.semester) match = false
-            if(filterForm.status && e.status !== filterForm.status) match = false
-            return match
-        })
-        total.value = list.length
-        examList.value = list.slice((currentPage.value-1)*pageSize.value, currentPage.value*pageSize.value)
+    try {
+        const params = {
+            page: currentPage.value,
+            size: pageSize.value,
+            ...filterForm
+        }
+        const res = await getExams(params)
+        // 过滤掉无效数据，只显示数据库中真实存在的考试
+        const validExams = filterValidExams(res.list || [])
+        examList.value = validExams
+        total.value = res.total || 0
+        
+        // 如果过滤后数据减少，提示用户
+        if (res.list && validExams.length < res.list.length) {
+            console.warn(`过滤掉 ${res.list.length - validExams.length} 条无效考试数据`)
+        }
+    } catch (error) {
+        console.error('加载考试列表失败:', error)
+        examList.value = []
+        total.value = 0
+    } finally {
         loading.value = false
-    }, 300)
+    }
 }
 
 const handleSearch = () => { currentPage.value = 1; loadExamList() }
@@ -724,14 +737,14 @@ const isExamCameraOn = ref(false)
 const examVideoRef = ref(null)
 let examMediaStream = null
 
-// Mock Exam Questions
-const mockQuestions = [
-    { id: 1, type: 'single_choice', content: '函数 y=x^2 在 x=0 处的导数是？', options: '[{"key":"A","value":"0"},{"key":"B","value":"1"}]', score: 5 },
-    { id: 2, type: 'multiple_choice', content: '以下哪些是Java的关键字？', options: '[{"key":"A","value":"class"},{"key":"B","value":"void"},{"key":"C","value":"hello"}]', score: 5 },
-    { id: 3, type: 'true_false', content: 'TCP协议是不可靠的传输协议。', score: 5 },
-    { id: 4, type: 'short_answer', content: '请简述面向对象的三大特性。', score: 10 },
-    { id: 5, type: 'single_choice', content: '1+1等于几？', options: '[{"key":"A","value":"1"},{"key":"B","value":"2"}]', score: 5 }
-]
+// Mock Exam Questions (已禁用，改用后端API数据)
+// const mockQuestions = [
+//     { id: 1, type: 'single_choice', content: '函数 y=x^2 在 x=0 处的导数是？', options: '[{"key":"A","value":"0"},{"key":"B","value":"1"}]', score: 5 },
+//     { id: 2, type: 'multiple_choice', content: '以下哪些是Java的关键字？', options: '[{"key":"A","value":"class"},{"key":"B","value":"void"},{"key":"C","value":"hello"}]', score: 5 },
+//     { id: 3, type: 'true_false', content: 'TCP协议是不可靠的传输协议。', score: 5 },
+//     { id: 4, type: 'short_answer', content: '请简述面向对象的三大特性。', score: 10 },
+//     { id: 5, type: 'single_choice', content: '1+1等于几？', options: '[{"key":"A","value":"1"},{"key":"B","value":"2"}]', score: 5 }
+// ]
 
 const currentQuestion = ref({})
 
@@ -741,7 +754,7 @@ watch(currentQuestionIndex, (val) => {
     }
 })
 
-const handleTakeExam = (exam, skipCheck = false) => {
+const handleTakeExam = async (exam, skipCheck = false) => {
     // Safety check: if already taking this exam, do nothing to prevent re-initialization
     if (examTakingVisible.value && currentExamTaking.value?.id === exam.id) {
         return
@@ -754,24 +767,38 @@ const handleTakeExam = (exam, skipCheck = false) => {
     }
 
     currentExamTaking.value = exam
-    // Initialize Mock Exam Data
-    examQuestions.value = [...mockQuestions] // Deep copy in real app
-    examAnswers.value = {}
-    currentQuestionIndex.value = 0
-    currentQuestion.value = examQuestions.value[0]
-    isFullPaperMode.value = false
-    remainingTime.value = exam.duration * 60 // seconds
-    cheatCount = 0
     
-    examTakingVisible.value = true
-    
-    startTimer()
-    startAntiCheat()
-    // Initialize exam camera (wait for DOM)
-    setTimeout(() => {
-        initExamCamera()
-    }, 500)
-    // enterFullScreen() // Removed as requested
+    // 从后端获取试卷数据
+    try {
+        const paperRes = await getExamPaper(exam.id)
+        examQuestions.value = paperRes.questions || []
+        
+        // 如果没有题目，提示并返回
+        if (examQuestions.value.length === 0) {
+            showMessage('该考试暂无题目', 'warning')
+            return
+        }
+        
+        examAnswers.value = {}
+        currentQuestionIndex.value = 0
+        currentQuestion.value = examQuestions.value[0]
+        isFullPaperMode.value = false
+        remainingTime.value = exam.duration * 60 // seconds
+        cheatCount = 0
+        
+        examTakingVisible.value = true
+        
+        startTimer()
+        startAntiCheat()
+        // Initialize exam camera (wait for DOM)
+        setTimeout(() => {
+            initExamCamera()
+        }, 500)
+        // enterFullScreen() // Removed as requested
+    } catch (error) {
+        console.error('获取考试试卷失败:', error)
+        showMessage('加载试卷失败，请稍后重试', 'error')
+    }
 }
 
 const startTimer = () => {

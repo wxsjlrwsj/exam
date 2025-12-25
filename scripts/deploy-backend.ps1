@@ -1,6 +1,18 @@
 # 后端部署脚本
 # 用于在修改后端代码后重新部署
 
+# 错误处理函数 - 防止闪退
+function Exit-WithMessage {
+    param(
+        [string]$Message,
+        [int]$ExitCode = 1
+    )
+    Write-Host "`n$Message" -ForegroundColor Red
+    Write-Host "`n按任意键退出..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit $ExitCode
+}
+
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "开始部署后端..." -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -13,21 +25,17 @@ Write-Host "`n[预检] 检查Docker状态..." -ForegroundColor Yellow
 try {
     $null = docker ps 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
-        exit 1
+        Exit-WithMessage "✖ Docker 未运行！请先启动 Docker Desktop 后重新运行此脚本。"
     }
     Write-Host "✓ Docker 正在运行" -ForegroundColor Green
 } catch {
-    Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
-    exit 1
+    Exit-WithMessage "✖ Docker 未运行！请先启动 Docker Desktop 后重新运行此脚本。"
 }
 
 # 检查容器是否存在
 $containerExists = docker ps -a --filter "name=chaoxing-backend" --format "{{.Names}}" 2>&1
 if ($LASTEXITCODE -ne 0 -or -not $containerExists) {
-    Write-Host "✖ 未找到 chaoxing-backend 容器！" -ForegroundColor Red
-    Write-Host "请先运行: docker-compose up -d" -ForegroundColor Yellow
-    exit 1
+    Exit-WithMessage "✖ 未找到 chaoxing-backend 容器！请先运行: docker-compose up -d"
 }
 Write-Host "✓ 找到后端容器" -ForegroundColor Green
 
@@ -47,16 +55,14 @@ if ($LASTEXITCODE -ne 0) {
     docker run --rm -v "${projectRoot}\backend:/app" -w /app maven:3.9-eclipse-temurin-17 mvn clean package -DskipTests
     
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "`n✖ 构建失败！请检查错误信息。" -ForegroundColor Red
-        exit 1
+        Exit-WithMessage "✖ 构建失败！请检查上面的错误信息。"
     }
 } else {
     # 使用本地 Maven 构建
     mvn clean package -DskipTests
     
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "`n✖ 构建失败！请检查错误信息。" -ForegroundColor Red
-        exit 1
+        Exit-WithMessage "✖ 构建失败！请检查上面的错误信息。"
     }
 }
 
@@ -67,16 +73,14 @@ Write-Host "`n[2/4] 正在更新容器中的应用..." -ForegroundColor Yellow
 $jarFile = Get-ChildItem -Path "$projectRoot\backend\target\*.jar" | Select-Object -First 1
 
 if (-not $jarFile) {
-    Write-Host "`n✖ 未找到构建的 JAR 文件！" -ForegroundColor Red
-    exit 1
+    Exit-WithMessage "✖ 未找到构建的 JAR 文件！请检查构建过程。"
 }
 
 Write-Host "找到 JAR 文件: $($jarFile.Name)" -ForegroundColor Gray
 docker cp $jarFile.FullName chaoxing-backend:/app/app.jar
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "`n✖ 文件复制失败！" -ForegroundColor Red
-    exit 1
+    Exit-WithMessage "✖ 文件复制失败！请检查容器状态。"
 }
 
 Write-Host "✓ JAR 文件已更新！" -ForegroundColor Green
@@ -87,8 +91,7 @@ Set-Location $projectRoot
 docker restart chaoxing-backend
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "`n✖ 容器重启失败！" -ForegroundColor Red
-    exit 1
+    Exit-WithMessage "✖ 容器重启失败！请检查容器状态。"
 }
 
 # 5. 等待容器启动并检查日志
@@ -107,3 +110,6 @@ Write-Host "✓ 后端部署完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "`n后端API地址: http://localhost:8083/api`n" -ForegroundColor Yellow
 
+# 防止窗口闪退
+Write-Host "按任意键退出..." -ForegroundColor Yellow
+$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

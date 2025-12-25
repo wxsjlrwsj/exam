@@ -1,6 +1,18 @@
 # 快速部署脚本 - 增量构建优化版
 # 只重新构建真正需要的部分，大幅减少部署时间
 
+# 错误处理函数 - 防止闪退
+function Exit-WithMessage {
+    param(
+        [string]$Message,
+        [int]$ExitCode = 1
+    )
+    Write-Host "`n$Message" -ForegroundColor Red
+    Write-Host "`n按任意键退出..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit $ExitCode
+}
+
 Write-Host "========================================" -ForegroundColor Magenta
 Write-Host "      快速部署模式（增量构建）" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
@@ -13,22 +25,17 @@ Write-Host "`n[预检] 检查Docker状态..." -ForegroundColor Yellow
 try {
     $null = docker ps 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
-        Write-Host "`n启动方法：打开 Docker Desktop 应用程序`n" -ForegroundColor Yellow
-        exit 1
+        Exit-WithMessage "✖ Docker 未运行！请先启动 Docker Desktop 后重新运行此脚本。"
     }
     Write-Host "✓ Docker 正在运行" -ForegroundColor Green
 } catch {
-    Write-Host "✖ Docker 未运行！请先启动 Docker Desktop。" -ForegroundColor Red
-    exit 1
+    Exit-WithMessage "✖ Docker 未运行！请先启动 Docker Desktop 后重新运行此脚本。"
 }
 
 # 检查容器是否存在
 $containers = docker ps -a --filter "name=chaoxing" --format "{{.Names}}" 2>&1
 if ($LASTEXITCODE -ne 0 -or -not $containers) {
-    Write-Host "✖ 未找到 chaoxing 容器！" -ForegroundColor Red
-    Write-Host "请先运行: docker-compose up -d`n" -ForegroundColor Yellow
-    exit 1
+    Exit-WithMessage "✖ 未找到 chaoxing 容器！请先运行: docker-compose up -d"
 }
 Write-Host "✓ 找到容器" -ForegroundColor Green
 
@@ -160,8 +167,7 @@ if ($deployFrontend -and $deployBackend) {
     Remove-Job -Job $frontendJob
     
     if (-not $backendResult -or -not $frontendResult) {
-        Write-Host "`n✖ 部署失败！请查看上面的错误信息。" -ForegroundColor Red
-        exit 1
+        Exit-WithMessage "✖ 部署失败！请查看上面的错误信息。"
     }
 }
 # ==================== 仅部署后端（快速模式）====================

@@ -200,6 +200,8 @@
 import { ref, reactive, onMounted, inject } from 'vue'
 import { Upload, Plus, View, Delete, Check } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { getPracticeQuestions } from '@/api/student'
+import { filterValidQuestions } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage') || ElMessage
 
@@ -253,17 +255,17 @@ const uploadRules = {
   answer: [{ required: true, message: '请输入或选择答案', trigger: 'change' }]
 }
 
-// --- Mock Data ---
-const mockPublicQuestions = [
-  { id: 201, type: 'single_choice', subject: 'Java', difficulty: 2, content: 'Java中Runnable接口的方法是？', options: '[{"key":"A","value":"start"},{"key":"B","value":"run"},{"key":"C","value":"stop"}]', answer: 'B', analysis: 'Runnable只有一个run方法' },
-  { id: 202, type: 'short_answer', subject: '操作系统', difficulty: 4, content: '什么是死锁？产生死锁的四个必要条件是什么？', options: null, answer: '略', analysis: '互斥、占有且等待、不可抢占、循环等待' },
-  { id: 203, type: 'true_false', subject: '计算机网络', difficulty: 1, content: 'TCP是面向连接的协议', options: null, answer: 'T', analysis: '正确' }
-]
+// --- Mock Data (已禁用，改用后端API数据) ---
+// const mockPublicQuestions = [
+//   { id: 201, type: 'single_choice', subject: 'Java', difficulty: 2, content: 'Java中Runnable接口的方法是？', options: '[{"key":"A","value":"start"},{"key":"B","value":"run"},{"key":"C","value":"stop"}]', answer: 'B', analysis: 'Runnable只有一个run方法' },
+//   { id: 202, type: 'short_answer', subject: '操作系统', difficulty: 4, content: '什么是死锁？产生死锁的四个必要条件是什么？', options: null, answer: '略', analysis: '互斥、占有且等待、不可抢占、循环等待' },
+//   { id: 203, type: 'true_false', subject: '计算机网络', difficulty: 1, content: 'TCP是面向连接的协议', options: null, answer: 'T', analysis: '正确' }
+// ]
 
-const mockUserCollections = [
-   { id: 1, name: '我的错题集', isDefault: true, count: 12, hasQuestion: true },
-   { id: 2, name: 'Java重点复习', isDefault: false, count: 5, hasQuestion: false }
-]
+// const mockUserCollections = [
+//    { id: 1, name: '我的错题集', isDefault: true, count: 12, hasQuestion: true },
+//    { id: 2, name: 'Java重点复习', isDefault: false, count: 5, hasQuestion: false }
+// ]
 
 // --- Methods ---
 
@@ -285,19 +287,31 @@ const parseOptions = (jsonStr) => {
    }
 }
 
-const loadQuestionList = () => {
+const loadQuestionList = async () => {
   loading.value = true
-  setTimeout(() => {
-    let list = [...mockPublicQuestions]
-    if (filterForm.type) list = list.filter(q => q.type === filterForm.type)
-    if (filterForm.difficulty > 0) list = list.filter(q => q.difficulty === filterForm.difficulty)
-    if (filterForm.subject) list = list.filter(q => q.subject.toLowerCase().includes(filterForm.subject.toLowerCase()))
-    if (filterForm.keyword) list = list.filter(q => q.content.includes(filterForm.keyword))
+  try {
+    const params = {
+      page: currentPage.value,
+      size: pageSize.value,
+      ...filterForm
+    }
+    const res = await getPracticeQuestions(params)
+    // 过滤掉无效数据，只显示数据库中真实存在的题目
+    const validQuestions = filterValidQuestions(res.list || [])
+    questionList.value = validQuestions
+    total.value = res.total || 0
     
-    total.value = list.length
-    questionList.value = list.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value)
+    // 如果过滤后数据减少，提示用户
+    if (res.list && validQuestions.length < res.list.length) {
+      console.warn(`过滤掉 ${res.list.length - validQuestions.length} 条无效题目数据`)
+    }
+  } catch (error) {
+    console.error('加载题目列表失败:', error)
+    questionList.value = []
+    total.value = 0
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 const handleSearch = () => {

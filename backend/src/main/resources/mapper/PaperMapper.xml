@@ -15,17 +15,38 @@
     <result property="createTime" column="create_time"/>
   </resultMap>
 
+  <select id="count" resultType="long">
+    SELECT COUNT(*) FROM biz_paper
+    <where>
+      <if test="subject != null and subject != ''">
+        AND subject = #{subject}
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPage" resultMap="PaperMap">
+    SELECT * FROM biz_paper
+    <where>
+      <if test="subject != null and subject != ''">
+        AND subject = #{subject}
+      </if>
+    </where>
+    ORDER BY create_time DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
   <select id="selectById" resultMap="PaperMap">
     SELECT * FROM biz_paper WHERE id = #{id}
   </select>
 
   <select id="selectPaperQuestionViews" resultType="map">
-    SELECT pq.id, pq.question_id as questionId, pq.score,
-           q.type, q.content, q.options, q.answer, q.analysis, q.subject, q.difficulty
+    SELECT pq.question_id as questionId, pq.score, pq.sort_order as sortOrder,
+           q.type_id as typeId, q.content, q.options, q.answer, q.analysis, 
+           q.subject, q.difficulty
     FROM biz_paper_question pq
     LEFT JOIN biz_question q ON pq.question_id = q.id
     WHERE pq.paper_id = #{paperId}
-    ORDER BY pq.id
+    ORDER BY pq.sort_order
   </select>
 
   <insert id="insert" useGeneratedKeys="true" keyProperty="id">
@@ -43,6 +64,22 @@
   <delete id="deleteById">
     DELETE FROM biz_paper WHERE id = #{id}
   </delete>
+
+  <delete id="deletePaperQuestions">
+    DELETE FROM biz_paper_question WHERE paper_id = #{paperId}
+  </delete>
+
+  <insert id="insertPaperQuestions">
+    INSERT INTO biz_paper_question (paper_id, question_id, score, sort_order)
+    VALUES
+    <foreach collection="items" item="item" separator=",">
+      (#{paperId}, #{item.questionId}, #{item.score}, #{item.sortOrder})
+    </foreach>
+  </insert>
+
+  <select id="countExamsByPaperId" resultType="long">
+    SELECT COUNT(*) FROM biz_exam WHERE paper_id = #{paperId}
+  </select>
 
 </mapper>
 

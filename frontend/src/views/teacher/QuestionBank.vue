@@ -121,6 +121,7 @@ import { ref, reactive, onMounted, inject } from 'vue'
 import { Plus, Upload, Delete } from '@element-plus/icons-vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
 import { getQuestions, createQuestion, updateQuestion, deleteQuestion } from '@/api/teacher'
+import { filterValidQuestions } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage')
 const showConfirm = inject('showConfirm')
@@ -182,8 +183,15 @@ const loadData = async () => {
     // Adapt response if needed, assuming API returns { list: [], total: 0 } or { data: { list: [], total: 0 } }
     // Based on request.js interceptor, it returns res.data directly if code===200
     if (res && res.list) {
-        questionList.value = res.list
+        // 过滤掉无效数据，只显示数据库中真实存在的题目
+        const validQuestions = filterValidQuestions(res.list)
+        questionList.value = validQuestions
         total.value = res.total
+        
+        // 如果过滤后数据减少，提示用户
+        if (validQuestions.length < res.list.length) {
+          console.warn(`过滤掉 ${res.list.length - validQuestions.length} 条无效题目数据`)
+        }
     } else {
         questionList.value = []
         total.value = 0

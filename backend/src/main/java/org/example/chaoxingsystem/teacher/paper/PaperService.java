@@ -172,11 +172,48 @@ public class PaperService {
     paperMapper.updateById(paper);
   }
 
+  @Transactional
+  public void publish(Long id) {
+    Paper paper = paperMapper.selectById(id);
+    if (paper == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "试卷不存在");
+    }
+    
+    // 验证试卷是否有题目
+    List<Map<String, Object>> questions = paperMapper.selectPaperQuestionViews(id);
+    if (questions.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "试卷没有题目，无法发布");
+    }
+    
+    // 更新状态为已发布(2)
+    paper.setStatus(2);
+    paperMapper.updateById(paper);
+  }
+
+  @Transactional
+  public void unpublish(Long id) {
+    Paper paper = paperMapper.selectById(id);
+    if (paper == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "试卷不存在");
+    }
+    
+    // 检查是否有正在进行的考试使用该试卷
+    long examCount = paperMapper.countExamsByPaperId(id);
+    if (examCount > 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "试卷正在被考试使用，无法取消发布");
+    }
+    
+    // 更新状态为草稿(0)
+    paper.setStatus(0);
+    paperMapper.updateById(paper);
+  }
+
   private String getStatusText(Integer status) {
     if (status == null) return "draft";
     return switch (status) {
       case 0 -> "draft";
       case 1 -> "used";
+      case 2 -> "published";
       default -> "draft";
     };
   }

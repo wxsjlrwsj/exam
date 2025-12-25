@@ -36,8 +36,25 @@ public class PaperController {
   ) {
     long total = service.count(subject);
     List<Paper> list = service.page(subject, page, size);
+    
+    // 将 Paper 对象转换为 Map，并将 status 从数字转换为字符串
+    List<Map<String, Object>> paperList = list.stream().map(paper -> {
+      Map<String, Object> map = new HashMap<>();
+      map.put("id", paper.getId());
+      map.put("name", paper.getName());
+      map.put("subject", paper.getSubject());
+      map.put("totalScore", paper.getTotalScore());
+      map.put("passScore", paper.getPassScore());
+      map.put("questionCount", paper.getQuestionCount());
+      // 将 status 从数字转换为字符串：1 = used, 0 = unused
+      map.put("status", paper.getStatus() != null && paper.getStatus() == 1 ? "used" : "unused");
+      map.put("creatorId", paper.getCreatorId());
+      map.put("createTime", paper.getCreateTime());
+      return map;
+    }).toList();
+    
     HashMap<String, Object> data = new HashMap<>();
-    data.put("list", list);
+    data.put("list", paperList);
     data.put("total", total);
     return ResponseEntity.ok(ApiResponse.success("获取成功", data));
   }
@@ -89,6 +106,26 @@ public class PaperController {
       .map(q -> new PaperService.QuestionItem(q.getId(), q.getScore())).toList();
     service.update(id, req.getName(), req.getSubject(), items, req.getPassScore());
     return ResponseEntity.ok(ApiResponse.success("更新成功", null));
+  }
+
+  @PutMapping("/papers/{id}/publish")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> publish(@PathVariable("id") Long id) {
+    service.publish(id);
+    Map<String, Object> data = new HashMap<>();
+    data.put("id", id);
+    data.put("status", "published");
+    return ResponseEntity.ok(ApiResponse.success("试卷发布成功", data));
+  }
+
+  @PutMapping("/papers/{id}/unpublish")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> unpublish(@PathVariable("id") Long id) {
+    service.unpublish(id);
+    Map<String, Object> data = new HashMap<>();
+    data.put("id", id);
+    data.put("status", "draft");
+    return ResponseEntity.ok(ApiResponse.success("已取消发布", data));
   }
 }
 

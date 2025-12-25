@@ -140,6 +140,7 @@ import { ref, reactive, onMounted, inject, computed } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
 import { getQuestions, createQuestion, updateQuestion, deleteQuestion, auditQuestion } from '@/api/teacher'
+import { filterValidQuestions } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage')
 const showConfirm = inject('showConfirm')
@@ -193,15 +194,27 @@ const loadQuestionList = async () => {
       if (activeTab.value === 'list') {
           params.status = 'approved'
           const res = await getQuestions(params)
-          questionList.value = res.list || []
+          // 过滤掉无效数据
+          const validQuestions = filterValidQuestions(res.list || [])
+          questionList.value = validQuestions
           total.value = res.total || 0
+          
+          if (res.list && validQuestions.length < res.list.length) {
+            console.warn(`过滤掉 ${res.list.length - validQuestions.length} 条无效题目数据`)
+          }
       } else {
           // Audit list
           params.status = 'pending'
           const res = await getQuestions(params)
-          auditList.value = res.list || []
+          // 过滤掉无效数据
+          const validQuestions = filterValidQuestions(res.list || [])
+          auditList.value = validQuestions
           total.value = res.total || 0
           auditCount.value = res.total || 0
+          
+          if (res.list && validQuestions.length < res.list.length) {
+            console.warn(`过滤掉 ${res.list.length - validQuestions.length} 条无效题目数据`)
+          }
       }
   } catch (error) {
       console.error(error)
