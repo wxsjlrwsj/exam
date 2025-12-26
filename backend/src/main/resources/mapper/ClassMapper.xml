@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.common.ClassMapper">
+
+  <resultMap id="ClassMap" type="org.example.chaoxingsystem.common.ClassEntity">
+    <id property="id" column="id"/>
+    <result property="className" column="class_name"/>
+    <result property="classCode" column="class_code"/>
+    <result property="grade" column="grade"/>
+    <result property="major" column="major"/>
+    <result property="advisorId" column="advisor_id"/>
+    <result property="createTime" column="create_time"/>
+  </resultMap>
+
+  <select id="count" resultType="long">
+    SELECT COUNT(1) FROM biz_class
+    <where>
+      <if test="keyword != null and keyword != ''">
+        AND (class_name LIKE CONCAT('%', #{keyword}, '%') 
+        OR class_code LIKE CONCAT('%', #{keyword}, '%')
+        OR major LIKE CONCAT('%', #{keyword}, '%'))
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPage" resultType="java.util.Map">
+    SELECT 
+      c.id AS id,
+      c.class_name AS name,
+      c.class_code AS code,
+      c.grade AS grade,
+      c.major AS major,
+      u.real_name AS advisorName,
+      (SELECT COUNT(1) FROM biz_class_student cs WHERE cs.class_id = c.id) AS studentCount,
+      c.create_time AS createTime
+    FROM biz_class c
+    LEFT JOIN sys_user u ON u.id = c.advisor_id
+    <where>
+      <if test="keyword != null and keyword != ''">
+        AND (c.class_name LIKE CONCAT('%', #{keyword}, '%') 
+        OR c.class_code LIKE CONCAT('%', #{keyword}, '%')
+        OR c.major LIKE CONCAT('%', #{keyword}, '%'))
+      </if>
+    </where>
+    ORDER BY c.grade DESC, c.class_name
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="selectAll" resultType="java.util.Map">
+    SELECT 
+      c.id AS id,
+      c.class_name AS name,
+      c.class_code AS code,
+      c.grade AS grade,
+      c.major AS major,
+      (SELECT COUNT(1) FROM biz_class_student cs WHERE cs.class_id = c.id) AS studentCount
+    FROM biz_class c
+    ORDER BY c.grade DESC, c.class_name
+  </select>
+
+  <select id="selectById" resultMap="ClassMap">
+    SELECT * FROM biz_class WHERE id = #{id}
+  </select>
+
+  <select id="selectClassStudents" resultType="java.util.Map">
+    SELECT 
+      u.id AS id,
+      u.id AS userId,
+      u.username AS studentId,
+      u.real_name AS name,
+      u.email AS email,
+      cs.join_time AS joinTime
+    FROM biz_class_student cs
+    JOIN sys_user u ON u.id = cs.user_id
+    WHERE cs.class_id = #{classId}
+    ORDER BY u.username
+  </select>
+
+  <insert id="insert" parameterType="org.example.chaoxingsystem.common.ClassEntity" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_class (class_name, class_code, grade, major, advisor_id)
+    VALUES (#{className}, #{classCode}, #{grade}, #{major}, #{advisorId})
+  </insert>
+
+  <update id="updateById" parameterType="org.example.chaoxingsystem.common.ClassEntity">
+    UPDATE biz_class SET
+      class_name = #{className},
+      class_code = #{classCode},
+      grade = #{grade},
+      major = #{major},
+      advisor_id = #{advisorId}
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM biz_class WHERE id = #{id}
+  </delete>
+
+</mapper>
+

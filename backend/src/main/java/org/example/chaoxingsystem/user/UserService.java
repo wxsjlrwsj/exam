@@ -1,0 +1,167 @@
+package org.example.chaoxingsystem.user;
+
+import org.example.chaoxingsystem.user.dto.RegisterRequest;
+import org.example.chaoxingsystem.user.dto.ResetPasswordRequest;
+import org.springframework.util.StringUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.example.chaoxingsystem.user.dto.UserInfo;
+import org.example.chaoxingsystem.user.dto.UserResponse;
+import java.time.ZoneId;
+
+/**
+ * 用户领域服务：注册、认证、资料维护、密码修改、用户列表等
+ */
+@Service
+public class UserService {
+  private final UserMapper userMapper;
+  private final org.example.chaoxingsystem.admin.perm.UserRoleMapper userRoleMapper;
+  private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+  private final EmailVerificationService emailVerificationService;
+
+  public UserService(UserMapper userMapper, org.example.chaoxingsystem.admin.perm.UserRoleMapper userRoleMapper, EmailVerificationService emailVerificationService) {
+    this.userMapper = userMapper;
+    this.userRoleMapper = userRoleMapper;
+    this.emailVerificationService = emailVerificationService;
+  }
+
+  @Transactional
+  public User register(RegisterRequest request) {
+    boolean verified = emailVerificationService.verify(request.getEmail(), request.getVerificationCode());
+    if (!verified) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "QQ邮箱验证码错误或已失效");
+    }
+    // 唯一性校验：用户名/邮箱不可重复
+    if (userMapper.countByUsername(request.getUsername()) > 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户名已存在");
+    }
+    if (userMapper.countByEmail(request.getEmail()) > 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "邮箱已存在");
+    }
+
+    // 验证 QQ 号和邮箱匹配
+    String email = request.getEmail().trim().toLowerCase();
+    String qqNumber = request.getQqNumber().trim();
+    String emailPrefix = email.split("@")[0];
+    if (!emailPrefix.equals(qqNumber)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "QQ号与QQ邮箱不匹配");
+    }
+
+    User user = new User();
+    user.setUsername(request.getUsername().trim());
+    user.setEmail(email);
+    user.setQqNumber(qqNumber);
+    String hash = passwordEncoder.encode(request.getPassword());
+    user.setPasswordHash(hash);
+    String userType = request.getUserType().trim().toLowerCase();
+    user.setUserType(userType);
+    String realName = request.getUsername().trim();
+    user.setRealName(realName);
+    user.setAvatar(null);
+
+    userMapper.insert(user);
+    return user;
+  }
+
+  public User authenticate(String username, String rawPassword) {
+    System.out.println("[DEBUG] Authenticating user: " + username);
+    User u = userMapper.selectByUsername(username);
+    if (u == null) {
+      System.out.println("[DEBUG] User not found: " + username);
+      return null;
+    }
+    System.out.println("[DEBUG] User found, checking password...");
+    System.out.println("[DEBUG] Password hash from DB: " + u.getPasswordHash());
+    System.out.println("[DEBUG] Raw password length: " + rawPassword.length());
+    boolean matches = passwordEncoder.matches(rawPassword, u.getPasswordHash());
+    System.out.println("[DEBUG] Password matches: " + matches);
+    if (matches) {
+      return u;
+    }
+    return null;
+  }
+
+  @Transactional
+  public boolean resetPassword(ResetPasswordRequest request) {
+    // 基于用户名+邮箱双重匹配后重置密码
+    if (!StringUtils.hasText(request.getUsername()) || !StringUtils.hasText(request.getEmail())) {
+      return false;
+    }
+    User u = userMapper.selectByUsername(request.getUsername());
+    if (u == null) {
+      return false;
+    }
+    if (!request.getEmail().equalsIgnoreCase(u.getEmail())) {
+      return false;
+    }
+    String hash = passwordEncoder.encode(request.getNewPassword());
+    int updated = userMapper.updatePasswordById(u.getId(), hash);
+    return updated > 0;
+  }
+
+  public UserInfo getUserInfoByUsername(String username) {
+    User u = userMapper.selectByUsername(username);
+    if (u == null) { return null; }
+    String resolvedType = resolveUserType(u);
+    return new UserInfo(u.getId(), u.getUsername(), u.getRealName(), resolvedType, u.getAvatar());
+  }
+
+  public User getByUsername(String username) {
+    return userMapper.selectByUsername(username);
+  }
+
+  // 临时测试方法
+  public boolean testPasswordMatch(String rawPassword, String hash) {
+    return passwordEncoder.matches(rawPassword, hash);
+  }
+
+  public List<UserResponse> listAllUsers() {
+    return userMapper.selectAll().stream()
+      .map(u -> new UserResponse(u.getId(), u.getUsername(), u.getEmail(),
+        u.getCreatedAt() != null ? u.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant() : null))
+      .collect(Collectors.toList());
+  }
+
+  @Transactional
+  public boolean updateProfile(String username, String email, String phone) {
+    User u = userMapper.selectByUsername(username);
+    if (u == null) { return false; }
+    if (!u.getEmail().equalsIgnoreCase(email) && userMapper.countByEmail(email) > 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "邮箱已存在");
+    }
+    int updated = userMapper.updateProfileById(u.getId(), email.trim().toLowerCase(), phone != null ? phone.trim() : null);
+    return updated > 0;
+  }
+
+  @Transactional
+  public boolean changePassword(String username, String oldPassword, String newPassword) {
+    User u = userMapper.selectByUsername(username);
+    if (u == null) { return false; }
+    if (!passwordEncoder.matches(oldPassword, u.getPasswordHash())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "原密码不正确");
+    }
+    String hash = passwordEncoder.encode(newPassword);
+    int updated = userMapper.updatePasswordById(u.getId(), hash);
+    return updated > 0;
+  }
+  public String resolveUserType(User u) {
+    try {
+      var keys = userRoleMapper.selectRoleKeysByUserId(u.getId());
+      if (keys != null && !keys.isEmpty()) {
+        if (keys.contains("ADMIN")) return "admin";
+        if (keys.contains("TEACHER")) return "teacher";
+        if (keys.contains("STUDENT")) return "student";
+      }
+    } catch (Exception ignored) {}
+    String t = u.getUserType();
+    if (t == null) return "student";
+    t = t.trim().toLowerCase();
+    if (t.equals("admin") || t.equals("teacher") || t.equals("student")) return t;
+    return "student";
+  }
+}
