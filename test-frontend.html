@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>前端测试页面</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .result { margin-top: 10px; padding: 10px; background: #f5f5f5; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>考试系统前端功能测试</h1>
+    
+    <div class="section">
+        <h2>1. 登录测试</h2>
+        <button onclick="testLogin()">测试登录</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. 获取题目列表</h2>
+        <button onclick="testGetQuestions()">获取题目</button>
+        <div id="questionsResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. 手动组卷测试</h2>
+        <button onclick="testManualPaper()">测试手动组卷</button>
+        <div id="manualResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. 智能组卷测试</h2>
+        <button onclick="testAutoPaper()">测试智能组卷</button>
+        <div id="autoResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>5. 获取试卷列表</h2>
+        <button onclick="testGetPapers()">获取试卷</button>
+        <div id="papersResult" class="result"></div>
+    </div>
+
+    <script>
+        let token = '';
+        const API_BASE = 'http://localhost:8083/api';
+        
+        async function testLogin() {
+            const result = document.getElementById('loginResult');
+            result.innerHTML = '正在登录...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'teacher1',
+                        password: '123456'
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.code === 200) {
+                    token = data.data.token;
+                    result.innerHTML = `<span class="success">✓ 登录成功！Token: ${token.substring(0, 20)}...</span>`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ 登录失败: ${data.message}</span>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 错误: ${error.message}</span>`;
+            }
+        }
+        
+        async function testGetQuestions() {
+            const result = document.getElementById('questionsResult');
+            if (!token) {
+                result.innerHTML = '<span class="error">请先登录</span>';
+                return;
+            }
+            
+            result.innerHTML = '正在获取题目...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/questions?page=1&size=10`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                if (data.code === 200) {
+                    result.innerHTML = `<span class="success">✓ 获取成功！共 ${data.data.total} 道题目</span>
+                        <pre>${JSON.stringify(data.data.list.slice(0, 2), null, 2)}</pre>`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ 失败: ${data.message}</span>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 错误: ${error.message}</span>`;
+            }
+        }
+        
+        async function testManualPaper() {
+            const result = document.getElementById('manualResult');
+            if (!token) {
+                result.innerHTML = '<span class="error">请先登录</span>';
+                return;
+            }
+            
+            result.innerHTML = '正在创建试卷...';
+            
+            const paperData = {
+                name: '前端测试试卷',
+                subject: 'Java',
+                passScore: 60,
+                questions: [
+                    { id: 1, score: 10 },
+                    { id: 2, score: 10 },
+                    { id: 3, score: 10 }
+                ]
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/papers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(paperData)
+                });
+                
+                const data = await response.json();
+                if (data.code === 200) {
+                    result.innerHTML = `<span class="success">✓ 手动组卷成功！试卷ID: ${data.data.id}</span>
+                        <pre>${JSON.stringify(paperData, null, 2)}</pre>`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ 失败: ${data.message}</span>
+                        <pre>请求数据: ${JSON.stringify(paperData, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 错误: ${error.message}</span>`;
+            }
+        }
+        
+        async function testAutoPaper() {
+            const result = document.getElementById('autoResult');
+            if (!token) {
+                result.innerHTML = '<span class="error">请先登录</span>';
+                return;
+            }
+            
+            result.innerHTML = '正在智能组卷...';
+            
+            const autoData = {
+                subject: 'Java',
+                difficulty: null,
+                totalScore: 30,
+                typeDistribution: {
+                    single_choice: 2,
+                    multiple_choice: 1,
+                    true_false: 0,
+                    fill_blank: 0,
+                    short_answer: 0
+                }
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/papers/auto-generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(autoData)
+                });
+                
+                const data = await response.json();
+                if (data.code === 200) {
+                    result.innerHTML = `<span class="success">✓ 智能组卷成功！试卷ID: ${data.data.id}</span>`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ 失败: ${data.message}</span>
+                        <pre>请求数据: ${JSON.stringify(autoData, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 错误: ${error.message}</span>`;
+            }
+        }
+        
+        async function testGetPapers() {
+            const result = document.getElementById('papersResult');
+            if (!token) {
+                result.innerHTML = '<span class="error">请先登录</span>';
+                return;
+            }
+            
+            result.innerHTML = '正在获取试卷...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/papers?page=1&size=10`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                if (data.code === 200) {
+                    result.innerHTML = `<span class="success">✓ 获取成功！共 ${data.data.total} 张试卷</span>
+                        <pre>${JSON.stringify(data.data.list.slice(0, 3), null, 2)}</pre>`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ 失败: ${data.message}</span>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ 错误: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
