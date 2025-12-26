@@ -101,6 +101,28 @@ public class AuthController {
     return resetPassword(request);
   }
 
+  // 临时测试端点 - 验证密码哈希
+  @PostMapping("/auth/test-password")
+  public ResponseEntity<ApiResponse<String>> testPassword(@RequestBody java.util.Map<String, String> body) {
+    String username = body.get("username");
+    String password = body.get("password");
+    User user = userService.getByUsername(username);
+    if (user == null) {
+      return ResponseEntity.ok(ApiResponse.error(404, "用户不存在"));
+    }
+    boolean matches = userService.testPasswordMatch(password, user.getPasswordHash());
+    String result = String.format("用户: %s, 密码匹配: %s, 哈希前缀: %s", 
+      username, matches, user.getPasswordHash().substring(0, 30));
+    return ResponseEntity.ok(ApiResponse.success(result, result));
+  }
+
+  @PostMapping("/auth/hash")
+  public ResponseEntity<ApiResponse<String>> hash(@RequestBody java.util.Map<String, String> body) {
+    String password = body.get("password");
+    String hash = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password);
+    return ResponseEntity.ok(ApiResponse.success("生成成功", hash));
+  }
+
   @GetMapping("/me")
   @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<UserInfo>> me(Authentication authentication) {

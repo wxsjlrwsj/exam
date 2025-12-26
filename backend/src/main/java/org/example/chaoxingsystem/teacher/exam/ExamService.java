@@ -28,6 +28,22 @@ public class ExamService {
     int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
     return mapper.selectPage(status, offset, size);
   }
+  
+  public long countByStudent(Long studentId, Integer status) { return mapper.countByStudent(studentId, status); }
+  
+  public List<Exam> pageByStudent(Long studentId, Integer status, int page, int size) {
+    int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
+    return mapper.selectPageByStudent(studentId, status, offset, size);
+  }
+  
+  public List<Map<String, Object>> pageByStudentWithSubject(Long studentId, Integer status, String subject, String semester, int page, int size) {
+    int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
+    return mapper.selectPageByStudentWithSubject(studentId, status, subject, semester, offset, size);
+  }
+  
+  public long countByStudentWithFilters(Long studentId, Integer status, String subject, String semester) {
+    return mapper.countByStudentWithFilters(studentId, status, subject, semester);
+  }
 
   @Transactional
   public Long create(Long creatorId, String name, Long paperId, String startTime, Integer duration) {

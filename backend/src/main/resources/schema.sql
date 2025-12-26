@@ -222,9 +222,30 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     record_id BIGINT NOT NULL,
     question_id BIGINT NOT NULL,
-    student_answer CLOB NOT NULL,
+    student_answer JSON NOT NULL,
     file_id VARCHAR(64) NULL,
     score INT NULL,
     is_correct TINYINT(1) NULL,
-    comment VARCHAR(500) NULL
+    comment VARCHAR(500) NULL,
+    INDEX idx_record_question (record_id, question_id)
+  );
+
+  -- 学生考试关联
+  CREATE TABLE IF NOT EXISTS biz_exam_student (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    exam_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_exam_user (exam_id, user_id)
+  );
+  
+  -- 监考事件记录
+  CREATE TABLE IF NOT EXISTS biz_exam_monitor_event (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    exam_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    event_type VARCHAR(50),
+    event_data TEXT,
+    severity VARCHAR(20),
+    event_time DATETIME DEFAULT CURRENT_TIMESTAMP
   );

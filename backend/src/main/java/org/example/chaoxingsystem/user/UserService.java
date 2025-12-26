@@ -69,8 +69,18 @@ public class UserService {
   }
 
   public User authenticate(String username, String rawPassword) {
+    System.out.println("[DEBUG] Authenticating user: " + username);
     User u = userMapper.selectByUsername(username);
-    if (u != null && passwordEncoder.matches(rawPassword, u.getPasswordHash())) {
+    if (u == null) {
+      System.out.println("[DEBUG] User not found: " + username);
+      return null;
+    }
+    System.out.println("[DEBUG] User found, checking password...");
+    System.out.println("[DEBUG] Password hash from DB: " + u.getPasswordHash());
+    System.out.println("[DEBUG] Raw password length: " + rawPassword.length());
+    boolean matches = passwordEncoder.matches(rawPassword, u.getPasswordHash());
+    System.out.println("[DEBUG] Password matches: " + matches);
+    if (matches) {
       return u;
     }
     return null;
@@ -103,6 +113,11 @@ public class UserService {
 
   public User getByUsername(String username) {
     return userMapper.selectByUsername(username);
+  }
+
+  // 临时测试方法
+  public boolean testPasswordMatch(String rawPassword, String hash) {
+    return passwordEncoder.matches(rawPassword, hash);
   }
 
   public List<UserResponse> listAllUsers() {

@@ -30,6 +30,8 @@ public class StudentExamController {
   @PreAuthorize("hasRole('STUDENT')")
   public ResponseEntity<ApiResponse<HashMap<String, Object>>> list(
     @RequestParam(value = "status", required = false) String status,
+    @RequestParam(value = "subject", required = false) String subject,
+    @RequestParam(value = "semester", required = false) String semester,
     @RequestParam(value = "page", defaultValue = "1") int page,
     @RequestParam(value = "size", defaultValue = "10") int size
   ) {
@@ -37,8 +39,11 @@ public class StudentExamController {
     if ("upcoming".equalsIgnoreCase(status)) st = 0;
     if ("ongoing".equalsIgnoreCase(status)) st = 1;
     if ("finished".equalsIgnoreCase(status)) st = 2;
-    long total = examService.count(st);
-    List<Exam> list = examService.page(st, page, size);
+    int p = Math.max(page, 1);
+    int s = Math.max(size, 1);
+    var me = userService.getByUsername(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName());
+    long total = examService.countByStudentWithFilters(me.getId(), st, subject, semester);
+    List<java.util.Map<String, Object>> list = examService.pageByStudentWithSubject(me.getId(), st, subject, semester, p, s);
     HashMap<String, Object> data = new HashMap<>();
     data.put("list", list);
     data.put("total", total);
@@ -47,8 +52,9 @@ public class StudentExamController {
 
   @GetMapping("/{examId}/paper")
   @PreAuthorize("hasRole('STUDENT')")
-  public ResponseEntity<ApiResponse<Map<String, Object>>> paper(@PathVariable("examId") Long examId) {
-    Map<String, Object> data = studentExamService.getPaper(examId);
+  public ResponseEntity<ApiResponse<Map<String, Object>>> paper(Authentication auth, @PathVariable("examId") Long examId) {
+    var me = userService.getByUsername(auth.getName());
+    Map<String, Object> data = studentExamService.getPaper(examId, me.getId());
     return ResponseEntity.ok(ApiResponse.success("获取成功", data));
   }
 
@@ -87,4 +93,5 @@ public class StudentExamController {
     studentExamService.recordMonitorEvent(examId, me.getId(), eventType, eventData);
     return ResponseEntity.ok(ApiResponse.success("上报成功", null));
   }
+
 }

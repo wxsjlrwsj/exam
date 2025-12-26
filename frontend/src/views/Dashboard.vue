@@ -198,6 +198,7 @@ import {
   DataAnalysis, PieChart, Setting, Fold, ArrowDown,
   Menu, OfficeBuilding, Lock, Check, Monitor, EditPen, User, TrendCharts, CircleClose, House
 } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const router = useRouter()
 const route = useRoute()
@@ -205,7 +206,18 @@ const sidebarCollapsed = ref(false)
 const username = ref(localStorage.getItem('username') || '用户')
 const userType = ref(localStorage.getItem('userType') || 'student')
 const avatarUrl = ref(localStorage.getItem('userAvatar') || '')
-const disabledModules = ref((localStorage.getItem('disabledModules') || '').split(','))
+const disabledModules = ref(
+  (localStorage.getItem('disabledModules') || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s)
+)
+const storageHandler = () => {
+  disabledModules.value = (localStorage.getItem('disabledModules') || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s)
+}
 
 const activeMenu = computed(() => route.path)
 const currentRoute = computed(() => route)
@@ -261,10 +273,20 @@ onMounted(() => {
     router.push('/login')
   }
   window.addEventListener('user-info-update', updateUserInfo)
+  window.addEventListener('storage', storageHandler)
+  request.get('/system/module-config')
+    .then((disabled) => {
+      const list = Array.isArray(disabled) ? disabled : []
+      const sanitized = list.map(s => String(s || '').trim()).filter(s => s)
+      localStorage.setItem('disabledModules', sanitized.join(','))
+      disabledModules.value = sanitized
+    })
+    .catch(() => {})
 })
 
 onUnmounted(() => {
   window.removeEventListener('user-info-update', updateUserInfo)
+  window.removeEventListener('storage', storageHandler)
 })
 </script>
 

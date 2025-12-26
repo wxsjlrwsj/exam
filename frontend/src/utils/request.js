@@ -6,8 +6,8 @@ import router from '@/router'
 
 // Create an axios instance
 const service = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || '/api', // 优先用环境变量，兜底用/api
-    timeout: 5000 // Request timeout
+    baseURL: import.meta.env.VITE_APP_BASE_API || import.meta.env.VITE_API_BASE_URL || '/api',
+    timeout: 5000
 })
 
 // Request interceptor（请求拦截器：携带Token）

@@ -23,4 +23,6 @@ public interface QuestionAuditMapper {
   QuestionAuditDetail selectDetail(@Param("id") Long id);
 
   int processBatch(@Param("ids") List<Long> ids, @Param("status") Integer status, @Param("comment") String comment, @Param("auditorId") Long auditorId);
+
+  int insert(QuestionAudit qa);
 }

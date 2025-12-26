@@ -19,10 +19,27 @@ public interface ExamMapper {
   long countGradedStudents(@Param("examId") Long examId);
   
   // 监考相关
-  List<Map<String, Object>> selectMonitorStudents(@Param("examId") Long examId);
+  List<java.util.Map<String, Object>> selectMonitorStudents(@Param("examId") Long examId);
   int insertWarning(@Param("examId") Long examId, @Param("studentId") Long studentId, 
                     @Param("message") String message, @Param("type") String type, 
                     @Param("teacherId") Long teacherId);
   int forceSubmitExamRecord(@Param("examId") Long examId, @Param("studentId") Long studentId);
+  
+  long countByStudent(@Param("studentId") Long studentId, @Param("status") Integer status);
+  java.util.List<Exam> selectPageByStudent(@Param("studentId") Long studentId, @Param("status") Integer status, @Param("offset") int offset, @Param("limit") int limit);
+  long existsStudentAssignment(@Param("examId") Long examId, @Param("studentId") Long studentId);
+  java.util.List<java.util.Map<String, Object>> selectPageByStudentWithSubject(
+    @Param("studentId") Long studentId,
+    @Param("status") Integer status,
+    @Param("subject") String subject,
+    @Param("semester") String semester,
+    @Param("offset") int offset,
+    @Param("limit") int limit
+  );
+  long countByStudentWithFilters(
+    @Param("studentId") Long studentId,
+    @Param("status") Integer status,
+    @Param("subject") String subject,
+    @Param("semester") String semester
+  );
 }
-

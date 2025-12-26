@@ -19,4 +19,4 @@ server:
 
 security:
   token:
-    secret: test-secret
+    secret: change-me-dev

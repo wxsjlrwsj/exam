@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.student.errorbook.ErrorBookMapper">
+
+    <!-- 查询错题列表 -->
+    <select id="selectErrorList" resultType="map">
+        SELECT 
+            eb.id,
+            eb.student_id,
+            eb.question_id,
+            eb.exam_id,
+            eb.wrong_answer,
+            eb.wrong_count,
+            eb.mastered,
+            eb.last_wrong_time,
+            eb.created_at,
+            q.type_id,
+            q.content AS question_content,
+            q.options AS question_options,
+            q.answer AS question_answer,
+            q.analysis AS question_analysis,
+            q.difficulty AS question_difficulty,
+            q.subject AS question_subject,
+            qt.type_name,
+            qt.type_code,
+            e.name AS exam_name
+        FROM biz_student_error_book eb
+        INNER JOIN biz_question q ON eb.question_id = q.id
+        LEFT JOIN biz_question_type qt ON q.type_id = qt.type_id
+        LEFT JOIN biz_exam e ON eb.exam_id = e.id
+        WHERE eb.student_id = #{studentId}
+        <if test="typeId != null">
+            AND q.type_id = #{typeId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND q.content LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="mastered != null">
+            AND eb.mastered = #{mastered}
+        </if>
+        ORDER BY eb.last_wrong_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计错题总数 -->
+    <select id="countErrors" resultType="long">
+        SELECT COUNT(*)
+        FROM biz_student_error_book eb
+        INNER JOIN biz_question q ON eb.question_id = q.id
+        WHERE eb.student_id = #{studentId}
+        <if test="typeId != null">
+            AND q.type_id = #{typeId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND q.content LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="mastered != null">
+            AND eb.mastered = #{mastered}
+        </if>
+    </select>
+
+    <!-- 根据学生ID和题目ID查询 -->
+    <select id="selectByStudentAndQuestion" resultType="org.example.chaoxingsystem.student.errorbook.ErrorBook">
+        SELECT *
+        FROM biz_student_error_book
+        WHERE student_id = #{studentId} AND question_id = #{questionId}
+    </select>
+
+    <!-- 插入错题记录 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO biz_student_error_book (
+            student_id, question_id, exam_id, wrong_answer, 
+            wrong_count, mastered, last_wrong_time
+        ) VALUES (
+            #{studentId}, #{questionId}, #{examId}, #{wrongAnswer},
+            #{wrongCount}, #{mastered}, #{lastWrongTime}
+        )
+    </insert>
+
+    <!-- 更新错题记录 -->
+    <update id="update">
+        UPDATE biz_student_error_book
+        SET 
+            wrong_answer = #{wrongAnswer},
+            wrong_count = #{wrongCount},
+            mastered = #{mastered},
+            last_wrong_time = #{lastWrongTime}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 增加错误次数 -->
+    <update id="incrementWrongCount">
+        UPDATE biz_student_error_book
+        SET 
+            wrong_count = wrong_count + 1,
+            last_wrong_time = CURRENT_TIMESTAMP
+        WHERE student_id = #{studentId} AND question_id = #{questionId}
+    </update>
+
+    <!-- 标记为已掌握 -->
+    <update id="markAsMastered">
+        UPDATE biz_student_error_book
+        SET mastered = #{mastered}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除错题记录 -->
+    <delete id="deleteById">
+        DELETE FROM biz_student_error_book WHERE id = #{id}
+    </delete>
+
+    <!-- 批量删除 -->
+    <delete id="batchDelete">
+        DELETE FROM biz_student_error_book
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>
+

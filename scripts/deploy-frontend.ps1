@@ -1,6 +1,9 @@
 # 前端部署脚本
 # 用于在修改前端代码后重新部署
 
+param(
+    [switch]$NonInteractive
+)
 # 错误处理函数 - 防止闪退
 function Exit-WithMessage {
     param(
@@ -8,8 +11,10 @@ function Exit-WithMessage {
         [int]$ExitCode = 1
     )
     Write-Host "`n$Message" -ForegroundColor Red
-    Write-Host "`n按任意键退出..." -ForegroundColor Yellow
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    if (-not $NonInteractive) {
+        Write-Host "`n按任意键退出..." -ForegroundColor Yellow
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
     exit $ExitCode
 }
 
@@ -82,11 +87,15 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "`n访问地址: http://localhost:8080`n" -ForegroundColor Yellow
 
 # 可选：自动打开浏览器
-$openBrowser = Read-Host "是否在浏览器中打开？(y/n)"
-if ($openBrowser -eq 'y') {
-    Start-Process "http://localhost:8080"
+if (-not $NonInteractive) {
+    $openBrowser = Read-Host "是否在浏览器中打开？(y/n)"
+    if ($openBrowser -eq 'y') {
+        Start-Process "http://localhost:8080"
+    }
 }
 
 # 防止窗口闪退
-Write-Host "`n按任意键退出..." -ForegroundColor Yellow
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+if (-not $NonInteractive) {
+    Write-Host "`n按任意键退出..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}

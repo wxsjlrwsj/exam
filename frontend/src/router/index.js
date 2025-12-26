@@ -149,7 +149,10 @@ router.beforeEach((to, from, next) => {
   
   // 模拟从本地存储获取禁用的模块列表 (实际应从后端API获取配置)
   // 格式: "sys_org,stu_practice"
-  const disabledModules = (localStorage.getItem('disabledModules') || '').split(',')
+  const disabledModules = (localStorage.getItem('disabledModules') || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s)
 
   // Set document title
   document.title = to.meta.title ? `${to.meta.title} - 在线考试系统` : '在线考试系统'
@@ -157,9 +160,7 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !isAuthenticated) {
     next({ name: 'Login' })
   } else if (to.meta.moduleCode && disabledModules.includes(to.meta.moduleCode)) {
-    // 模块被禁用拦截
-    // alert('该模块已禁用') // 实际体验中最好跳转到一个通用的 403 页面或提示页，这里简单处理
-    next(false) // 取消导航
+    next({ name: 'DashboardHome' })
   } else if (to.meta.roles && (!userType || !to.meta.roles.includes(userType))) {
     // Redirect to default page based on role if permission denied or mismatch
     next({ name: 'DashboardHome' })

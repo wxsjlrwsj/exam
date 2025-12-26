@@ -53,15 +53,15 @@
       </el-table-column>
       <el-table-column prop="status" label="状态" width="120" align="center">
         <template #default="scope">
-          <el-tag :type="getStatusType(scope.row.status)">
-            {{ getStatusText(scope.row.status) }}
+          <el-tag :type="getStatusType(normalizeStatus(scope.row))">
+            {{ getStatusText(normalizeStatus(scope.row)) }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" fixed="right" width="150" align="center">
         <template #default="scope">
           <el-button 
-            v-if="scope.row.status === 'in_progress'"
+            v-if="normalizeStatus(scope.row) === 'in_progress'"
             type="primary" 
             size="small"
             @click.stop="handleTakeExam(scope.row)"
@@ -69,7 +69,7 @@
             参加考试
           </el-button>
           <el-button 
-            v-else-if="scope.row.status === 'completed'"
+            v-else-if="normalizeStatus(scope.row) === 'completed'"
             link 
             type="primary" 
             size="small"
@@ -78,7 +78,7 @@
             查看成绩
           </el-button>
            <el-button 
-            v-else-if="scope.row.status === 'pending_grading'"
+            v-else-if="normalizeStatus(scope.row) === 'pending_grading'"
             link 
             type="info" 
             size="small"
@@ -122,8 +122,8 @@
                 </el-descriptions-item>
                 <el-descriptions-item label="考试时长">{{ currentExamInfo.duration }} 分钟</el-descriptions-item>
                 <el-descriptions-item label="当前状态">
-                    <el-tag :type="getStatusType(currentExamInfo.status)" size="small">
-                        {{ getStatusText(currentExamInfo.status) }}
+                    <el-tag :type="getStatusType(normalizeStatus(currentExamInfo))" size="small">
+                        {{ getStatusText(normalizeStatus(currentExamInfo)) }}
                     </el-tag>
                 </el-descriptions-item>
             </el-descriptions>
@@ -153,7 +153,7 @@
             <div class="dialog-footer">
                 <el-button @click="infoDialogVisible = false">关闭</el-button>
                 <el-button 
-                    v-if="currentExamInfo?.status === 'in_progress'" 
+                    v-if="normalizeStatus(currentExamInfo) === 'in_progress'" 
                     type="primary" 
                     @click="startExamAction(currentExamInfo)"
                 >
@@ -221,7 +221,7 @@
             </div>
         </div>
         <template #footer>
-            <el-button @click="preExamDialogVisible = false">取消</el-button>
+            <el-button @click="cancelPreExam">取消</el-button>
             <el-button type="primary" :disabled="isCameraReady" @click="checkCamera">
                 {{ isCameraReady ? '摄像头检测通过' : '开启摄像头检测' }}
             </el-button>
@@ -556,7 +556,15 @@ const formatTime = (seconds) => {
     return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
 }
 const getSemesterLabel = (val) => {
-    const map = { '2023_autumn': '23-24 秋季', '2023_spring': '23-24 春季', '2022_autumn': '22-23 秋季' }
+    if (!val) return val
+    const m = /^(\d{4})_(autumn|spring)$/.exec(val)
+    if (m) {
+        const y = Number(m[1])
+        const next = y + 1
+        const season = m[2] === 'autumn' ? '秋季' : '春季'
+        return `${y}-${next} ${season}`
+    }
+    const map = { '2023_autumn': '2023-2024 秋季', '2023_spring': '2023-2024 春季', '2022_autumn': '2022-2023 秋季' }
     return map[val] || val
 }
 const getStatusType = (s) => {
@@ -566,6 +574,23 @@ const getStatusType = (s) => {
 const getStatusText = (s) => {
     const map = { 'not_started': '未开始', 'in_progress': '进行中', 'pending_grading': '待批阅', 'completed': '已完成' }
     return map[s]
+}
+const normalizeStatus = (row) => {
+    const rs = row.recordStatus
+    if (typeof rs === 'number') {
+        if (rs >= 2) return 'completed'
+        if (rs >= 1) return 'pending_grading'
+    }
+    const s = row.status
+    if (typeof s === 'number') {
+        if (s === 0) return 'not_started'
+        if (s === 1) return 'in_progress'
+        if (s === 2) return 'completed'
+    }
+    if (typeof s === 'string' && ['not_started','in_progress','pending_grading','completed'].includes(s)) {
+        return s
+    }
+    return 'not_started'
 }
 const questionTypes = { 'single_choice': '单选题', 'multiple_choice': '多选题', 'true_false': '判断题', 'short_answer': '简答题' }
 const getQuestionTypeLabel = (t) => questionTypes[t] || t
@@ -614,7 +639,7 @@ const infoDialogVisible = ref(false)
 const currentExamInfo = ref(null)
 
 const handleRowClick = (row) => {
-    if(row.status === 'in_progress') handleTakeExam(row)
+    if(normalizeStatus(row) === 'in_progress') handleTakeExam(row)
     else handleViewInfo(row)
 }
 
@@ -639,10 +664,12 @@ const isCameraReady = ref(false)
 const hasPassedCameraCheck = ref(false)
 const cameraVideoRef = ref(null)
 const examToStart = ref(null)
+let preExamMediaStream = null
 
 const openPreExam = (exam) => {
     examToStart.value = exam
     preExamDialogVisible.value = true
+    stopPreExamCamera()
     
     // Auto check if already passed before
     if (hasPassedCameraCheck.value) {
@@ -658,6 +685,7 @@ const checkCamera = async (silent = false) => {
         if(cameraVideoRef.value) {
             cameraVideoRef.value.srcObject = stream
         }
+        preExamMediaStream = stream
         isCameraReady.value = true
         hasPassedCameraCheck.value = true
         
@@ -673,7 +701,24 @@ const checkCamera = async (silent = false) => {
     }
 }
 
+const stopPreExamCamera = () => {
+    if (preExamMediaStream) {
+        preExamMediaStream.getTracks().forEach(t => t.stop())
+        preExamMediaStream = null
+    }
+    if (cameraVideoRef.value) {
+        cameraVideoRef.value.srcObject = null
+    }
+    isCameraReady.value = false
+}
+
+const cancelPreExam = () => {
+    stopPreExamCamera()
+    preExamDialogVisible.value = false
+}
+
 const realStartExam = () => {
+    stopPreExamCamera()
     preExamDialogVisible.value = false
     // Stop local stream for now or keep it? 
     // In real app we might keep it. Here we just close dialog and start exam.
@@ -979,6 +1024,7 @@ onUnmounted(() => {
     if(examTimer) clearInterval(examTimer)
     stopAntiCheat()
     stopExamCamera()
+    stopPreExamCamera()
 })
 </script>
 

@@ -40,11 +40,12 @@
   </select>
 
   <select id="selectPaperQuestionViews" resultType="map">
-    SELECT pq.question_id as questionId, pq.score, pq.sort_order as sortOrder,
-           q.type_id as typeId, q.content, q.options, q.answer, q.analysis, 
+    SELECT q.id AS id, pq.question_id AS questionId, pq.score, pq.sort_order AS sortOrder,
+           t.type_code AS type_code, q.content, q.options, q.answer, q.analysis,
            q.subject, q.difficulty
     FROM biz_paper_question pq
     LEFT JOIN biz_question q ON pq.question_id = q.id
+    LEFT JOIN biz_question_type t ON t.type_id = q.type_id
     WHERE pq.paper_id = #{paperId}
     ORDER BY pq.sort_order
   </select>
@@ -82,4 +83,3 @@
   </select>
 
 </mapper>
-

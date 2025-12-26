@@ -75,4 +75,12 @@
     <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
   </update>
 
+  <insert id="insert" parameterType="org.example.chaoxingsystem.teacher.audit.QuestionAudit">
+    INSERT INTO biz_question_audit(
+      submitter_id, submit_time, type_id, content, answer, difficulty, subject_id, status
+    ) VALUES (
+      #{submitterId}, CURRENT_TIMESTAMP, #{typeId}, #{content}, #{answer}, #{difficulty}, #{subjectId}, 0
+    )
+  </insert>
+
 </mapper>

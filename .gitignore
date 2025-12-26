@@ -50,3 +50,8 @@ dist-ssr/
 backend/target/
 backend/*.jar
 backend/*.war
+
+### MySQL Data ###
+# Git无法索引Unix域套接字文件，排除以避免报错
+mysql-data/*.sock
+mysql-data/*.socket

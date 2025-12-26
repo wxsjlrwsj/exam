@@ -36,6 +36,21 @@
     ORDER BY id
   </select>
 
+  <update id="updateRecordScore">
+    UPDATE biz_exam_record
+    SET score = #{score},
+        status = COALESCE(#{status}, status)
+    WHERE id = #{recordId}
+  </update>
+
+  <update id="updateAnswerScore">
+    UPDATE biz_exam_answer
+    SET score = #{score},
+        comment = #{comment},
+        is_correct = CASE WHEN #{score} IS NOT NULL AND #{score} > 0 THEN 1 ELSE is_correct END
+    WHERE record_id = #{recordId} AND question_id = #{questionId}
+  </update>
+
   <update id="updateScore">
     UPDATE biz_exam_record
     SET score = #{score}

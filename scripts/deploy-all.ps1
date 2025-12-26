@@ -1,6 +1,11 @@
 # 一键部署脚本
 # 同时部署前端和后端
 
+param(
+    [switch]$NonInteractive,
+    [string]$Mode = "all",
+    [switch]$AutoCreateContainers
+)
 # 错误处理函数 - 防止闪退
 function Exit-WithMessage {
     param(
@@ -8,8 +13,10 @@ function Exit-WithMessage {
         [int]$ExitCode = 1
     )
     Write-Host "`n$Message" -ForegroundColor Red
-    Write-Host "`n按任意键退出..." -ForegroundColor Yellow
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    if (-not $NonInteractive) {
+        Write-Host "`n按任意键退出..." -ForegroundColor Yellow
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
     exit $ExitCode
 }
 
@@ -43,12 +50,13 @@ if (-not $dockerRunning) {
     Write-Host "  1. 打开 Docker Desktop 应用程序" -ForegroundColor White
     Write-Host "  2. 等待 Docker 引擎启动（约 30-60 秒）" -ForegroundColor White
     Write-Host "  3. 重新运行此脚本`n" -ForegroundColor White
-    
+    if ($NonInteractive) {
+        Exit-WithMessage "✖ Docker 未运行！请先启动 Docker Desktop 后重新运行此脚本。"
+    }
     $startDocker = Read-Host "是否尝试自动启动 Docker Desktop? (y/n)"
     if ($startDocker -eq 'y') {
         Write-Host "`n正在启动 Docker Desktop..." -ForegroundColor Yellow
         Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe" -ErrorAction SilentlyContinue
-        
         Write-Host "等待 Docker 引擎启动（最多等待 60 秒）..." -ForegroundColor Yellow
         $timeout = 60
         $elapsed = 0
@@ -66,7 +74,6 @@ if (-not $dockerRunning) {
                 Write-Host "." -NoNewline -ForegroundColor Gray
             }
         }
-        
         if (-not $dockerRunning) {
             Exit-WithMessage "✖ Docker 启动超时，请手动启动 Docker Desktop 后重新运行此脚本。"
         }
@@ -79,26 +86,35 @@ if (-not $dockerRunning) {
 Write-Host "`n[预检] 检查容器状态..." -ForegroundColor Yellow
 $containers = docker ps -a --filter "name=chaoxing" --format "{{.Names}}" 2>&1
 if ($LASTEXITCODE -ne 0 -or -not $containers) {
-    Write-Host "✖ 未找到 chaoxing 容器！" -ForegroundColor Red
-    Write-Host "`n请先运行以下命令创建容器：" -ForegroundColor Yellow
-    Write-Host "  cd $projectRoot" -ForegroundColor Cyan
-    Write-Host "  docker-compose up -d`n" -ForegroundColor Cyan
-    
-    $createContainers = Read-Host "是否现在创建容器? (y/n)"
-    if ($createContainers -eq 'y') {
+    if ($AutoCreateContainers -or $NonInteractive) {
         Write-Host "`n正在创建容器..." -ForegroundColor Yellow
         Set-Location $projectRoot
         docker-compose up -d --build
-        
         if ($LASTEXITCODE -ne 0) {
             Exit-WithMessage "✖ 容器创建失败！请检查 Docker 配置和网络连接。"
         }
-        
         Write-Host "✓ 容器创建成功！" -ForegroundColor Green
         Write-Host "`n等待服务启动（约 30 秒）..." -ForegroundColor Yellow
         Start-Sleep -Seconds 30
     } else {
-        Exit-WithMessage "✖ 部署已取消。请先创建 Docker 容器后重新运行此脚本。"
+        Write-Host "✖ 未找到 chaoxing 容器！" -ForegroundColor Red
+        Write-Host "`n请先运行以下命令创建容器：" -ForegroundColor Yellow
+        Write-Host "  cd $projectRoot" -ForegroundColor Cyan
+        Write-Host "  docker-compose up -d`n" -ForegroundColor Cyan
+        $createContainers = Read-Host "是否现在创建容器? (y/n)"
+        if ($createContainers -eq 'y') {
+            Write-Host "`n正在创建容器..." -ForegroundColor Yellow
+            Set-Location $projectRoot
+            docker-compose up -d --build
+            if ($LASTEXITCODE -ne 0) {
+                Exit-WithMessage "✖ 容器创建失败！请检查 Docker 配置和网络连接。"
+            }
+            Write-Host "✓ 容器创建成功！" -ForegroundColor Green
+            Write-Host "`n等待服务启动（约 30 秒）..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 30
+        } else {
+            Exit-WithMessage "✖ 部署已取消。请先创建 Docker 容器后重新运行此脚本。"
+        }
     }
 } else {
     Write-Host "✓ 找到以下容器：" -ForegroundColor Green
@@ -112,22 +128,29 @@ Write-Host "`n请选择部署模式:" -ForegroundColor Cyan
 Write-Host "1. 仅部署前端" -ForegroundColor Yellow
 Write-Host "2. 仅部署后端" -ForegroundColor Yellow
 Write-Host "3. 部署前端和后端（推荐）" -ForegroundColor Yellow
-$choice = Read-Host "`n请输入选项 (1/2/3)"
-
 $deployFrontend = $false
 $deployBackend = $false
-
-switch ($choice) {
-    "1" { $deployFrontend = $true }
-    "2" { $deployBackend = $true }
-    "3" { 
-        $deployFrontend = $true
-        $deployBackend = $true
-    }
-    default {
-        Write-Host "`n✖ 无效选项，默认部署全部" -ForegroundColor Red
-        $deployFrontend = $true
-        $deployBackend = $true
+if ($Mode -eq "frontend") {
+    $deployFrontend = $true
+} elseif ($Mode -eq "backend") {
+    $deployBackend = $true
+} elseif ($Mode -eq "all") {
+    $deployFrontend = $true
+    $deployBackend = $true
+} else {
+    $choice = Read-Host "`n请输入选项 (1/2/3)"
+    switch ($choice) {
+        "1" { $deployFrontend = $true }
+        "2" { $deployBackend = $true }
+        "3" { 
+            $deployFrontend = $true
+            $deployBackend = $true
+        }
+        default {
+            Write-Host "`n✖ 无效选项，默认部署全部" -ForegroundColor Red
+            $deployFrontend = $true
+            $deployBackend = $true
+        }
     }
 }
 
@@ -138,7 +161,7 @@ if ($deployBackend) {
     Write-Host "第一步: 部署后端" -ForegroundColor Blue
     Write-Host "========================================" -ForegroundColor Blue
     
-    & "$PSScriptRoot\deploy-backend.ps1"
+    & "$PSScriptRoot\deploy-backend.ps1" -NonInteractive:$NonInteractive
     
     if ($LASTEXITCODE -ne 0) {
         Exit-WithMessage "✖ 后端部署失败！请检查错误信息后重试。"
@@ -154,7 +177,7 @@ if ($deployFrontend) {
     Write-Host "第二步: 部署前端" -ForegroundColor Blue
     Write-Host "========================================" -ForegroundColor Blue
     
-    & "$PSScriptRoot\deploy-frontend.ps1"
+    & "$PSScriptRoot\deploy-frontend.ps1" -NonInteractive:$NonInteractive
     
     if ($LASTEXITCODE -ne 0) {
         Exit-WithMessage "✖ 前端部署失败！请检查错误信息后重试。"
@@ -186,5 +209,7 @@ Write-Host "  后端: http://localhost:8083" -ForegroundColor Cyan
 Write-Host ""
 
 # 防止窗口闪退
-Write-Host "`n按任意键退出..." -ForegroundColor Yellow
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+if (-not $NonInteractive) {
+    Write-Host "`n按任意键退出..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}

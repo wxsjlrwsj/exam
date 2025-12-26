@@ -114,5 +114,95 @@
     AND status = 0
   </update>
 
+  <select id="countByStudent" resultType="long">
+    SELECT COUNT(1) FROM biz_exam e
+    JOIN biz_exam_student es ON es.exam_id = e.id
+    <where>
+      es.user_id = #{studentId}
+      <if test="status != null">AND e.status = #{status}</if>
+    </where>
+  </select>
+
+  <select id="selectPageByStudent" resultMap="ExamMap">
+    SELECT e.* FROM biz_exam e
+    JOIN biz_exam_student es ON es.exam_id = e.id
+    <where>
+      es.user_id = #{studentId}
+      <if test="status != null">AND e.status = #{status}</if>
+    </where>
+    ORDER BY e.start_time DESC, e.id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="selectPageByStudentWithSubject" resultType="java.util.Map">
+    SELECT 
+      e.id AS id,
+      e.name AS name,
+      e.paper_id AS paperId,
+      e.start_time AS startTime,
+      e.end_time AS endTime,
+      e.duration AS duration,
+      e.status AS status,
+      e.creator_id AS creatorId,
+      e.create_time AS createTime,
+      p.subject AS subject,
+      <![CDATA[
+      CASE 
+        WHEN MONTH(e.start_time) BETWEEN 3 AND 8 THEN CONCAT(YEAR(e.start_time), '_spring')
+        ELSE CONCAT(YEAR(e.start_time), '_autumn')
+      END
+      ]]> AS semester,
+      er.status AS recordStatus,
+      er.score AS score,
+      TIMESTAMPDIFF(SECOND, er.start_time, er.submit_time) AS timeTaken
+    FROM biz_exam e
+    JOIN biz_exam_student es ON es.exam_id = e.id
+    LEFT JOIN biz_paper p ON p.id = e.paper_id
+    LEFT JOIN biz_exam_record er ON er.exam_id = e.id AND er.student_id = es.user_id
+    <where>
+      es.user_id = #{studentId}
+      <if test="status != null">AND e.status = #{status}</if>
+      <if test="subject != null and subject != ''">AND p.subject = #{subject}</if>
+      <if test="semester != null and semester != ''">
+        <![CDATA[
+        AND (
+          CASE 
+            WHEN MONTH(e.start_time) BETWEEN 3 AND 8 THEN CONCAT(YEAR(e.start_time), '_spring')
+            ELSE CONCAT(YEAR(e.start_time), '_autumn')
+          END = #{semester}
+        )
+        ]]>
+      </if>
+    </where>
+    ORDER BY e.start_time DESC, e.id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+  
+  <select id="countByStudentWithFilters" resultType="long">
+    SELECT COUNT(1)
+    FROM biz_exam e
+    JOIN biz_exam_student es ON es.exam_id = e.id
+    LEFT JOIN biz_paper p ON p.id = e.paper_id
+    <where>
+      es.user_id = #{studentId}
+      <if test="status != null">AND e.status = #{status}</if>
+      <if test="subject != null and subject != ''">AND p.subject = #{subject}</if>
+      <if test="semester != null and semester != ''">
+        <![CDATA[
+        AND (
+          CASE 
+            WHEN MONTH(e.start_time) BETWEEN 3 AND 8 THEN CONCAT(YEAR(e.start_time), '_spring')
+            ELSE CONCAT(YEAR(e.start_time), '_autumn')
+          END = #{semester}
+        )
+        ]]>
+      </if>
+    </where>
+  </select>
+
+  <select id="existsStudentAssignment" resultType="long">
+    SELECT COUNT(1) FROM biz_exam_student WHERE exam_id = #{examId} AND user_id = #{studentId}
+  </select>
+
 </mapper>
 

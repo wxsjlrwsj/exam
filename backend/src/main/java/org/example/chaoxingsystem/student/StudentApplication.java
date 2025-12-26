@@ -15,7 +15,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
   "org.example.chaoxingsystem.user",
   "org.example.chaoxingsystem.student"
 })
-@MapperScan("org.example.chaoxingsystem.user")
+@MapperScan("org.example.chaoxingsystem")
 public class StudentApplication {
   public static void main(String[] args) {
     SpringApplication.run(StudentApplication.class, args);
