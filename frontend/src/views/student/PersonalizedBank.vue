@@ -36,6 +36,9 @@
                 <el-button link type="danger" size="small" @click.stop="handleDeleteCollection(item)">
                   <el-icon><Delete /></el-icon>
                 </el-button>
+                <el-button link type="primary" size="small" @click.stop="handleEditCollection(item)">
+                  编辑
+                </el-button>
               </div>
             </div>
           </div>
@@ -49,6 +52,9 @@
             <div class="card-header">
               <span class="current-col-title">{{ currentCollectionName }}</span>
               <div class="header-actions">
+                 <el-button v-if="isManageMode" type="primary" plain @click="openBatchAdd" :disabled="selectedRows.length === 0" style="margin-right: 8px">
+                    批量添加到其他题集
+                 </el-button>
                  <el-button v-if="isManageMode" type="danger" plain @click="handleBatchDelete" :disabled="selectedRows.length === 0">
                     批量移除
                  </el-button>
@@ -76,12 +82,16 @@
                 <el-input v-model="filterForm.subject" placeholder="学科名称" clearable style="width: 200px" @keyup.enter="loadQuestions" />
                 <el-button type="primary" @click="loadQuestions" style="margin-left: 15px">查询</el-button>
              </div>
+             <div class="filter-row mt-15">
+                <span class="filter-label">关键词过滤：</span>
+                <el-input v-model="filterForm.keyword" placeholder="输入关键词进行本地过滤" clearable style="width: 260px" />
+             </div>
           </div>
 
           <!-- Question Table -->
           <el-table 
              ref="tableRef"
-             :data="questionList" 
+             :data="displayedQuestionList" 
              style="width: 100%" 
              height="calc(100vh - 350px)" 
              v-loading="loading"
@@ -172,6 +182,42 @@
       </template>
     </el-dialog>
 
+    <!-- Edit Collection Dialog -->
+    <el-dialog v-model="editDialogVisible" title="编辑题集" width="400px">
+      <el-form :model="editForm">
+        <el-form-item label="题集名称" required>
+          <el-input v-model="editForm.name" placeholder="请输入题集名称" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitEditCollection">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Batch Add Dialog -->
+    <el-dialog v-model="batchAddVisible" title="批量添加到题集" width="420px">
+      <el-form label-width="100px">
+        <el-form-item label="目标题集">
+          <el-select v-model="batchTargetId" placeholder="请选择题集" style="width: 260px">
+            <el-option
+              v-for="c in collectionList.filter(i => i.id !== currentCollectionId)"
+              :key="c.id"
+              :label="c.name"
+              :value="c.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="已选择">
+          <el-tag type="info">{{ selectedRows.length }} 道题</el-tag>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchAddVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchAddLoading" @click="submitBatchAdd">确定</el-button>
+      </template>
+    </el-dialog>
+
     <!-- Self Test Setup Dialog -->
     <el-dialog v-model="testSetupVisible" title="生成自测卷" width="400px">
       <el-form :model="testSetupForm" label-width="100px">
@@ -204,11 +250,11 @@
             <div class="quiz-nav-card">
                <div class="nav-title">题目导航</div>
                <div class="nav-grid">
-                  <div 
+                   <div 
                      v-for="(q, index) in quizQuestions" 
                      :key="q.id" 
                      class="nav-item"
-                     :class="{ 'answered': userAnswers[q.id], 'active': currentQuizIndex === index }"
+                     :class="{ 'answered': isAnswered(q), 'active': currentQuizIndex === index }"
                      @click="scrollToQuestion(index)"
                   >
                      {{ index + 1 }}
@@ -363,6 +409,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, inject } from 'vue'
 import { Plus, Delete, VideoPlay, Timer } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
+import { updateCollection } from '@/api/student'
 
 const showMessage = inject('showMessage') || ElMessage
 
@@ -384,8 +431,13 @@ const tableRef = ref(null)
 
 const createDialogVisible = ref(false)
 const createForm = reactive({ name: '' })
+const editDialogVisible = ref(false)
+const editForm = reactive({ id: null, name: '' })
 
-const filterForm = reactive({ type: '', subject: '' })
+const filterForm = reactive({ type: '', subject: '', keyword: '' })
+const batchAddVisible = ref(false)
+const batchTargetId = ref(null)
+const batchAddLoading = ref(false)
 
 // Quiz State
 const testSetupVisible = ref(false)
@@ -421,6 +473,17 @@ const answeredCount = computed(() => {
    return count
 })
 
+const displayedQuestionList = computed(() => {
+  const kw = normalizeForCompare(filterForm.keyword || '')
+  if (!kw) return questionList.value
+  return questionList.value.filter(q => {
+    const content = normalizeForCompare(q.content || '')
+    const subject = normalizeForCompare(q.subject || '')
+    const answer = normalizeForCompare(q.answer || '')
+    return content.includes(kw) || subject.includes(kw) || answer.includes(kw)
+  })
+})
+
 const questionTypes = [
   { label: '单选题', value: 'single_choice' },
   { label: '多选题', value: 'multiple_choice' },
@@ -430,19 +493,18 @@ const questionTypes = [
   { label: '编程题', value: 'programming' }
 ]
 
-// --- Mock Data Helpers ---
-const mockCollections = [
-  { id: 1, name: '我的错题集', count: 12, isDefault: true },
-  { id: 2, name: 'Java重点复习', count: 5, isDefault: false },
-  { id: 3, name: '数据结构收藏', count: 8, isDefault: false }
-]
-
-const mockQuestionsData = [
-  { id: 101, type: 'single_choice', content: 'Java中int占用几个字节？', options: '[{"key":"A","value":"2"},{"key":"B","value":"4"}]', answer: 'B', analysis: 'Java基本类型int占4字节', difficulty: 1, subject: 'Java' },
-  { id: 102, type: 'true_false', content: 'List是线程安全的吗？', options: null, answer: 'F', analysis: 'ArrayList等常用实现非线程安全', difficulty: 2, subject: 'Java' },
-  { id: 103, type: 'short_answer', content: '简述MVC模式', options: null, answer: 'Model-View-Controller', analysis: '略', difficulty: 3, subject: '软工' },
-  { id: 104, type: 'multiple_choice', content: '以下属于Java集合框架的接口有？', options: '[{"key":"A","value":"List"},{"key":"B","value":"Map"},{"key":"C","value":"Thread"},{"key":"D","value":"Set"}]', answer: 'A,B,D', analysis: 'Thread是类不是集合接口', difficulty: 2, subject: 'Java' }
-]
+const normalizeAnswer = (ans) => {
+  if (ans == null) return ''
+  try {
+    const v = JSON.parse(ans)
+    if (Array.isArray(v)) return v.join(', ')
+    if (typeof v === 'string') return v
+    if (typeof v === 'boolean') return v ? 'T' : 'F'
+    return String(v)
+  } catch (e) {
+    return ans
+  }
+}
 
 // --- Methods ---
 
@@ -465,38 +527,64 @@ const formatAnswer = (ans) => {
    return ans || '未作答'
 }
 
+const isAnswered = (q) => {
+  const ans = userAnswers.value[q.id]
+  if (Array.isArray(ans)) return ans.length > 0
+  return !!ans
+}
+
+const normalizeForCompare = (s) => {
+  if (s == null) return ''
+  const t = String(s).normalize('NFKC').toLowerCase()
+  return t.replace(/[\p{P}\p{S}\s]/gu, '')
+}
+
 const formatTime = (seconds) => {
    const m = Math.floor(seconds / 60)
    const s = seconds % 60
    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
-// API Calls (Simulated)
 const loadCollections = async () => {
-   collectionList.value = mockCollections
-   if (collectionList.value.length > 0 && !currentCollectionId.value) {
+  const list = await request.get('/student/collections')
+  collectionList.value = (list || []).map(c => ({
+    id: c.id,
+    name: c.name,
+    count: c.questionCount,
+    isDefault: !!c.isDefault
+  }))
+  if (collectionList.value.length > 0) {
+    if (!currentCollectionId.value) {
       handleSelectCollection(collectionList.value[0])
-   }
+    } else {
+      const cur = collectionList.value.find(i => i.id === currentCollectionId.value)
+      if (!cur) handleSelectCollection(collectionList.value[0])
+    }
+  } else {
+    currentCollectionId.value = null
+    questionList.value = []
+    total.value = 0
+  }
 }
 
 const loadQuestions = async () => {
-   if (!currentCollectionId.value) return
-   loading.value = true
-   
-   setTimeout(() => {
-      let list = [...mockQuestionsData]
-      if (filterForm.type) list = list.filter(q => q.type === filterForm.type)
-      if (filterForm.subject) list = list.filter(q => q.subject.includes(filterForm.subject))
-      
-      const c = collectionList.value.find(i => i.id === currentCollectionId.value)
-      if (c && c.count > list.length) {
-         while(list.length < c.count) list.push({...list[0], id: list.length + 100})
-      }
-      
-      total.value = list.length
-      questionList.value = list.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value)
-      loading.value = false
-   }, 300)
+  if (!currentCollectionId.value) return
+  loading.value = true
+  const data = await request.get(`/student/collections/${currentCollectionId.value}/questions`, {
+    params: {
+      type: filterForm.type,
+      subject: filterForm.subject,
+      page: currentPage.value,
+      size: pageSize.value
+    }
+  })
+  const list = (data?.list || []).map(q => ({
+    ...q,
+    answer: normalizeAnswer(q.answer)
+  }))
+  total.value = data?.total || 0
+  questionList.value = list
+  loading.value = false
 }
 
 // Actions
@@ -517,29 +605,45 @@ const handleAddCollection = () => {
 const resetFilter = () => {
    filterForm.type = ''
    filterForm.subject = ''
-   filterForm.difficulty = 0
+   filterForm.keyword = ''
    loadQuestions()
 }
 
-const submitCreateCollection = () => {
-   if (!createForm.name) return
-   const newId = Math.max(...collectionList.value.map(i => i.id)) + 1
-   collectionList.value.push({ id: newId, name: createForm.name, count: 0, isDefault: false })
-   createDialogVisible.value = false
-   showMessage('创建成功', 'success')
+const submitCreateCollection = async () => {
+  if (!createForm.name) return
+  const id = await request.post('/student/collections', { name: createForm.name })
+  createDialogVisible.value = false
+  await loadCollections()
+  const created = collectionList.value.find(i => i.id === id)
+  if (created) handleSelectCollection(created)
+  showMessage('创建成功', 'success')
+}
+
+const handleEditCollection = (item) => {
+  editForm.id = item.id
+  editForm.name = item.name
+  editDialogVisible.value = true
+}
+
+const submitEditCollection = async () => {
+  if (!editForm.id || !editForm.name) return
+  await updateCollection(editForm.id, { name: editForm.name })
+  editDialogVisible.value = false
+  await loadCollections()
+  const cur = collectionList.value.find(i => i.id === editForm.id)
+  if (cur) handleSelectCollection(cur)
+  showMessage('保存成功', 'success')
 }
 
 const handleDeleteCollection = (item) => {
-   ElMessageBox.confirm(`确定删除题集"${item.name}"吗?`, '提示', { type: 'warning' })
-     .then(() => {
-        collectionList.value = collectionList.value.filter(i => i.id !== item.id)
-        if (currentCollectionId.value === item.id) {
-           currentCollectionId.value = null
-           questionList.value = []
-           if (collectionList.value.length > 0) handleSelectCollection(collectionList.value[0])
-        }
-        showMessage('删除成功', 'success')
-     })
+  ElMessageBox.confirm(`确定删除题集"${item.name}"吗?`, '提示', { type: 'warning' })
+    .then(async () => {
+      await request.delete(`/student/collections/${item.id}`)
+      await loadCollections()
+      const first = collectionList.value[0]
+      if (first) handleSelectCollection(first)
+      showMessage('删除成功', 'success')
+    })
 }
 
 // Detail & Remove Logic
@@ -549,37 +653,60 @@ const handleViewDetail = (row) => {
 }
 
 const handleRemoveQuestion = (row) => {
-    ElMessageBox.confirm('确定将该题移出此合集吗?', '确认移除', { 
-        confirmButtonText: '确定移除',
-        cancelButtonText: '取消',
-        type: 'warning' 
+  ElMessageBox.confirm('确定将该题移出此合集吗?', '确认移除', {
+    confirmButtonText: '确定移除',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+    .then(async () => {
+      await request.delete(`/student/collections/${currentCollectionId.value}/questions/${row.id}`)
+      detailDialogVisible.value = false
+      await loadCollections()
+      await loadQuestions()
+      showMessage('移除成功', 'success')
     })
-      .then(() => {
-         questionList.value = questionList.value.filter(q => q.id !== row.id)
-         const c = collectionList.value.find(i => i.id === currentCollectionId.value)
-         if(c) c.count--
-         detailDialogVisible.value = false
-         showMessage('移除成功', 'success')
-      })
 }
 
 const handleSelectionChange = (val) => {
     selectedRows.value = val
 }
 
+const openBatchAdd = () => {
+  if (selectedRows.value.length === 0) return
+  batchTargetId.value = null
+  batchAddVisible.value = true
+}
+
+const submitBatchAdd = async () => {
+  if (!batchTargetId.value) return
+  batchAddLoading.value = true
+  try {
+    for (const row of selectedRows.value) {
+      await request.post(`/student/collections/${batchTargetId.value}/questions`, { questionId: row.id })
+    }
+    batchAddVisible.value = false
+    selectedRows.value = []
+    showMessage('批量添加成功', 'success')
+  } finally {
+    batchAddLoading.value = false
+  }
+}
+
 const handleBatchDelete = () => {
-    if (selectedRows.value.length === 0) return
-    ElMessageBox.confirm(`确定将选中的 ${selectedRows.value.length} 道题目移出此合集吗?`, '批量移除', {
-        type: 'warning',
-        confirmButtonText: '确定移除'
-    }).then(() => {
-        const ids = selectedRows.value.map(r => r.id)
-        questionList.value = questionList.value.filter(q => !ids.includes(q.id))
-        const c = collectionList.value.find(i => i.id === currentCollectionId.value)
-        if(c) c.count -= ids.length
-        selectedRows.value = []
-        showMessage('批量移除成功', 'success')
-    })
+  if (selectedRows.value.length === 0) return
+  ElMessageBox.confirm(`确定将选中的 ${selectedRows.value.length} 道题目移出此合集吗?`, '批量移除', {
+    type: 'warning',
+    confirmButtonText: '确定移除'
+  }).then(async () => {
+    const ids = selectedRows.value.map(r => r.id)
+    for (const id of ids) {
+      await request.delete(`/student/collections/${currentCollectionId.value}/questions/${id}`)
+    }
+    selectedRows.value = []
+    await loadCollections()
+    await loadQuestions()
+    showMessage('批量移除成功', 'success')
+  })
 }
 
 // Self Test Logic
@@ -595,9 +722,12 @@ const handleStartSelfTest = () => {
 
 const startQuiz = () => {
    const count = testSetupForm.mode === 'all' ? currentCollectionCount.value : testSetupForm.count
-   let questions = [...mockQuestionsData] 
-   
-   quizQuestions.value = questions.slice(0, count).map(q => ({...q})) 
+   let questions = [...questionList.value]
+   if (questions.length === 0) {
+     showMessage('当前列表暂无题目', 'warning')
+     return
+   }
+   quizQuestions.value = questions.slice(0, count).map(q => ({...q}))
    userAnswers.value = {}
    quizQuestions.value.forEach(q => {
       if(q.type === 'multiple_choice') userAnswers.value[q.id] = []
@@ -659,6 +789,8 @@ const calculateResult = () => {
       } else if (q.type === 'multiple_choice') {
          const sortedUser = [...(userAns || [])].sort().join(',')
          isCorrect = sortedUser === q.answer 
+      } else if (q.type === 'fill_blank') {
+         isCorrect = normalizeForCompare(userAns) === normalizeForCompare(q.answer)
       } else {
          isCorrect = !!userAns
       }

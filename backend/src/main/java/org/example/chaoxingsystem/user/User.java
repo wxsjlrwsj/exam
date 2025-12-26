@@ -12,6 +12,7 @@ public class User {
   private String userType;
   private String realName;
   private String avatar;
+  private String bio;
   private LocalDateTime createdAt = LocalDateTime.now();
 
   public Long getId() {
@@ -84,6 +85,14 @@ public class User {
 
   public void setAvatar(String avatar) {
     this.avatar = avatar;
+  }
+  
+  public String getBio() {
+    return bio;
+  }
+  
+  public void setBio(String bio) {
+    this.bio = bio;
   }
 
   public LocalDateTime getCreatedAt() {

@@ -15,4 +15,11 @@
     INSERT INTO biz_student (user_id, student_no, real_name, gender, class_id, major_code, enrollment_year, politics_status)
     VALUES (#{userId}, #{studentNo}, #{realName}, #{gender}, #{classId}, #{majorCode}, #{enrollmentYear}, #{politicsStatus})
   </insert>
+  
+  <select id="selectByUserId" resultType="map">
+    SELECT student_no, class_id
+    FROM biz_student
+    WHERE user_id = #{userId}
+    LIMIT 1
+  </select>
 </mapper>

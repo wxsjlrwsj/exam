@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
   user_type VARCHAR(20) NOT NULL,
   real_name VARCHAR(50) NOT NULL,
   avatar VARCHAR(255),
+  bio TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -380,6 +381,33 @@ CREATE TABLE IF NOT EXISTS biz_error_book_note (
 ) COMMENT='错题笔记表';
 
 -- ==========================================
+-- 第四部分: 学生个性化题集表
+-- ==========================================
+
+-- 学生题集表
+CREATE TABLE IF NOT EXISTS biz_student_collection (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  student_id BIGINT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  is_default TINYINT(1) NOT NULL DEFAULT 0,
+  question_count INT NOT NULL DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_student (student_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生题集表';
+
+-- 题集-题目关联表
+CREATE TABLE IF NOT EXISTS biz_collection_question (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  collection_id BIGINT NOT NULL,
+  question_id BIGINT NOT NULL,
+  add_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_collection_question (collection_id, question_id),
+  INDEX idx_collection (collection_id),
+  INDEX idx_question (question_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题集题目关联表';
+
+-- ==========================================
 -- 第四部分: 扩展考试记录表字段
 -- ==========================================
 
@@ -422,16 +450,22 @@ INSERT IGNORE INTO sys_organization(id,parent_id,name,code,type,sort_order,path,
  (102,@org_se_id,'软工一班','CLS-SE-101','class',1,'/信息学院/软件工程系/软工一班',1,'班主任丙','0571-1000003','班级');
 
 INSERT IGNORE INTO users(username,email,phone,password_hash,user_type,real_name,avatar) VALUES
- ('admin1','admin1@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','admin','管理员一',NULL),
- ('teacher1','teacher1@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','teacher','教师一',NULL),
- ('teacher2','teacher2@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','teacher','教师二',NULL),
- ('teacher3','teacher3@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','teacher','教师三',NULL),
- ('student1','student1@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','学生一',NULL),
- ('student2','student2@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','学生二',NULL),
- ('student3','student3@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','学生三',NULL),
- ('student4','student4@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','学生四',NULL),
- ('test','test@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','测试生',NULL);
+('admin1','admin1@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','admin','管理员一',NULL),
+('teacher1','teacher1@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','teacher','教师一',NULL),
+('teacher2','teacher2@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','teacher','教师二',NULL),
+('teacher3','teacher3@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','teacher','教师三',NULL),
+('student1','student1@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','学生一',NULL),
+('student2','student2@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','学生二',NULL),
+('student3','student3@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','学生三',NULL),
+('student4','student4@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','学生四',NULL),
+('test','test@example.com',NULL,'$2a$10$NmSOuZw1f36ATVUKqTV5f.wVI3DVxqyYJdMQIQsK4CAel6wYslBke','student','测试生',NULL);
 
+INSERT IGNORE INTO biz_student(user_id,student_no,real_name,gender,class_id,major_code,enrollment_year,politics_status) VALUES
+ ((SELECT id FROM users WHERE username='test'),'S2023000','测试生',1,(SELECT id FROM sys_organization WHERE code='CLS-CS-101'),'CS',2023,'群众'),
+ ((SELECT id FROM users WHERE username='student1'),'S2023001','张三',1,(SELECT id FROM sys_organization WHERE code='CLS-CS-102'),'CS',2023,'群众'),
+ ((SELECT id FROM users WHERE username='student2'),'S2023002','李四',1,(SELECT id FROM sys_organization WHERE code='CLS-CS-102'),'CS',2023,'团员'),
+ ((SELECT id FROM users WHERE username='student3'),'S2023003','王五',1,(SELECT id FROM sys_organization WHERE code='CLS-SE-101'),'SE',2022,'群众'),
+ ((SELECT id FROM users WHERE username='student4'),'S2023004','赵六',0,(SELECT id FROM sys_organization WHERE code='CLS-SE-101'),'SE',2022,'团员');
 -- 插入角色数据
 INSERT IGNORE INTO sys_role(role_name,role_key,data_scope,status,remark) VALUES
  ('学生','STUDENT','5',1,'学生角色'),
@@ -469,9 +503,35 @@ VALUES
 (3, 'HTTP属于应用层协议', NULL, JSON_QUOTE('T'), 'HTTP基于TCP的应用层协议', 1, '计算机网络', 'OSI模型', NULL, 1, 1),
 (4, '二分查找的时间复杂度是O(____)', NULL, JSON_ARRAY('log n'), '二分查找每次折半', 2, '数据结构', '查找算法', NULL, 1, 1),
 (4, '快速排序的平均时间复杂度是O(____)', NULL, JSON_ARRAY('n log n'), '平均复杂度O(n log n)', 3, '数据结构', '排序算法', NULL, 1, 1),
-(5, '简述产生死锁的四个必要条件', NULL, JSON_QUOTE('互斥、占有且等待、不可抢占、循环等待'), '典型死锁条件', 4, '操作系统', '进程与死锁', NULL, 1, 1),
-(5, '简述数据库事务的ACID特性', NULL, JSON_QUOTE('原子性、一致性、隔离性、持久性'), '事务四大特性', 3, '数据库原理', '事务管理', NULL, 1, 1),
-(1, 'SQL中用于分组统计的关键字是？', '[{\"key\":\"A\",\"value\":\"WHERE\"},{\"key\":\"B\",\"value\":\"GROUP BY\"},{\"key\":\"C\",\"value\":\"ORDER BY\"},{\"key\":\"D\",\"value\":\"JOIN\"}]', JSON_QUOTE('B'), 'GROUP BY用于分组', 1, '数据库原理', 'SQL基础', NULL, 1, 1);
+ (1, 'Java中int占用几个字节？', '[{"key":"A","value":"2"},{"key":"B","value":"4"}]', JSON_QUOTE('B'), 'Java基本类型int占4字节', 1, 'Java程序设计', '数据类型', NULL, 1, 1),
+ (3, 'List是线程安全吗？', NULL, JSON_QUOTE('F'), 'ArrayList等常用实现非线程安全', 2, 'Java程序设计', '集合框架', NULL, 1, 1),
+ (5, '简述MVC模式', NULL, JSON_QUOTE('Model-View-Controller'), '略', 3, '软件工程', '架构模式', NULL, 1, 1),
+ (2, '以下属于Java集合框架的接口有？', '[{"key":"A","value":"List"},{"key":"B","value":"Map"},{"key":"C","value":"Thread"},{"key":"D","value":"Set"}]', JSON_ARRAY('A','B','D'), 'Thread是类不是集合接口', 2, 'Java程序设计', '集合框架', NULL, 1, 1),
+ (1, '栈的特点是？', '[{"key":"A","value":"先进先出"},{"key":"B","value":"后进先出"}]', JSON_QUOTE('B'), '栈是后进先出', 2, '数据结构', '栈与队列', NULL, 1, 1),
+ (3, '队列是先进先出的数据结构', NULL, JSON_QUOTE('T'), '队列先进先出', 1, '数据结构', '栈与队列', NULL, 1, 1),
+ (5, '简述哈希冲突的常见解决方法', NULL, JSON_QUOTE('开放地址、链地址法等'), '略', 3, '数据结构', '哈希', NULL, 1, 1),
+ (4, '平衡二叉树的定义是____', NULL, JSON_ARRAY('任意节点左右子树高度差不超过1'), '略', 3, '数据结构', '树', NULL, 1, 1),
+ (1, '堆排序的时间复杂度是？', '[{"key":"A","value":"O(n)"},{"key":"B","value":"O(n log n)"}]', JSON_QUOTE('B'), '堆排序复杂度O(n log n)', 2, '数据结构', '排序', NULL, 1, 1),
+ (2, '下列属于图的遍历算法有？', '[{"key":"A","value":"DFS"},{"key":"B","value":"BFS"},{"key":"C","value":"Dijkstra"},{"key":"D","value":"Bellman-Ford"}]', JSON_ARRAY('A','B'), 'DFS与BFS是遍历算法', 2, '数据结构', '图', NULL, 1, 1),
+ (3, '红黑树满足所有节点红黑性质', NULL, JSON_QUOTE('T'), '红黑树性质', 3, '数据结构', '树', NULL, 1, 1);
+-- 以下三行存在部分 MySQL 在不同系统编码下解析异常的问题，移除以避免初始化失败
+-- (5, '简述产生死锁的四个必要条件', NULL, JSON_QUOTE('互斥,占有且等待,不可抢占,循环等待'), '典型死锁条件', 4, '操作系统', '进程与死锁', NULL, 1, 1),
+-- (5, '简述数据库事务的ACID特性', NULL, JSON_QUOTE('原子性,一致性,隔离性,持久性'), '事务四大特性', 3, '数据库原理', '事务管理', NULL, 1, 1),
+-- (1, 'SQL中用于分组统计的关键字是？', '[{\"key\":\"A\",\"value\":\"WHERE\"},{\"key\":\"B\",\"value\":\"GROUP BY\"},{\"key\":\"C\",\"value\":\"ORDER BY\"},{\"key\":\"D\",\"value\":\"JOIN\"}]', JSON_QUOTE('B'), 'GROUP BY用于分组', 1, '数据库原理', 'SQL基础', NULL, 1, 1);
+
+-- 追加练题题库示例数据（覆盖多学科与题型）
+INSERT IGNORE INTO biz_question (type_id, content, options, answer, analysis, difficulty, subject, knowledge_points, file_id, creator_id, status)
+VALUES
+(1, '以下哪个不是SQL聚合函数？', '[{\"key\":\"A\",\"value\":\"COUNT\"},{\"key\":\"B\",\"value\":\"SUM\"},{\"key\":\"C\",\"value\":\"AVG\"},{\"key\":\"D\",\"value\":\"SELECT\"}]', JSON_QUOTE('D'), 'SELECT是查询关键字，不是聚合函数', 1, '数据库原理', 'SQL函数', NULL, 1, 1),
+(2, '以下哪些属于常见进程调度算法？', '[{\"key\":\"A\",\"value\":\"先来先服务(FCFS)\"},{\"key\":\"B\",\"value\":\"最短作业优先(SJF)\"},{\"key\":\"C\",\"value\":\"时间片轮转(RR)\"},{\"key\":\"D\",\"value\":\"最近最久未使用(LRU)\"}]', JSON_ARRAY('A','B','C'), 'LRU是页面置换算法，非调度算法', 2, '操作系统', '进程调度', NULL, 1, 1),
+(3, 'DNS查询通常使用UDP协议', NULL, JSON_QUOTE('T'), '大多数情况下DNS使用UDP，区域传送使用TCP', 1, '计算机网络', '应用层协议', NULL, 1, 1),
+(4, '哈希表的平均查找时间复杂度为O(____)', NULL, JSON_ARRAY('1'), '理想情况下平均为常数时间', 2, '数据结构', '哈希表', NULL, 1, 1),
+(5, '简述进程与线程的区别', NULL, JSON_QUOTE('进程是资源分配单位，线程是CPU调度单位；进程间相互独立，线程共享进程资源'), '核心区别在于资源与调度', 3, '操作系统', '进程与线程', NULL, 1, 1),
+(1, 'Java中所有异常的顶层父类是？', '[{\"key\":\"A\",\"value\":\"Exception\"},{\"key\":\"B\",\"value\":\"Error\"},{\"key\":\"C\",\"value\":\"Throwable\"},{\"key\":\"D\",\"value\":\"RuntimeException\"}]', JSON_QUOTE('C'), 'Throwable是异常的根类', 2, 'Java', '异常体系', NULL, 1, 1),
+(2, 'HTTP/2的特性包含哪些？', '[{\"key\":\"A\",\"value\":\"多路复用\"},{\"key\":\"B\",\"value\":\"服务端推送\"},{\"key\":\"C\",\"value\":\"二进制分帧\"},{\"key\":\"D\",\"value\":\"基于UDP传输\"}]', JSON_ARRAY('A','B','C'), 'HTTP/2仍基于TCP，不是UDP', 2, '计算机网络', 'HTTP/2', NULL, 1, 1),
+(3, '进程和线程是同一概念', NULL, JSON_QUOTE('F'), '两者不是同一概念', 1, '操作系统', '基础概念', NULL, 1, 1),
+(4, 'SQL中用于计数的函数是(____)', NULL, JSON_ARRAY('COUNT'), 'COUNT用于计数', 1, '数据库原理', 'SQL函数', NULL, 1, 1),
+(5, '简述索引的作用与影响', NULL, JSON_QUOTE('索引可提升查询性能，但会增加写入成本与存储开销'), '概念性说明', 2, '数据库原理', '索引', NULL, 1, 1);
 
 INSERT IGNORE INTO biz_question(type_id,content,options,answer,analysis,difficulty,subject,knowledge_points,file_id,creator_id,status,create_time)
 VALUES (
@@ -587,6 +647,93 @@ WHERE e.name IN (
 '人工智能基础课程期末统一考试（2026春季）',
 '分布式系统原理课程期末统一考试（2025秋季）'
 );
+
+-- 新增试卷（用于进行中考试）
+INSERT IGNORE INTO biz_paper (name, subject, total_score, pass_score, status, creator_id)
+VALUES
+('数据结构阶段性测验E','数据结构',100,60,1,(SELECT id FROM users WHERE username='teacher1')),
+('Java语言程序设计阶段性测验F','Java程序设计',100,60,1,(SELECT id FROM users WHERE username='teacher2'));
+
+-- 试卷题目关联（E）
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='数据结构阶段性测验E'), q.id, 20, 1
+ FROM (SELECT id FROM biz_question WHERE type_id=1 ORDER BY id LIMIT 1) q;
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='数据结构阶段性测验E'), q.id, 20, 2
+ FROM (SELECT id FROM biz_question WHERE type_id=2 ORDER BY id LIMIT 1) q;
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='数据结构阶段性测验E'), q.id, 20, 3
+ FROM (SELECT id FROM biz_question WHERE type_id=3 ORDER BY id LIMIT 1) q;
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='数据结构阶段性测验E'), q.id, 20, 4
+ FROM (SELECT id FROM biz_question WHERE type_id=4 ORDER BY id LIMIT 1) q;
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='数据结构阶段性测验E'), q.id, 20, 5
+ FROM (SELECT id FROM biz_question WHERE type_id=5 ORDER BY id LIMIT 1) q;
+
+-- 试卷题目关联（F）
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='Java语言程序设计阶段性测验F'), q.id, 20, 1
+ FROM (SELECT id FROM biz_question WHERE type_id=1 AND subject='Java' ORDER BY id LIMIT 1) q;
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='Java语言程序设计阶段性测验F'), q.id, 20, 2
+ FROM (SELECT id FROM biz_question WHERE type_id=2 AND subject='Java' ORDER BY id LIMIT 1) q;
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='Java语言程序设计阶段性测验F'), q.id, 20, 3
+ FROM (SELECT id FROM biz_question WHERE type_id=3 ORDER BY id LIMIT 1) q;
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='Java语言程序设计阶段性测验F'), q.id, 20, 4
+ FROM (SELECT id FROM biz_question WHERE type_id=4 ORDER BY id LIMIT 1) q;
+INSERT IGNORE INTO biz_paper_question(paper_id,question_id,score,sort_order)
+ SELECT (SELECT id FROM biz_paper WHERE name='Java语言程序设计阶段性测验F'), q.id, 20, 5
+ FROM (SELECT id FROM biz_question WHERE type_id=5 ORDER BY id LIMIT 1) q;
+
+-- 新增进行中考试（确保当前时间在开始与结束之间）
+INSERT IGNORE INTO biz_exam (name, paper_id, start_time, end_time, duration, status, creator_id)
+VALUES
+('数据结构阶段性测验（第十四周）',
+ (SELECT id FROM biz_paper WHERE name='数据结构阶段性测验E'),
+ '2025-12-25 08:00:00','2025-12-29 20:00:00',90,1,(SELECT id FROM users WHERE username='teacher1')),
+('Java语言程序设计阶段性测验（第十二周）',
+ (SELECT id FROM biz_paper WHERE name='Java语言程序设计阶段性测验F'),
+ '2025-12-25 08:00:00','2025-12-31 20:00:00',120,1,(SELECT id FROM users WHERE username='teacher2'));
+
+-- 分配学生到新考试
+INSERT IGNORE INTO biz_exam_student (exam_id, user_id)
+SELECT e.id, (SELECT id FROM users WHERE username='student1')
+FROM biz_exam e
+WHERE e.name IN (
+'数据结构阶段性测验（第十四周）',
+'Java语言程序设计阶段性测验（第十二周）'
+);
+INSERT IGNORE INTO biz_exam_student (exam_id, user_id)
+SELECT e.id, (SELECT id FROM users WHERE username='student2')
+FROM biz_exam e
+WHERE e.name IN (
+'数据结构阶段性测验（第十四周）',
+'Java语言程序设计阶段性测验（第十二周）'
+);
+
+-- 个性化题集初始数据（基于前端占位）
+SET @student1_id = (SELECT id FROM users WHERE username='student1');
+INSERT IGNORE INTO biz_student_collection (student_id, name, description, is_default, question_count)
+VALUES
+(@student1_id, '我的错题集', '系统自动创建的错题集', 1, 12),
+(@student1_id, 'Java重点复习', NULL, 0, 5),
+(@student1_id, '数据结构收藏', NULL, 0, 8);
+
+SET @col_default = (SELECT id FROM biz_student_collection WHERE student_id=@student1_id AND name='我的错题集');
+SET @col_java = (SELECT id FROM biz_student_collection WHERE student_id=@student1_id AND name='Java重点复习');
+SET @col_ds = (SELECT id FROM biz_student_collection WHERE student_id=@student1_id AND name='数据结构收藏');
+
+INSERT IGNORE INTO biz_collection_question (collection_id, question_id)
+SELECT @col_default, q.id FROM (SELECT id FROM biz_question ORDER BY id LIMIT 12) q;
+
+INSERT IGNORE INTO biz_collection_question (collection_id, question_id)
+SELECT @col_java, q.id FROM (SELECT id FROM biz_question WHERE subject LIKE 'Java%' ORDER BY id LIMIT 5) q;
+
+INSERT IGNORE INTO biz_collection_question (collection_id, question_id)
+SELECT @col_ds, q.id FROM (SELECT id FROM biz_question WHERE subject='数据结构' ORDER BY id LIMIT 8) q;
 
 -- 完成
 SELECT '数据库初始化完成！' AS message;

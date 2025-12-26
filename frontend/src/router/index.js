@@ -8,6 +8,12 @@ const router = createRouter({
       redirect: '/login'
     },
     {
+      path: '/take-exam/:examId',
+      name: 'TakeExam',
+      component: () => import('../views/exam/TakeExam.vue'),
+      meta: { title: '参加考试', roles: ['student'] }
+    },
+    {
       path: '/login',
       name: 'Login',
       component: () => import('../views/Login.vue'),

@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS biz_student_collection (
   id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '题集ID',
   student_id BIGINT NOT NULL COMMENT '学生ID',
   name VARCHAR(100) NOT NULL COMMENT '题集名称',
-  description VARCHAR(500) COMMENT '题集描述',
   is_default TINYINT(1) DEFAULT 0 COMMENT '是否默认题集(错题本)',
   question_count INT DEFAULT 0 COMMENT '题目数量',
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -138,8 +137,8 @@ CREATE TABLE IF NOT EXISTS biz_face_verification (
 -- ============================================
 
 -- 为测试学生创建默认题集（假设student_id=1存在）
-INSERT INTO biz_student_collection (student_id, name, description, is_default, question_count) 
-SELECT 1, '我的错题集', '系统自动创建的错题集', 1, 0
+INSERT INTO biz_student_collection (student_id, name, is_default, question_count) 
+SELECT 1, '我的错题集', 1, 0
 WHERE NOT EXISTS (
     SELECT 1 FROM biz_student_collection WHERE student_id = 1 AND is_default = 1
 );
@@ -165,4 +164,9 @@ AND TABLE_NAME IN (
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ============================================
+-- 11. 为用户表新增个人简介字段（bio）
+-- ============================================
+ALTER TABLE users ADD COLUMN bio TEXT;
 

@@ -7,9 +7,10 @@
     SELECT COUNT(*)
     FROM biz_collection_question cq
     LEFT JOIN biz_question q ON cq.question_id = q.id
+    LEFT JOIN biz_question_type t ON q.type_id = t.type_id
     WHERE cq.collection_id = #{collectionId}
     <if test="type != null and type != ''">
-      AND q.type = #{type}
+      AND t.type_code = #{type}
     </if>
     <if test="subject != null and subject != ''">
       AND q.subject LIKE CONCAT('%', #{subject}, '%')
@@ -17,13 +18,14 @@
   </select>
 
   <select id="selectQuestionsByCollection" resultType="map">
-    SELECT q.id, q.type, q.content, q.options, q.answer, q.analysis, 
-           q.difficulty, q.subject, q.score, cq.add_time as addTime
+    SELECT q.id, t.type_code AS type_code, q.content, q.options, q.answer, q.analysis,
+           q.difficulty, q.subject, cq.add_time as addTime
     FROM biz_collection_question cq
     LEFT JOIN biz_question q ON cq.question_id = q.id
+    LEFT JOIN biz_question_type t ON q.type_id = t.type_id
     WHERE cq.collection_id = #{collectionId}
     <if test="type != null and type != ''">
-      AND q.type = #{type}
+      AND t.type_code = #{type}
     </if>
     <if test="subject != null and subject != ''">
       AND q.subject LIKE CONCAT('%', #{subject}, '%')
