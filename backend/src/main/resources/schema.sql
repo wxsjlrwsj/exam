@@ -159,8 +159,8 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     type_id TINYINT NOT NULL,
     content TEXT NOT NULL,
-    options CLOB NULL,
-    answer CLOB NOT NULL,
+    options JSON NULL,
+    answer JSON NOT NULL,
     analysis TEXT NULL,
     difficulty TINYINT NOT NULL,
     subject VARCHAR(50) NOT NULL,
@@ -215,7 +215,11 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     score INT NULL,
     status TINYINT NOT NULL DEFAULT 0,
     start_time DATETIME NULL,
-    submit_time DATETIME NULL
+    submit_time DATETIME NULL,
+    progress INT DEFAULT 0,
+    switch_count INT DEFAULT 0,
+    last_active_time DATETIME NULL,
+    ip_address VARCHAR(50) NULL
   );
 
   -- 答题明细
@@ -249,4 +253,55 @@ CREATE TABLE IF NOT EXISTS sys_oper_log (
     event_data TEXT,
     severity VARCHAR(20),
     event_time DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  
+  -- 科目表
+  CREATE TABLE IF NOT EXISTS biz_subject (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) UNIQUE,
+    description TEXT,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  
+  -- 班级表
+  CREATE TABLE IF NOT EXISTS biz_class (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    class_name VARCHAR(100) NOT NULL,
+    class_code VARCHAR(50),
+    grade VARCHAR(10),
+    major VARCHAR(100),
+    advisor_id BIGINT,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  
+  -- 班级学生关联
+  CREATE TABLE IF NOT EXISTS biz_class_student (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    class_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    join_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_class_user (class_id, user_id)
+  );
+  
+  -- 监考警告记录
+  CREATE TABLE IF NOT EXISTS biz_monitor_warning (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    exam_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    message TEXT,
+    type VARCHAR(50),
+    teacher_id BIGINT,
+    send_time DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  
+  -- 成绩调整记录
+  CREATE TABLE IF NOT EXISTS biz_score_adjustment (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    score_id BIGINT NOT NULL,
+    original_score INT,
+    new_score INT,
+    reason TEXT,
+    adjuster_id BIGINT,
+    adjust_time DATETIME DEFAULT CURRENT_TIMESTAMP
   );

@@ -278,13 +278,13 @@ const getTypeTagEffect = (type) => {
     return 'light'
 }
 
-const parseOptions = (jsonStr) => {
-   if (!jsonStr) return []
-   try {
-      return JSON.parse(jsonStr)
-   } catch (e) {
-      return []
+const parseOptions = (v) => {
+   if (!v) return []
+   if (Array.isArray(v)) return v
+   if (typeof v === 'string') {
+      try { return JSON.parse(v) } catch (e) { return [] }
    }
+   return []
 }
 
 const formatAnswer = (q) => {

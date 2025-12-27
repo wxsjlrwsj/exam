@@ -17,6 +17,17 @@ INSERT IGNORE INTO system_modules(name,code,category,version,enabled,show_in_men
  ('考试管理','tch_exam','teacher','1.0',1,1,'/exams','TEACHER,ADMIN','', '发布考试与监考'),
  ('成绩管理','tch_score','teacher','1.0',1,1,'/scores','TEACHER,ADMIN','', '阅卷与统计');
 
+-- 科目字典 8 条
+INSERT IGNORE INTO biz_subject (name, code, description) VALUES
+('Java程序设计', 'java', 'Java编程语言基础与应用'),
+('数据结构', 'ds', '数据结构与算法'),
+('计算机网络', 'network', '计算机网络原理'),
+('操作系统', 'os', '操作系统原理与设计'),
+('数据库原理', 'database', '数据库系统原理'),
+('软件工程', 'se', '软件工程方法与实践'),
+('计算机组成原理', 'computer_org', '计算机硬件系统'),
+('编译原理', 'compiler', '编译原理与技术');
+
 -- 组织 5 条
 INSERT IGNORE INTO sys_organization(parent_id,name,code,type,sort_order,path,status,leader,phone,description) VALUES
 (NULL,'信息学院','ORG-INFO','dept',1,'/信息学院',1,'张主任','0571-0000001','学院'),
@@ -32,6 +43,14 @@ INSERT IGNORE INTO sys_organization(id,parent_id,name,code,type,sort_order,path,
  (100,@org_cs_id,'计科一班','CLS-CS-101','class',1,'/信息学院/计算机系/计科一班',1,'班主任甲','0571-1000001','班级'),
  (101,@org_cs_id,'计科二班','CLS-CS-102','class',2,'/信息学院/计算机系/计科二班',1,'班主任乙','0571-1000002','班级'),
  (102,@org_se_id,'软工一班','CLS-SE-101','class',1,'/信息学院/软件工程系/软工一班',1,'班主任丙','0571-1000003','班级');
+
+-- 班级表 5 条（用于教师端班级选择）
+INSERT IGNORE INTO biz_class (class_name, class_code, grade, major) VALUES
+('计算机科学与技术1班', 'cs1', '2021', '计算机科学与技术'),
+('计算机科学与技术2班', 'cs2', '2021', '计算机科学与技术'),
+('软件工程1班', 'se1', '2021', '软件工程'),
+('软件工程2班', 'se2', '2021', '软件工程'),
+('网络工程1班', 'ne1', '2021', '网络工程');
 
 -- 初始化基础用户（仅当不存在时插入），供档案引用
 INSERT IGNORE INTO users(username,email,phone,password_hash,user_type,real_name,avatar) VALUES

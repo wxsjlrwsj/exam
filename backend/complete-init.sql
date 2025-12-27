@@ -83,16 +83,15 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
 -- 权限菜单表
 CREATE TABLE IF NOT EXISTS sys_menu (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  parent_id BIGINT,
-  menu_name VARCHAR(50) NOT NULL,
-  menu_type VARCHAR(10),
-  path VARCHAR(100),
-  component VARCHAR(100),
+  parent_id BIGINT NOT NULL DEFAULT 0,
+  name VARCHAR(50) NOT NULL,
+  type CHAR(1) NOT NULL,
   perms VARCHAR(100),
-  visible INT DEFAULT 1,
-  sort_order INT,
-  icon VARCHAR(50),
-  create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+  path VARCHAR(200),
+  component VARCHAR(200),
+  icon VARCHAR(100),
+  sort_order INT NOT NULL DEFAULT 1,
+  visible TINYINT NOT NULL DEFAULT 1
 );
 
 -- 教师档案表
@@ -171,14 +170,12 @@ CREATE TABLE IF NOT EXISTS biz_paper (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(100) NOT NULL,
   subject VARCHAR(50) NOT NULL,
-  description TEXT,
-  creator_id BIGINT NOT NULL,
-  total_score DECIMAL(5,2) NOT NULL,
-  pass_score DECIMAL(5,2),
-  difficulty_level TINYINT,
+  total_score INT NOT NULL DEFAULT 0,
+  pass_score INT NOT NULL DEFAULT 60,
+  question_count INT NOT NULL DEFAULT 0,
   status TINYINT NOT NULL DEFAULT 0,
-  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  creator_id BIGINT NOT NULL,
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 试卷-题目关联表
@@ -186,7 +183,7 @@ CREATE TABLE IF NOT EXISTS biz_paper_question (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   paper_id BIGINT NOT NULL,
   question_id BIGINT NOT NULL,
-  score DECIMAL(5,2) NOT NULL,
+  score INT NOT NULL,
   sort_order INT NOT NULL DEFAULT 0
 );
 
@@ -216,7 +213,7 @@ CREATE TABLE IF NOT EXISTS biz_exam_record (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   exam_id BIGINT NOT NULL,
   student_id BIGINT NOT NULL,
-  score DECIMAL(5,2),
+  score INT,
   status TINYINT NOT NULL DEFAULT 0,
   start_time DATETIME,
   submit_time DATETIME,
@@ -716,11 +713,11 @@ WHERE e.name IN (
 
 -- 个性化题集初始数据（基于前端占位）
 SET @student1_id = (SELECT id FROM users WHERE username='student1');
-INSERT IGNORE INTO biz_student_collection (student_id, name, description, is_default, question_count)
+INSERT IGNORE INTO biz_student_collection (student_id, name, is_default, question_count)
 VALUES
-(@student1_id, '我的错题集', '系统自动创建的错题集', 1, 12),
-(@student1_id, 'Java重点复习', NULL, 0, 5),
-(@student1_id, '数据结构收藏', NULL, 0, 8);
+(@student1_id, '我的错题集', 1, 12),
+(@student1_id, 'Java重点复习', 0, 5),
+(@student1_id, '数据结构收藏', 0, 8);
 
 SET @col_default = (SELECT id FROM biz_student_collection WHERE student_id=@student1_id AND name='我的错题集');
 SET @col_java = (SELECT id FROM biz_student_collection WHERE student_id=@student1_id AND name='Java重点复习');

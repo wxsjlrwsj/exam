@@ -153,7 +153,7 @@
              <el-divider border-style="dashed" />
              
              <div class="q-answer-section">
-                <p><strong>参考答案：</strong><span class="text-success">{{ currentQuestion.answer }}</span></p>
+                <p><strong>参考答案：</strong><span class="text-success">{{ normalizeAnswer(currentQuestion.answer) }}</span></p>
                 <div class="analysis-box">
                    <strong>解析：</strong>
                    <p>{{ currentQuestion.analysis || '暂无解析' }}</p>
@@ -513,13 +513,13 @@ const getQuestionTypeLabel = (type) => {
   return t ? t.label : type
 }
 
-const parseOptions = (jsonStr) => {
-   if (!jsonStr) return []
-   try {
-      return JSON.parse(jsonStr)
-   } catch (e) {
-      return []
+const parseOptions = (v) => {
+   if (!v) return []
+   if (Array.isArray(v)) return v
+   if (typeof v === 'string') {
+      try { return JSON.parse(v) } catch (e) { return [] }
    }
+   return []
 }
 
 const formatAnswer = (ans) => {
