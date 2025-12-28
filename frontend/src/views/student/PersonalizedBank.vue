@@ -684,6 +684,7 @@ const submitBatchAdd = async () => {
     for (const row of selectedRows.value) {
       await request.post(`/student/collections/${batchTargetId.value}/questions`, { questionId: row.id })
     }
+    await loadCollections()
     batchAddVisible.value = false
     selectedRows.value = []
     showMessage('批量添加成功', 'success')
