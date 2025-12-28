@@ -45,6 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
           UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
             data.getUsername(), null, Collections.singletonList(new SimpleGrantedAuthority(role))
           );
+          authentication.setDetails(data);
           SecurityContextHolder.getContext().setAuthentication(authentication);
         } else {
           log.warn("JWT 解析失败或签名不匹配，path={}, token={}", request.getRequestURI(), token);

@@ -14,6 +14,13 @@
     SELECT * FROM biz_subject ORDER BY name
   </select>
 
+  <select id="selectByTeacherId" resultMap="SubjectMap">
+    SELECT s.* FROM biz_subject s
+    JOIN biz_teacher_subject ts ON s.id = ts.subject_id
+    WHERE ts.teacher_id = #{teacherId}
+    ORDER BY s.name
+  </select>
+
   <select id="selectById" resultMap="SubjectMap">
     SELECT * FROM biz_subject WHERE id = #{id}
   </select>

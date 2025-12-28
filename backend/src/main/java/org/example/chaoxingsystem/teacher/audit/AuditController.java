@@ -36,12 +36,13 @@ public class AuditController {
     @RequestParam(value = "pageNum", defaultValue = "1") int pageNum,
     @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
     @RequestParam(value = "status", required = false) Integer status,
+    @RequestParam(value = "subjectId", required = false) Long subjectId,
     @RequestParam(value = "submitterName", required = false) String submitterName,
     @RequestParam(value = "beginTime", required = false) String beginTime,
     @RequestParam(value = "endTime", required = false) String endTime
   ) {
-    long total = service.count(status, submitterName, beginTime, endTime);
-    List<QuestionAuditListRow> list = service.page(status, submitterName, beginTime, endTime, pageNum, pageSize);
+    long total = service.count(status, subjectId, submitterName, beginTime, endTime);
+    List<QuestionAuditListRow> list = service.page(status, subjectId, submitterName, beginTime, endTime, pageNum, pageSize);
     HashMap<String, Object> data = new HashMap<>();
     data.put("list", list);
     data.put("total", total);

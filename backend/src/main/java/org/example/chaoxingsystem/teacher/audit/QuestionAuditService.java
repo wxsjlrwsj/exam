@@ -16,13 +16,13 @@ public class QuestionAuditService {
     this.mapper = mapper;
   }
 
-  public long count(Integer status, String submitterName, String beginTime, String endTime) {
-    return mapper.count(status, submitterName, beginTime, endTime);
+  public long count(Integer status, Long subjectId, String submitterName, String beginTime, String endTime) {
+    return mapper.count(status, subjectId, submitterName, beginTime, endTime);
   }
 
-  public List<QuestionAuditListRow> page(Integer status, String submitterName, String beginTime, String endTime, int pageNum, int pageSize) {
+  public List<QuestionAuditListRow> page(Integer status, Long subjectId, String submitterName, String beginTime, String endTime, int pageNum, int pageSize) {
     int offset = (Math.max(pageNum, 1) - 1) * Math.max(pageSize, 1);
-    return mapper.selectPage(status, submitterName, beginTime, endTime, offset, pageSize);
+    return mapper.selectPage(status, subjectId, submitterName, beginTime, endTime, offset, pageSize);
   }
 
   public QuestionAuditDetail detail(Long id) {

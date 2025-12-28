@@ -12,6 +12,7 @@
     <result property="difficulty" column="difficulty"/>
     <result property="subjectId" column="subject_id"/>
     <result property="status" column="status"/>
+    <result property="content" column="content"/>
   </resultMap>
 
   <resultMap id="DetailMap" type="org.example.chaoxingsystem.teacher.audit.QuestionAuditDetail">
@@ -38,6 +39,7 @@
     LEFT JOIN users su ON su.id = a.submitter_id
     <where>
       <if test="status != null">AND a.status = #{status}</if>
+      <if test="subjectId != null">AND a.subject_id = #{subjectId}</if>
       <if test="submitterName != null and submitterName != ''">AND su.real_name LIKE CONCAT('%', #{submitterName}, '%')</if>
       <if test="beginTime != null and beginTime != ''">AND a.submit_time &gt;= #{beginTime}</if>
       <if test="endTime != null and endTime != ''">AND a.submit_time &lt;= #{endTime}</if>
@@ -45,12 +47,13 @@
   </select>
 
   <select id="selectPage" resultMap="ListRowMap">
-    SELECT a.id, a.submitter_id, su.real_name AS submitter_name, a.submit_time, a.type_id, qt.type_code, a.difficulty, a.subject_id, a.status
+    SELECT a.id, a.submitter_id, su.real_name AS submitter_name, a.submit_time, a.type_id, qt.type_code, a.difficulty, a.subject_id, a.status, a.content
     FROM biz_question_audit a
     LEFT JOIN users su ON su.id = a.submitter_id
     LEFT JOIN biz_question_type qt ON qt.type_id = a.type_id
     <where>
       <if test="status != null">AND a.status = #{status}</if>
+      <if test="subjectId != null">AND a.subject_id = #{subjectId}</if>
       <if test="submitterName != null and submitterName != ''">AND su.real_name LIKE CONCAT('%', #{submitterName}, '%')</if>
       <if test="beginTime != null and beginTime != ''">AND a.submit_time &gt;= #{beginTime}</if>
       <if test="endTime != null and endTime != ''">AND a.submit_time &lt;= #{endTime}</if>

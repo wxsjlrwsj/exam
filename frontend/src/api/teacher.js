@@ -1,5 +1,12 @@
 import request from '@/utils/request'
 
+export function getSubjects() {
+  return request({
+    url: '/subjects',
+    method: 'get'
+  })
+}
+
 // Question Bank
 export function getQuestions(params) {
   return request({
@@ -46,6 +53,14 @@ export function auditQuestion(id, data) {
     url: `/questions/${id}/audit`,
     method: 'post',
     data
+  })
+}
+
+export function getAuditQuestions(params) {
+  return request({
+    url: '/audit/question/list',
+    method: 'get',
+    params
   })
 }
 

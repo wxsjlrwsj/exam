@@ -16,6 +16,10 @@ public class SubjectService {
     return mapper.selectAll();
   }
 
+  public List<Subject> listByTeacherId(Long teacherId) {
+    return mapper.selectByTeacherId(teacherId);
+  }
+
   public Subject getById(Long id) {
     return mapper.selectById(id);
   }

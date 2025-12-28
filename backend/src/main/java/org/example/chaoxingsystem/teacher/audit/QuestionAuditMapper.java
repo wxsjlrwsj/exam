@@ -6,6 +6,7 @@ import java.util.List;
 public interface QuestionAuditMapper {
   long count(
     @Param("status") Integer status,
+    @Param("subjectId") Long subjectId,
     @Param("submitterName") String submitterName,
     @Param("beginTime") String beginTime,
     @Param("endTime") String endTime
@@ -13,6 +14,7 @@ public interface QuestionAuditMapper {
 
   List<QuestionAuditListRow> selectPage(
     @Param("status") Integer status,
+    @Param("subjectId") Long subjectId,
     @Param("submitterName") String submitterName,
     @Param("beginTime") String beginTime,
     @Param("endTime") String endTime,

@@ -12,6 +12,7 @@ public class QuestionAuditListRow {
   private Integer difficulty;
   private Long subjectId;
   private Integer status;
+  private String content;
 
   public Long getId() { return id; }
   public void setId(Long id) { this.id = id; }
@@ -31,4 +32,6 @@ public class QuestionAuditListRow {
   public void setSubjectId(Long subjectId) { this.subjectId = subjectId; }
   public Integer getStatus() { return status; }
   public void setStatus(Integer status) { this.status = status; }
+  public String getContent() { return content; }
+  public void setContent(String content) { this.content = content; }
 }

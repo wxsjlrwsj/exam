@@ -6,8 +6,31 @@
         <el-icon><Plus /></el-icon>添加题目
       </el-button>
     </div>
+    
+    <div class="layout-container" style="display: flex; gap: 20px;">
+       <div class="sidebar" style="width: 240px; flex-shrink: 0;">
+        <el-card class="box-card" shadow="never" :body-style="{ padding: '0' }">
+            <template #header>
+              <div class="card-header">
+                <span>所授学科</span>
+              </div>
+            </template>
+            <el-menu
+              :default-active="activeSubject"
+              class="subject-menu"
+              @select="handleSubjectSelect"
+              style="border-right: none;"
+            >
+              <el-menu-item v-for="item in subjectList" :key="item.name" :index="item.name">
+                <el-icon><Document /></el-icon>
+                <span>{{ item.name }}</span>
+              </el-menu-item>
+            </el-menu>
+          </el-card>
+      </div>
 
-    <el-tabs v-model="activeTab" class="demo-tabs" @tab-change="handleTabChange">
+      <div class="main-content" style="flex: 1; min-width: 0;">
+        <el-tabs v-model="activeTab" class="demo-tabs" @tab-change="handleTabChange">
       <el-tab-pane label="题目列表" name="list">
         <el-card class="filter-card">
           <el-form :inline="true" :model="filterForm" class="filter-form">
@@ -68,14 +91,14 @@
           </template>
          <el-table v-loading="loading" :data="auditList" border style="width: 100%">
           <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="type" label="题型" width="120">
+          <el-table-column prop="typeCode" label="题型" width="120">
             <template #default="scope">
-              {{ getQuestionTypeLabel(scope.row.type) }}
+              {{ getQuestionTypeLabel(scope.row.typeCode || scope.row.type) }}
             </template>
           </el-table-column>
           <el-table-column prop="content" label="题目内容" show-overflow-tooltip />
-          <el-table-column prop="uploader" label="上传学生" width="120" />
-          <el-table-column prop="createTime" label="上传时间" width="180" />
+          <el-table-column prop="submitterName" label="上传学生" width="120" />
+          <el-table-column prop="submitTime" label="上传时间" width="180" />
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="scope">
               <el-button link type="success" @click="handleApprove(scope.row)">通过</el-button>
@@ -98,6 +121,8 @@
         @current-change="handleCurrentChange"
       />
     </div>
+    </div>
+    </div>
 
     <!-- Add/Edit Dialog -->
     <QuestionFormDialog
@@ -105,6 +130,7 @@
       :mode="dialogType"
       :initial-data="currentQuestionData"
       :submitting="submitting"
+      :subjects="subjectList"
       @submit="handleQuestionSubmit"
     />
     
@@ -137,9 +163,9 @@
 
 <script setup>
 import { ref, reactive, onMounted, inject, computed } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Document, Menu } from '@element-plus/icons-vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
-import { getQuestions, createQuestion, updateQuestion, deleteQuestion, auditQuestion } from '@/api/teacher'
+import { getQuestions, createQuestion, updateQuestion, deleteQuestion, auditQuestion, getSubjects, getAuditQuestions } from '@/api/teacher'
 import { filterValidQuestions } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage')
@@ -154,6 +180,9 @@ const questionList = ref([])
 const auditList = ref([])
 const activeTab = ref('list')
 const auditCount = ref(0)
+const subjectList = ref([])
+const activeSubject = ref('')
+const activeSubjectId = ref(null)
 
 const dialogVisible = ref(false)
 const previewVisible = ref(false)
@@ -172,8 +201,38 @@ const questionTypes = [
 
 const filterForm = reactive({
   type: '',
-  keyword: ''
+  keyword: '',
+  subject: ''
 })
+
+const loadSubjects = async () => {
+  try {
+    const res = await getSubjects()
+    if (res && Array.isArray(res)) {
+      subjectList.value = res
+      // Default select first subject
+      if (!activeSubject.value && res.length > 0) {
+        activeSubject.value = res[0].name
+        filterForm.subject = res[0].name
+        activeSubjectId.value = res[0].id
+        loadQuestionList()
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load subjects', error)
+  }
+}
+
+const handleSubjectSelect = (index) => {
+  activeSubject.value = index
+  filterForm.subject = index
+  
+  const sub = subjectList.value.find(s => s.name === index)
+  activeSubjectId.value = sub ? sub.id : null
+
+  currentPage.value = 1
+  loadQuestionList()
+}
 
 // 获取题型标签
 const getQuestionTypeLabel = (type) => {
@@ -185,13 +244,12 @@ const getQuestionTypeLabel = (type) => {
 const loadQuestionList = async () => {
   loading.value = true
   try {
-      const params = {
-          page: currentPage.value,
-          size: pageSize.value,
-          ...filterForm
-      }
-      
       if (activeTab.value === 'list') {
+          const params = {
+              page: currentPage.value,
+              size: pageSize.value,
+              ...filterForm
+          }
           params.status = 'approved'
           const res = await getQuestions(params)
           // 过滤掉无效数据
@@ -204,17 +262,16 @@ const loadQuestionList = async () => {
           }
       } else {
           // Audit list
-          params.status = 'pending'
-          const res = await getQuestions(params)
-          // 过滤掉无效数据
-          const validQuestions = filterValidQuestions(res.list || [])
-          auditList.value = validQuestions
+          const params = {
+              pageNum: currentPage.value,
+              pageSize: pageSize.value,
+              status: 0, // Pending
+              subjectId: activeSubjectId.value
+          }
+          const res = await getAuditQuestions(params)
+          auditList.value = res.list || []
           total.value = res.total || 0
           auditCount.value = res.total || 0
-          
-          if (res.list && validQuestions.length < res.list.length) {
-            console.warn(`过滤掉 ${res.list.length - validQuestions.length} 条无效题目数据`)
-          }
       }
   } catch (error) {
       console.error(error)
@@ -257,7 +314,7 @@ const handleSizeChange = () => {
 // 处理添加题目
 const handleAddQuestion = () => {
   dialogType.value = 'add'
-  currentQuestionData.value = {}
+  currentQuestionData.value = { subject: activeSubject.value }
   dialogVisible.value = true
 }
 
@@ -338,6 +395,7 @@ const handleReject = (row) => {
 }
 
 onMounted(() => {
+  loadSubjects()
   loadQuestionList()
 })
 </script>

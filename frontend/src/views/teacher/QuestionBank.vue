@@ -12,7 +12,30 @@
       </div>
     </div>
     
-    <el-card class="filter-card">
+    <div class="layout-container" style="display: flex; gap: 20px;">
+      <div class="sidebar" style="width: 240px; flex-shrink: 0;">
+        <el-card class="box-card" shadow="never" :body-style="{ padding: '0' }">
+            <template #header>
+              <div class="card-header">
+                <span>所授学科</span>
+              </div>
+            </template>
+            <el-menu
+              :default-active="activeSubject"
+              class="subject-menu"
+              @select="handleSubjectSelect"
+              style="border-right: none;"
+            >
+              <el-menu-item v-for="item in subjectList" :key="item.name" :index="item.name">
+                <el-icon><Document /></el-icon>
+                <span>{{ item.name }}</span>
+              </el-menu-item>
+            </el-menu>
+          </el-card>
+      </div>
+      
+      <div class="main-content" style="flex: 1; min-width: 0;">
+        <el-card class="filter-card">
       <el-form :inline="true" :model="filterForm" class="filter-form">
         <el-form-item label="题目类型">
           <el-select v-model="filterForm.type" placeholder="全部题型" clearable style="width: 150px">
@@ -79,6 +102,8 @@
         @current-change="handleCurrentChange"
       />
     </div>
+    </div>
+    </div>
 
     <!-- Add/Edit Dialog using shared component -->
     <QuestionFormDialog
@@ -86,6 +111,7 @@
       :mode="dialogType"
       :initial-data="currentQuestionData"
       :submitting="submitting"
+      :subjects="subjectList"
       @submit="handleQuestionSubmit"
     />
 
@@ -118,9 +144,9 @@
 
 <script setup>
 import { ref, reactive, onMounted, inject } from 'vue'
-import { Plus, Upload, Delete } from '@element-plus/icons-vue'
+import { Plus, Upload, Delete, Document, Collection, Menu } from '@element-plus/icons-vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
-import { getQuestions, createQuestion, updateQuestion, deleteQuestion } from '@/api/teacher'
+import { getQuestions, createQuestion, updateQuestion, deleteQuestion, getSubjects } from '@/api/teacher'
 import { filterValidQuestions } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage')
@@ -132,6 +158,8 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const questionList = ref([])
+const subjectList = ref([])
+const activeSubject = ref('')
 
 const dialogVisible = ref(false)
 const previewVisible = ref(false)
@@ -151,8 +179,35 @@ const questionTypes = [
 const filterForm = reactive({
   type: '',
   difficulty: '',
-  keyword: ''
+  keyword: '',
+  subject: ''
 })
+
+const loadSubjects = async () => {
+  try {
+    const res = await getSubjects()
+    if (res && Array.isArray(res)) {
+      subjectList.value = res
+      // Default select first subject
+      if (res.length > 0 && !activeSubject.value) {
+        activeSubject.value = res[0].name
+        filterForm.subject = res[0].name
+        loadData()
+      }
+    } else {
+      subjectList.value = []
+    }
+  } catch (error) {
+    console.error('Failed to load subjects', error)
+  }
+}
+
+const handleSubjectSelect = (index) => {
+  activeSubject.value = index
+  filterForm.subject = index
+  currentPage.value = 1 // Reset to first page
+  loadData()
+}
 
 const getQuestionTypeLabel = (type) => {
   const found = questionTypes.find(item => item.value === type)
@@ -218,7 +273,7 @@ const resetFilter = () => {
 
 const handleAddQuestion = () => {
   dialogType.value = 'add'
-  currentQuestionData.value = {}
+  currentQuestionData.value = { subject: activeSubject.value }
   dialogVisible.value = true
 }
 
@@ -283,6 +338,7 @@ const handleCurrentChange = (val) => {
 }
 
 onMounted(() => {
+  loadSubjects()
   loadData()
 })
 </script>

@@ -7,6 +7,12 @@
     :close-on-click-modal="false"
   >
     <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
+      <el-form-item label="科目" prop="subject">
+        <el-select v-model="form.subject" placeholder="请选择科目" style="width: 100%" filterable>
+          <el-option v-for="item in subjects" :key="item.id" :label="item.name" :value="item.name" />
+        </el-select>
+      </el-form-item>
+
       <el-form-item label="题型" prop="type">
         <el-select v-model="form.type" placeholder="请选择题型" style="width: 100%" @change="handleTypeChange">
           <el-option v-for="item in questionTypes" :key="item.value" :label="item.label" :value="item.value" />
@@ -83,7 +89,11 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
-  submitting: Boolean
+  submitting: Boolean,
+  subjects: {
+    type: Array,
+    default: () => []
+  }
 })
 
 const emit = defineEmits(['update:visible', 'submit'])
@@ -91,6 +101,7 @@ const emit = defineEmits(['update:visible', 'submit'])
 const formRef = ref(null)
 const form = reactive({
   id: null,
+  subject: '',
   type: 'single_choice',
   difficulty: 3,
   content: '',
@@ -120,6 +131,7 @@ const knowledgePointOptions = [
 ]
 
 const rules = {
+  subject: [{ required: true, message: '请选择科目', trigger: 'change' }],
   type: [{ required: true, message: '请选择题型', trigger: 'change' }],
   content: [{ required: true, message: '请输入题目内容', trigger: 'blur' }],
   answer: [{ required: true, message: '请输入正确答案', trigger: 'blur' }],
@@ -142,6 +154,7 @@ watch(() => props.visible, (val) => {
 const resetForm = () => {
   if (formRef.value) formRef.value.resetFields()
   form.id = null
+  form.subject = ''
   form.type = 'single_choice'
   form.difficulty = 3
   form.content = ''
