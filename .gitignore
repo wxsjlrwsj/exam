@@ -55,3 +55,19 @@ backend/*.war
 # Git无法索引Unix域套接字文件，排除以避免报错
 mysql-data/*.sock
 mysql-data/*.socket
+mysql-data/
+*.ibd
+*.dblwr
+
+### Temporary Files ###
+*.log
+*.tmp
+test_token.txt
+face_photo_base64.txt
+*_backup.vue
+
+### SQL Patches (temporary) ###
+sql_patch_fixed.sql
+update_passwords.sql
+update_student1_photo.sql
+import_face_photo.sql

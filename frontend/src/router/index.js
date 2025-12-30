@@ -100,6 +100,12 @@ const router = createRouter({
           component: () => import('../views/student/UserProfile.vue'),
           meta: { title: '个人空间', roles: ['student'], moduleCode: 'stu_profile' }
         },
+        {
+          path: 'student/face-test',
+          name: 'StudentFaceTest',
+          component: () => import('../views/student/FaceTestPage.vue'),
+          meta: { title: '人脸识别测试', roles: ['student'] }
+        },
         // Teacher Routes
         {
           path: 'teacher/practice',
