@@ -401,29 +401,39 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-container {
+.org-container {
   padding: 20px;
-  height: 100%;
 }
+
 .page-header {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e4e7ed;
 }
+
 .page-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
 }
+
 .main-content {
-  height: calc(100vh - 140px);
+  height: calc(100vh - 160px);
 }
+
 .tree-card, .detail-card {
   height: 100%;
   overflow-y: auto;
 }
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-weight: 600;
 }
+
 .custom-tree-node {
   flex: 1;
   display: flex;
@@ -432,17 +442,20 @@ onMounted(() => {
   font-size: 14px;
   padding-right: 8px;
 }
+
 .node-label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
+
 .empty-tip {
   height: 300px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
+
 .org-form {
   max-width: 600px;
 }

@@ -425,10 +425,15 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #E4E7ED;
 }
 
 .page-title {
-  font-size: 20px;
-  font-weight: bold;
+  margin: 0;
+  font-size: 24px;
+  color: #303133;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  letter-spacing: 1px;
 }
 </style>

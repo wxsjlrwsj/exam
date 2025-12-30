@@ -5,6 +5,10 @@ import 'element-plus/dist/index.css'
 import App from './App.vue'
 import router from './router'
 import './style.css'
+// 开发环境下启用前端Mock（不影响生产环境）
+if (import.meta.env.DEV) {
+  import('./mock')
+}
 
 const app = createApp(App)
 
