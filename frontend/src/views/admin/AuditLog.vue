@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
-    <div class="header">
-      <h2>操作日志</h2>
+    <div class="page-header">
+      <h2 class="page-title">操作日志</h2>
     </div>
 
     <!-- Search Bar -->
@@ -350,39 +350,53 @@ onMounted(() => {
 .page-container {
   padding: 20px;
 }
-.header {
+
+.page-header {
   margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e4e7ed;
 }
-.header h2 {
+
+.page-title {
   margin: 0;
+  font-size: 24px;
+  font-weight: 600;
   color: #303133;
 }
+
 .search-card {
   margin-bottom: 20px;
 }
+
 .table-toolbar {
   margin-bottom: 15px;
 }
+
 .table-card {
   margin-bottom: 20px;
 }
+
 .pagination-container {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
 }
+
 .code-box {
-  background-color: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  background: #f5f7fa;
+  border: 1px solid #dcdfe6;
   border-radius: 4px;
-  padding: 10px;
+  padding: 12px;
   width: 100%;
   max-height: 200px;
   overflow: auto;
-  font-family: monospace;
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
   word-break: break-all;
 }
+
 .error-text {
-    color: #F56C6C;
+  color: #F56C6C;
+  font-weight: 500;
 }
 </style>

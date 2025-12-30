@@ -324,32 +324,40 @@ onMounted(() => {
 .page-container {
   padding: 20px;
 }
+
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e4e7ed;
 }
+
 .page-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
 }
-.filter-card {
-  margin-bottom: 16px;
-}
-.filter-form {
+
+.header-actions {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
 }
+
+.filter-card {
+  margin-bottom: 20px;
+}
+
 .pagination-container {
-  margin-top: 16px;
+  margin-top: 20px;
   display: flex;
   justify-content: flex-end;
 }
+
 .dialog-footer {
   display: inline-flex;
-  gap: 8px;
+  gap: 10px;
 }
 </style>

@@ -147,6 +147,15 @@
               <span>题目审核</span>
               <el-icon v-if="isModuleDisabled('tch_audit')" class="disabled-icon"><CircleClose /></el-icon>
             </el-menu-item>
+            <el-menu-item 
+              index="/dashboard/teacher/course-management"
+              :class="{ 'is-disabled-module': isModuleDisabled('tch_course') }"
+              @click="handleMenuClick($event, 'tch_course')"
+            >
+              <el-icon><School /></el-icon>
+              <span>教学班管理</span>
+              <el-icon v-if="isModuleDisabled('tch_course')" class="disabled-icon"><CircleClose /></el-icon>
+            </el-menu-item>
           </template>
         </el-menu>
       </el-aside>
@@ -196,7 +205,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { 
   Document, Collection, Files, Calendar, Edit, 
   DataAnalysis, PieChart, Setting, Fold, ArrowDown,
-  Menu, OfficeBuilding, Lock, Check, Monitor, EditPen, User, TrendCharts, CircleClose, House
+  Menu, OfficeBuilding, Lock, Check, Monitor, EditPen, User, TrendCharts, CircleClose, House, School
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
@@ -247,17 +256,11 @@ const handleCommand = (command) => {
     localStorage.removeItem('userAvatar')
     router.push('/login')
   } else if (command === 'profile') {
-    if (userType.value === 'student') {
-      router.push({ name: 'StudentProfile', query: { tab: 'basic' } })
-    } else {
-      router.push({ name: 'UserProfile' })
-    }
+    // 所有角色统一跳转到学生端个人空间的基本信息页
+    router.push({ name: 'StudentProfile', query: { tab: 'basic' } })
   } else if (command === 'settings') {
-    if (userType.value === 'student') {
-      router.push({ name: 'StudentProfile', query: { tab: 'security' } })
-    } else {
-      router.push({ name: 'AccountSettings' })
-    }
+    // 所有角色统一跳转到学生端个人空间的账号设置页
+    router.push({ name: 'StudentProfile', query: { tab: 'security' } })
   }
 }
 

@@ -1,12 +1,10 @@
 <template>
   <div class="page-container">
-    <div class="header">
-      <h2>权限管理</h2>
-      <div class="actions">
-        <el-button type="primary" @click="handleAddRole">
-          <el-icon><Plus /></el-icon> 新增角色
-        </el-button>
-      </div>
+    <div class="page-header">
+      <h2 class="page-title">权限管理</h2>
+      <el-button type="primary" @click="handleAddRole">
+        <el-icon><Plus /></el-icon> 新增角色
+      </el-button>
     </div>
 
     <!-- Role List Table -->
@@ -382,25 +380,29 @@ onMounted(() => {
 .page-container {
   padding: 20px;
 }
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+
+.page-header {
   margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e4e7ed;
 }
-.header h2 {
+
+.page-title {
   margin: 0;
+  font-size: 24px;
+  font-weight: 600;
   color: #303133;
 }
+
 .role-list-card {
   margin-bottom: 20px;
 }
+
 .tree-border {
-  margin-top: 5px;
-  border: 1px solid #e5e6e7;
-  background: #ffffff;
+  margin-top: 8px;
+  border: 1px solid #dcdfe6;
   border-radius: 4px;
-  padding: 10px;
+  padding: 12px;
   max-height: 400px;
   overflow-y: auto;
   width: 100%;
