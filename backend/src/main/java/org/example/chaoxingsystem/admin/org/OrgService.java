@@ -48,7 +48,7 @@ public class OrgService {
     if (org.getParentId() != null) {
       Organization parent = mapper.selectById(org.getParentId());
       if (parent == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "父节点不存在");
-      org.setPath(normalizePath(parent.getPath(), parent.getId()));
+      org.setPath(parent.getPath());
     } else {
       org.setPath("/");
     }
@@ -79,7 +79,7 @@ public class OrgService {
     Organization drop = mapper.selectById(dropId);
     if (drag == null || drop == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "节点不存在");
     // 防环：目标不能在拖拽节点的子树中
-    String dragPathPrefix = normalizePath(drag.getPath(), drag.getId());
+    String dragPathPrefix = drag.getPath();
     if (drop.getPath() != null && drop.getPath().startsWith(dragPathPrefix)) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "非法移动：不能移动到自身子孙");
     }
@@ -120,15 +120,18 @@ public class OrgService {
   /** 重建某节点及其子树路径 */
   private void rebuildPath(Long id) {
     Organization node = mapper.selectById(id);
-    String prefix = normalizePath(node.getParentId() == null ? "/" : mapper.selectById(node.getParentId()).getPath(), node.getParentId());
-    node.setPath(normalizePath(prefix, node.getId()));
+    String base = node.getParentId() == null ? "/" : Objects.requireNonNullElse(mapper.selectById(node.getParentId()).getPath(), "/");
+    node.setPath(normalizePath(base, node.getId()));
     mapper.updateById(node);
-    List<Organization> children = mapper.selectSubtree(node.getPath());
-    for (Organization child : children) {
-      if (!child.getId().equals(node.getId())) {
-        String parentPath = mapper.selectById(child.getParentId()).getPath();
-        child.setPath(normalizePath(parentPath, child.getId()));
-        mapper.updateById(child);
+    Deque<Organization> stack = new ArrayDeque<>(mapper.selectChildren(node.getId()));
+    while (!stack.isEmpty()) {
+      Organization child = stack.pop();
+      String parentPath = Objects.requireNonNullElse(mapper.selectById(child.getParentId()).getPath(), "/");
+      child.setPath(normalizePath(parentPath, child.getId()));
+      mapper.updateById(child);
+      List<Organization> grandchildren = mapper.selectChildren(child.getId());
+      if (grandchildren != null && !grandchildren.isEmpty()) {
+        for (Organization g : grandchildren) stack.push(g);
       }
     }
   }
@@ -140,27 +143,45 @@ public class OrgService {
   }
 
   /** 获取机构成员列表（上级包含下级）：
-   *  - class: 返回班级学生
-   *  - 其他类型（包括 department/dept、school、college）：聚合子树中的班级学生与部门教师
+   *  - class: 返回班级学生与班级教师
+   *  - 其他类型（包括 school、college、department/dept）：聚合子树中的班级学生、班级教师，以及学院教师
    */
   public List<Map<String, Object>> getMembers(Long orgId) {
     Organization org = mapper.selectById(orgId);
     if (org == null) return List.of();
     String type = org.getType() == null ? "" : org.getType().toLowerCase();
     if ("class".equals(type)) {
-      return mapper.listStudentMembersByClassIds(List.of(orgId));
+      List<Map<String, Object>> tmp = new ArrayList<>();
+      tmp.addAll(mapper.listStudentMembersByClassIds(List.of(orgId)));
+      tmp.addAll(mapper.listTeacherMembersByClassIds(List.of(orgId)));
+      Map<String, Map<String, Object>> uniq = new LinkedHashMap<>();
+      for (Map<String, Object> r : tmp) {
+        Object uid = r.get("userId");
+        Object ut = r.get("userType");
+        String key = String.valueOf(uid) + "|" + String.valueOf(ut);
+        if (!uniq.containsKey(key)) uniq.put(key, r);
+      }
+      return new ArrayList<>(uniq.values());
     }
     List<Organization> subtree = mapper.selectSubtree(org.getPath());
     List<Long> classIds = new ArrayList<>();
-    List<Long> deptIds = new ArrayList<>();
+    List<Long> collegeIds = new ArrayList<>();
     for (Organization o : subtree) {
       String t = o.getType() == null ? "" : o.getType().toLowerCase();
       if ("class".equals(t)) classIds.add(o.getId());
-      if ("department".equals(t) || "dept".equals(t)) deptIds.add(o.getId());
+      if ("college".equals(t)) collegeIds.add(o.getId());
     }
-    List<Map<String, Object>> result = new ArrayList<>();
-    if (!classIds.isEmpty()) result.addAll(mapper.listStudentMembersByClassIds(classIds));
-    if (!deptIds.isEmpty()) result.addAll(mapper.listTeacherMembersByDeptIds(deptIds));
-    return result;
+    List<Map<String, Object>> tmp = new ArrayList<>();
+    if (!classIds.isEmpty()) tmp.addAll(mapper.listStudentMembersByClassIds(classIds));
+    if (!classIds.isEmpty()) tmp.addAll(mapper.listTeacherMembersByClassIds(classIds));
+    if (!collegeIds.isEmpty()) tmp.addAll(mapper.listTeacherMembersByCollegeIds(collegeIds));
+    Map<String, Map<String, Object>> uniq = new LinkedHashMap<>();
+    for (Map<String, Object> r : tmp) {
+      Object uid = r.get("userId");
+      Object ut = r.get("userType");
+      String key = String.valueOf(uid) + "|" + String.valueOf(ut);
+      if (!uniq.containsKey(key)) uniq.put(key, r);
+    }
+    return new ArrayList<>(uniq.values());
   }
 }

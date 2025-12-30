@@ -80,6 +80,14 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
   UNIQUE KEY uk_user_role (user_id, role_id)
 );
 
+-- 角色-菜单关联表
+CREATE TABLE IF NOT EXISTS sys_role_menu (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  role_id BIGINT NOT NULL,
+  menu_id BIGINT NOT NULL,
+  UNIQUE KEY uk_role_menu (role_id, menu_id)
+);
+
 -- 权限菜单表
 CREATE TABLE IF NOT EXISTS sys_menu (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -432,11 +440,11 @@ INSERT IGNORE INTO system_modules(name,code,category,version,enabled,show_in_men
 
 -- 插入组织架构数据
 INSERT IGNORE INTO sys_organization(parent_id,name,code,type,sort_order,path,status,leader,phone,description) VALUES
-(NULL,'信息学院','ORG-INFO','dept',1,'/信息学院',1,'张主任','0571-0000001','学院'),
-(NULL,'计算机系','ORG-CS','dept',1,'/信息学院/计算机系',1,'李老师','0571-0000002','系'),
-(NULL,'软件工程系','ORG-SE','dept',2,'/信息学院/软件工程系',1,'王老师','0571-0000003','系'),
-(NULL,'机电学院','ORG-MECH','dept',2,'/机电学院',1,'赵主任','0571-0000004','学院'),
-(NULL,'自动化系','ORG-AUTO','dept',1,'/机电学院/自动化系',1,'钱老师','0571-0000005','系');
+(NULL,'信息学院','ORG-INFO','college',1,'/信息学院',1,'张主任','0571-0000001','学院'),
+(NULL,'计算机系','ORG-CS','department',1,'/信息学院/计算机系',1,'李老师','0571-0000002','系'),
+(NULL,'软件工程系','ORG-SE','department',2,'/信息学院/软件工程系',1,'王老师','0571-0000003','系'),
+(NULL,'机电学院','ORG-MECH','college',2,'/机电学院',1,'赵主任','0571-0000004','学院'),
+(NULL,'自动化系','ORG-AUTO','department',1,'/机电学院/自动化系',1,'钱老师','0571-0000005','系');
 
 -- 插入班级数据
 SET @org_cs_id = (SELECT id FROM sys_organization WHERE code='ORG-CS');
@@ -735,4 +743,3 @@ SELECT @col_ds, q.id FROM (SELECT id FROM biz_question WHERE subject='数据结�
 -- 完成
 SELECT '数据库初始化完成！' AS message;
 SELECT '默认密码: 123456' AS info;
-

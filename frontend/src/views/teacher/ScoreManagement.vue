@@ -1,16 +1,13 @@
 <template>
   <div class="score-management-container">
-    <div class="page-header">
-      <h2 class="page-title">成绩管理</h2>
-    </div>
-    
     <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
       <!-- ==================== 1. 阅卷管理 ==================== -->
       <el-tab-pane label="阅卷管理" name="grading">
         <div class="grading-pane">
-          <div class="pane-header">
+          <div class="page-header">
             <div class="header-left" style="display: flex; align-items: center;">
             <el-button v-if="showBackButton" :icon="ArrowLeft" circle @click="goBack" style="margin-right: 15px;" />
+            <h2 class="page-title">阅卷管理</h2>
           </div>
             <div class="header-actions">
               <el-button type="warning" @click="registerScores" v-if="!isGrading && isAllGraded">
@@ -317,6 +314,10 @@
       <!-- ==================== 3. 成绩分析 ==================== -->
       <el-tab-pane label="成绩分析" name="analysis">
         <div class="analysis-pane">
+            <div class="page-header">
+                <h2 class="page-title">成绩分析</h2>
+            </div>
+            
             <el-card class="filter-card">
                 <el-form :inline="true" :model="analysisFilterForm">
                     <el-form-item label="选择考试">
@@ -931,15 +932,11 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #E4E7ED;
 }
 .page-title {
   margin: 0;
-  font-size: 24px;
-  color: #303133;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  letter-spacing: 1px;
+  font-size: 20px;
+  font-weight: bold;
 }
 .score-summary-row {
   margin-bottom: 20px;
@@ -960,13 +957,6 @@ onMounted(() => {
 .text-success { color: var(--el-color-success); }
 .text-danger { color: var(--el-color-danger); }
 .text-warning { color: var(--el-color-warning); }
-
-.pane-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
 
 .filter-header {
     display: flex;

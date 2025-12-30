@@ -17,7 +17,7 @@
   </insert>
   
   <select id="selectByUserId" resultType="map">
-    SELECT student_no, class_id
+    SELECT student_no, class_id, real_name
     FROM biz_student
     WHERE user_id = #{userId}
     LIMIT 1

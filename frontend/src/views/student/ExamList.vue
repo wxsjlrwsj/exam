@@ -291,12 +291,6 @@
         </div>
     </el-dialog>
 
-    <!-- 人脸验证对话框 -->
-    <FaceVerification 
-      v-model="showFaceVerification" 
-      @verified="handleFaceVerified"
-    />
-
     <!-- Full Screen Exam Taking Interface -->
     <el-dialog 
         v-model="examTakingVisible" 
@@ -505,7 +499,6 @@ import { VideoCamera, VideoPlay, User, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getExams, getExamPaper, submitExam } from '@/api/student'
 import { filterValidExams } from '@/utils/dataValidator'
-import FaceVerification from '@/components/FaceVerification.vue'
 
 const showMessage = inject('showMessage') || ElMessage
 
@@ -806,66 +799,27 @@ watch(currentQuestionIndex, (val) => {
     }
 })
 
-// --- 人脸验证相关 ---
-const showFaceVerification = ref(false)
-const faceVerificationPassed = ref(false)
-const pendingExam = ref(null)
-
-const handleFaceVerified = (result) => {
-    console.log('[ExamList] handleFaceVerified called with:', result)
-    console.log('[ExamList] result type:', typeof result)
-    console.log('[ExamList] result.verified:', result?.verified)
-    
-    if (result && result.verified) {
-        faceVerificationPassed.value = true
-        console.log('[ExamList] 验证通过，准备进入考试')
-        ElMessage.success('人脸验证通过，准备进入考试')
-        // 验证通过后，继续进入考试
-        if (pendingExam.value) {
-            console.log('[ExamList] 调用 proceedToExam，考试:', pendingExam.value.name)
-            proceedToExam(pendingExam.value)
-        } else {
-            console.error('[ExamList] pendingExam 为空！')
-        }
-    } else {
-        faceVerificationPassed.value = false
-        console.error('[ExamList] 验证失败，result:', result)
-        ElMessage.error('人脸验证失败，无法进入考试')
-        pendingExam.value = null
-    }
-}
-
 const handleTakeExam = async (exam, skipCheck = false) => {
     // Safety check: if already taking this exam, do nothing to prevent re-initialization
     if (examTakingVisible.value && currentExamTaking.value?.id === exam.id) {
         return
     }
 
-    // 如果未通过人脸验证，先进行人脸验证
-    if (!skipCheck && !faceVerificationPassed.value) {
-        pendingExam.value = exam
-        showFaceVerification.value = true
+    if(!skipCheck && !preExamDialogVisible.value && !examTakingVisible.value) {
+        // Always go to pre-exam check first
+        openPreExam(exam)
         return
     }
 
-    // 调用实际进入考试的函数
-    proceedToExam(exam)
-}
-
-const proceedToExam = async (exam) => {
-    console.log('[ExamList] proceedToExam called with exam:', exam)
     currentExamTaking.value = exam
     
     // 从后端获取试卷数据
     try {
-        console.log('[ExamList] 正在获取试卷，考试ID:', exam.id)
         const paperRes = await getExamPaper(exam.id)
-        console.log('[ExamList] 试卷数据:', paperRes)
         examQuestions.value = paperRes.questions || []
         
         // 如果没有题目，提示并返回
         if (examQuestions.value.length === 0) {
-            console.warn('[ExamList] 该考试暂无题目')
             showMessage('该考试暂无题目', 'warning')
             return
         }
@@ -877,7 +831,6 @@ const proceedToExam = async (exam) => {
         remainingTime.value = exam.duration * 60 // seconds
         cheatCount = 0
         
-        console.log('[ExamList] 准备打开考试界面')
         examTakingVisible.value = true
         
         startTimer()
@@ -888,25 +841,8 @@ const proceedToExam = async (exam) => {
         }, 500)
         // enterFullScreen() // Removed as requested
     } catch (error) {
-        console.error('[ExamList] 获取考试试卷失败:', error)
-        console.error('[ExamList] 错误详情:', error.response || error.message)
-        
-        // 提供更详细的错误信息
-        let errorMsg = '加载试卷失败'
-        if (error.response) {
-            if (error.response.status === 404) {
-                errorMsg = '该考试不存在或已被删除'
-            } else if (error.response.status === 400) {
-                errorMsg = '考试参数错误，请联系管理员'
-            } else if (error.response.data && error.response.data.message) {
-                errorMsg = error.response.data.message
-            }
-        }
-        
-        showMessage(errorMsg, 'error')
-        // 重置人脸验证状态，允许用户重新尝试
-        faceVerificationPassed.value = false
-        pendingExam.value = null
+        console.error('获取考试试卷失败:', error)
+        showMessage('加载试卷失败，请稍后重试', 'error')
     }
 }
 

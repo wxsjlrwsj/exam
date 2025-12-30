@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.example.chaoxingsystem.admin.org.TeacherProfileMapper">
-  <select id="countByDeptId" resultType="long">
-    SELECT COUNT(1) FROM biz_teacher WHERE dept_id = #{deptId}
+  <select id="countByCollegeId" resultType="long">
+    SELECT COUNT(1) FROM biz_teacher WHERE college_id = #{collegeId}
   </select>
   <select id="countByUserId" resultType="long">
     SELECT COUNT(1) FROM biz_teacher WHERE user_id = #{userId}
   </select>
-  <update id="updateDeptIdByUserId">
-    UPDATE biz_teacher SET dept_id = #{deptId}
+  <select id="selectIdByUserId" resultType="long">
+    SELECT id FROM biz_teacher WHERE user_id = #{userId} LIMIT 1
+  </select>
+  <select id="countByUserIdAndCollegeId" resultType="long">
+    SELECT COUNT(1) FROM biz_teacher WHERE user_id = #{userId} AND college_id = #{collegeId}
+  </select>
+  <update id="updateCollegeIdByUserId">
+    UPDATE biz_teacher SET college_id = #{collegeId}, dept_id = NULL
     WHERE user_id = #{userId}
   </update>
   <insert id="insertTeacherProfile">
-    INSERT INTO biz_teacher (user_id, teacher_no, real_name, dept_id, title, entry_date)
-    VALUES (#{userId}, #{teacherNo}, #{realName}, #{deptId}, #{title}, #{entryDate})
+    INSERT INTO biz_teacher (user_id, employee_no, real_name, gender, college_id, title, enrollment_year)
+    VALUES (#{userId}, #{teacherNo}, #{realName}, #{gender}, #{collegeId}, #{title}, #{enrollmentYear})
   </insert>
 </mapper>

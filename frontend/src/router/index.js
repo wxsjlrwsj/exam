@@ -79,7 +79,7 @@ const router = createRouter({
         {
           path: 'student/exam-list',
           name: 'StudentExamList',
-          component: () => import('../views/student/ExamListNew.vue'),
+          component: () => import('../views/student/ExamList.vue'),
           meta: { title: '查看考试', roles: ['student'], moduleCode: 'stu_exam' }
         },
         {
@@ -98,13 +98,7 @@ const router = createRouter({
           path: 'student/profile',
           name: 'StudentProfile',
           component: () => import('../views/student/UserProfile.vue'),
-          meta: { title: '个人空间', roles: ['student', 'teacher', 'admin'], moduleCode: 'stu_profile' }
-        },
-        {
-          path: 'student/face-test',
-          name: 'StudentFaceTest',
-          component: () => import('../views/student/FaceTestPage.vue'),
-          meta: { title: '人脸识别测试', roles: ['student'] }
+          meta: { title: '个人空间', roles: ['student'], moduleCode: 'stu_profile' }
         },
         // Teacher Routes
         {
@@ -122,7 +116,7 @@ const router = createRouter({
         {
           path: 'teacher/exam-management',
           name: 'TeacherExamManagement',
-          component: () => import('../views/teacher/ExamManagementNew.vue'),
+          component: () => import('../views/teacher/ExamManagement.vue'),
           meta: { title: '考试管理', roles: ['teacher'], moduleCode: 'tch_exam' }
         },
         {
@@ -136,12 +130,6 @@ const router = createRouter({
           name: 'TeacherQuestionAudit',
           component: () => import('../views/teacher/QuestionAudit.vue'),
           meta: { title: '题目上传申请审核', roles: ['teacher'], moduleCode: 'tch_audit' }
-        },
-        {
-          path: 'teacher/course-management',
-          name: 'TeacherCourseManagement',
-          component: () => import('../views/teacher/CourseManagement.vue'),
-          meta: { title: '教学班管理', roles: ['teacher'], moduleCode: 'tch_course' }
         },
         // Common Routes
         {

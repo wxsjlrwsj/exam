@@ -38,6 +38,21 @@ CREATE TABLE `biz_class_student` (
   KEY `idx_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='班级学生关联表';
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `biz_class_teacher`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `biz_class_teacher` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `class_id` bigint NOT NULL COMMENT '班级ID',
+  `teacher_id` bigint NOT NULL COMMENT '教师档案ID（biz_teacher.id）',
+  `role` varchar(20) DEFAULT NULL COMMENT '角色',
+  `assign_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '分配时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_class_teacher` (`class_id`,`teacher_id`),
+  KEY `idx_class` (`class_id`),
+  KEY `idx_teacher` (`teacher_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='班级教师关联表';
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `biz_collection_question`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -375,8 +390,10 @@ DROP TABLE IF EXISTS `sys_menu`;
 CREATE TABLE `sys_menu` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `parent_id` bigint DEFAULT NULL,
-  `menu_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `menu_name` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `menu_type` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `type` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `path` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `component` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `perms` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -455,6 +472,17 @@ CREATE TABLE `sys_user_role` (
   UNIQUE KEY `uk_user_role` (`user_id`,`role_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `sys_role_menu`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sys_role_menu` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `role_id` bigint NOT NULL,
+  `menu_id` bigint NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_menu` (`role_id`,`menu_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `system_modules`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -506,4 +534,3 @@ CREATE TABLE `users` (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-

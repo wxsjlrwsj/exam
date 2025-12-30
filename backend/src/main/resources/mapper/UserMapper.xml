@@ -71,4 +71,68 @@
       </if>
   </select>
 
+  <select id="searchCandidatesExcludingOrgMembers" resultType="org.example.chaoxingsystem.user.User">
+    SELECT u.id, u.username, u.email, u.phone, u.password_hash, u.user_type, u.real_name, u.avatar, u.bio, u.created_at
+    FROM users u
+    WHERE u.user_type = #{userType}
+      <if test="keyword != null and keyword != ''">
+        AND (u.username LIKE CONCAT('%', #{keyword}, '%') OR u.real_name LIKE CONCAT('%', #{keyword}, '%'))
+      </if>
+      <choose>
+        <when test="orgType == 'class' and userType == 'student'">
+          AND NOT EXISTS (
+            SELECT 1 FROM biz_student s 
+            WHERE s.user_id = u.id AND s.class_id IS NOT NULL
+          )
+        </when>
+        <when test="orgType == 'class' and userType == 'teacher'">
+          AND NOT EXISTS (
+            SELECT 1 
+            FROM biz_teacher t 
+            JOIN biz_class_teacher ct ON ct.teacher_id = t.id
+            WHERE t.user_id = u.id AND ct.class_id = #{orgId}
+          )
+        </when>
+        <when test="orgType == 'college' and userType == 'teacher'">
+          AND NOT EXISTS (
+            SELECT 1 FROM biz_teacher t 
+            WHERE t.user_id = u.id AND t.college_id = #{orgId}
+          )
+        </when>
+      </choose>
+    ORDER BY u.id
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="countCandidatesExcludingOrgMembers" resultType="long">
+    SELECT COUNT(*) 
+    FROM users u
+    WHERE u.user_type = #{userType}
+      <if test="keyword != null and keyword != ''">
+        AND (u.username LIKE CONCAT('%', #{keyword}, '%') OR u.real_name LIKE CONCAT('%', #{keyword}, '%'))
+      </if>
+      <choose>
+        <when test="orgType == 'class' and userType == 'student'">
+          AND NOT EXISTS (
+            SELECT 1 FROM biz_student s 
+            WHERE s.user_id = u.id AND s.class_id IS NOT NULL
+          )
+        </when>
+        <when test="orgType == 'class' and userType == 'teacher'">
+          AND NOT EXISTS (
+            SELECT 1 
+            FROM biz_teacher t 
+            JOIN biz_class_teacher ct ON ct.teacher_id = t.id
+            WHERE t.user_id = u.id AND ct.class_id = #{orgId}
+          )
+        </when>
+        <when test="orgType == 'college' and userType == 'teacher'">
+          AND NOT EXISTS (
+            SELECT 1 FROM biz_teacher t 
+            WHERE t.user_id = u.id AND t.college_id = #{orgId}
+          )
+        </when>
+      </choose>
+  </select>
+
 </mapper>

@@ -40,6 +40,10 @@ public class StudentProfileController {
         profile.put("registerTime", me.getCreatedAt());
         var stu = studentProfileMapper.selectByUserId(me.getId());
         if (stu != null) {
+            Object rn = stu.get("real_name");
+            if (rn instanceof String && !((String) rn).isEmpty()) {
+                profile.put("name", rn);
+            }
             profile.put("studentNo", stu.get("student_no"));
             Object classIdObj = stu.get("class_id");
             if (classIdObj instanceof Number) {
@@ -96,4 +100,3 @@ public class StudentProfileController {
         return ResponseEntity.ok(ApiResponse.success("获取成功", stats));
     }
 }
-

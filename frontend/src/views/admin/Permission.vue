@@ -1,10 +1,12 @@
 <template>
   <div class="page-container">
-    <div class="page-header">
-      <h2 class="page-title">权限管理</h2>
-      <el-button type="primary" @click="handleAddRole">
-        <el-icon><Plus /></el-icon> 新增角色
-      </el-button>
+    <div class="header">
+      <h2>权限管理</h2>
+      <div class="actions">
+        <el-button type="primary" @click="handleAddRole">
+          <el-icon><Plus /></el-icon> 新增角色
+        </el-button>
+      </div>
     </div>
 
     <!-- Role List Table -->
@@ -181,7 +183,7 @@ const loadRoles = async () => {
   loading.value = true
   try {
     const resp = await request.get('/system/role/list')
-    roleList.value = resp.data || []
+    roleList.value = resp || []
   } catch (e) {
     // ElMessage.error(e.message || '加载角色列表失败') // handled
     roleList.value = []
@@ -193,7 +195,7 @@ const loadRoles = async () => {
 const loadMenuTree = async () => {
   try {
     const resp = await request.get('/system/menu/routes')
-    menuOptions.value = resp.data || []
+    menuOptions.value = resp || []
   } catch (e) {
     console.error(e)
     // ElMessage.error('加载菜单树失败') // handled
@@ -203,7 +205,7 @@ const loadMenuTree = async () => {
 const loadDeptTree = async () => {
   try {
     const resp = await request.get('/org/tree')
-    deptOptions.value = resp.data || []
+    deptOptions.value = resp || []
   } catch (e) {
     console.error(e)
     // ElMessage.error('加载部门树失败') // handled
@@ -333,7 +335,7 @@ const handlePermission = async (row) => {
   
   try {
     const resp = await request.get(`/system/menu/role/${row.id}`)
-    const checkedKeys = resp.data || [] // Assuming returns array of menuIds
+    const checkedKeys = resp || []
     
     nextTick(() => {
       menuTreeRef.value.setCheckedKeys(checkedKeys)
@@ -380,29 +382,25 @@ onMounted(() => {
 .page-container {
   padding: 20px;
 }
-
-.page-header {
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e4e7ed;
 }
-
-.page-title {
+.header h2 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
   color: #303133;
 }
-
 .role-list-card {
   margin-bottom: 20px;
 }
-
 .tree-border {
-  margin-top: 8px;
-  border: 1px solid #dcdfe6;
+  margin-top: 5px;
+  border: 1px solid #e5e6e7;
+  background: #ffffff;
   border-radius: 4px;
-  padding: 12px;
+  padding: 10px;
   max-height: 400px;
   overflow-y: auto;
   width: 100%;

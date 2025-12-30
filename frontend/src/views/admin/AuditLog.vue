@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
-    <div class="page-header">
-      <h2 class="page-title">操作日志</h2>
+    <div class="header">
+      <h2>操作日志</h2>
     </div>
 
     <!-- Search Bar -->
@@ -267,8 +267,8 @@ const getList = async () => {
   
   try {
     const resp = await request.get('/monitor/operlog/list', { params })
-    logList.value = resp.data?.list || []
-    total.value = resp.data?.total || 0
+    logList.value = resp?.list || []
+    total.value = resp?.total || 0
   } catch (e) {
     logList.value = []
     total.value = 0
@@ -350,53 +350,39 @@ onMounted(() => {
 .page-container {
   padding: 20px;
 }
-
-.page-header {
+.header {
   margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e4e7ed;
 }
-
-.page-title {
+.header h2 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
   color: #303133;
 }
-
 .search-card {
   margin-bottom: 20px;
 }
-
 .table-toolbar {
   margin-bottom: 15px;
 }
-
 .table-card {
   margin-bottom: 20px;
 }
-
 .pagination-container {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
 }
-
 .code-box {
-  background: #f5f7fa;
-  border: 1px solid #dcdfe6;
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
   border-radius: 4px;
-  padding: 12px;
+  padding: 10px;
   width: 100%;
   max-height: 200px;
   overflow: auto;
-  font-family: 'Consolas', monospace;
-  font-size: 13px;
+  font-family: monospace;
   word-break: break-all;
 }
-
 .error-text {
-  color: #F56C6C;
-  font-weight: 500;
+    color: #F56C6C;
 }
 </style>

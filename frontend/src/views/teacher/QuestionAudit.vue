@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
-    <div class="page-header">
-      <h2 class="page-title">题目上传申请审核</h2>
+    <div class="header">
+      <h2>题目上传申请审核</h2>
     </div>
 
     <!-- Search Bar -->
@@ -323,20 +323,8 @@ onMounted(() => {
 .page-container {
   padding: 20px;
 }
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.header {
   margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #E4E7ED;
-}
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  color: #303133;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  letter-spacing: 1px;
 }
 .search-card {
   margin-bottom: 20px;

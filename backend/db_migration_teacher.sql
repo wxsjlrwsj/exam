@@ -36,6 +36,18 @@ CREATE TABLE IF NOT EXISTS biz_class_student (
   UNIQUE KEY uk_class_user (class_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班级学生关联表';
 
+-- 3.1 创建班级-教师关联表（支持将教师分配到班级）
+CREATE TABLE IF NOT EXISTS biz_class_teacher (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  class_id BIGINT NOT NULL COMMENT '班级ID',
+  teacher_id BIGINT NOT NULL COMMENT '教师档案ID（biz_teacher.id）',
+  role VARCHAR(20) DEFAULT NULL COMMENT '角色：班主任、任课教师等',
+  assign_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '分配时间',
+  INDEX idx_class (class_id),
+  INDEX idx_teacher (teacher_id),
+  UNIQUE KEY uk_class_teacher (class_id, teacher_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班级教师关联表';
+
 -- 4. 创建监考警告记录表
 CREATE TABLE IF NOT EXISTS biz_monitor_warning (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
@@ -190,6 +202,12 @@ INSERT INTO biz_class (class_name, class_code, grade, major) VALUES
 ('网络工程1班', 'ne1', '2021', '网络工程')
 ON DUPLICATE KEY UPDATE class_name=VALUES(class_name);
 
+-- 11. 规范化组织类型（学院/系）
+UPDATE sys_organization SET type = 'college'
+WHERE code IN ('ORG-INFO','ORG-MECH') AND type <> 'college';
+UPDATE sys_organization SET type = 'department'
+WHERE code IN ('ORG-CS','ORG-SE','ORG-AUTO') AND type <> 'department';
+
 -- 10. 为已有考试创建考生关联（可选）
 -- 如果系统中已经有考试和学生数据，可以执行以下语句建立关联
 -- INSERT INTO biz_exam_student (exam_id, user_id, status)
@@ -210,8 +228,8 @@ AND TABLE_NAME IN (
   'biz_exam_student',
   'biz_class', 
   'biz_class_student',
+  'biz_class_teacher',
   'biz_monitor_warning',
   'biz_score_adjustment',
   'biz_subject'
 );
-

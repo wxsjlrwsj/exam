@@ -85,9 +85,6 @@
                 </el-form-item>
               </el-form>
             </el-tab-pane>
-            <el-tab-pane label="人脸识别" name="face">
-              <FacePhotoUpload />
-            </el-tab-pane>
           </el-tabs>
         </el-card>
       </el-col>
@@ -101,7 +98,6 @@ import { useRoute } from 'vue-router'
 import { User, Message, School, Timer, Camera } from '@element-plus/icons-vue'
 import { getUserProfile, updateUserProfile, changePassword } from '@/api/student'
 import { ElMessage } from 'element-plus'
-import FacePhotoUpload from '@/components/FacePhotoUpload.vue'
 
 const route = useRoute()
 const showMessage = inject('showMessage') || ElMessage

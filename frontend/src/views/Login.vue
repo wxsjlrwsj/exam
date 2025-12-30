@@ -89,7 +89,21 @@ const handleLogin = async () => {
 
       localStorage.setItem('token', token)
       localStorage.setItem('userType', userInfo.userType)
-      localStorage.setItem('username', userInfo.username || loginForm.username)
+      try {
+        if (String(userInfo.userType).toLowerCase() === 'student') {
+          const prof = await request.get('/student/profile')
+          const displayName = (prof && prof.name) ? prof.name : (userInfo.realName || userInfo.username || loginForm.username)
+          localStorage.setItem('username', displayName)
+          if (prof && prof.avatar) {
+            localStorage.setItem('userAvatar', prof.avatar)
+          }
+          window.dispatchEvent(new Event('user-info-update'))
+        } else {
+          localStorage.setItem('username', userInfo.username || loginForm.username)
+        }
+      } catch (e) {
+        localStorage.setItem('username', userInfo.username || loginForm.username)
+      }
 
       showMessage('登录成功，欢迎回来！', 'success')
 

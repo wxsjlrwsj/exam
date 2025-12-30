@@ -2,6 +2,7 @@ name: chaoxing-system
 services:
   mysql:
     image: mysql:8.0
+    container_name: chaoxing-mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -11,6 +12,7 @@ services:
       - ./backend/complete-init.sql:/docker-entrypoint-initdb.d/00-complete-init.sql:ro
       - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./backend/src/main/resources/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./backend/db_migration_teacher_college.sql:/docker-entrypoint-initdb.d/03-teacher-college-migration.sql:ro
       - ./backend/db_migration_teacher.sql:/docker-entrypoint-initdb.d/03-teacher-migration.sql:ro
       - ./backend/db_migration_error_book.sql:/docker-entrypoint-initdb.d/04-error-book-migration.sql:ro
     command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
@@ -22,6 +24,7 @@ services:
 
   backend:
     build: ./backend
+    container_name: chaoxing-backend
     restart: unless-stopped
     depends_on:
       mysql:
@@ -34,7 +37,7 @@ services:
       DB_PASSWORD: root
       SPRING_SQL_INIT_MODE: never
       SPRING_MAIL_USERNAME: 3444505236@qq.com
-      SPRING_MAIL_PASSWORD: jxtzdnobgylpchhc
+
       SECURITY_TOKEN_SECRET: change-me-dev
       SECURITY_CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:5173
     ports:
@@ -42,6 +45,7 @@ services:
 
   frontend:
     build: ./frontend
+    container_name: chaoxing-frontend
     restart: unless-stopped
     depends_on:
       - backend
