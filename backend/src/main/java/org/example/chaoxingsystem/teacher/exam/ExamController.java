@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 考试管理接口：列表、创建/发布、监考看板 */
+/** Exam management endpoints. */
 @RestController
 @RequestMapping("/api")
 @ModuleCheck(moduleCode = "tch_exam")
@@ -32,10 +32,8 @@ public class ExamController {
     @RequestParam(value = "page", defaultValue = "1") int page,
     @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    // 获取所有考试（不按数据库状态过滤，因为状态是动态计算的）
-    List<Exam> allExams = service.page(null, 1, 10000); // 获取足够多的考试
-    
-    // 将 Exam 对象转换为 Map，并使用动态计算的状态
+    List<Exam> allExams = service.page(null, 1, 10000);
+
     List<Map<String, Object>> examList = allExams.stream().map(exam -> {
       Map<String, Object> map = new HashMap<>();
       map.put("id", exam.getId());
@@ -44,15 +42,13 @@ public class ExamController {
       map.put("startTime", exam.getStartTime());
       map.put("endTime", exam.getEndTime());
       map.put("duration", exam.getDuration());
-      // 使用动态计算的状态，根据当前时间和考试的起止时间
       String calculatedStatus = service.calculateStatus(exam);
       map.put("status", calculatedStatus);
       map.put("creatorId", exam.getCreatorId());
       map.put("createTime", exam.getCreateTime());
       return map;
     }).toList();
-    
-    // 如果指定了状态过滤，根据动态计算的状态进行过滤
+
     List<Map<String, Object>> filteredList = examList;
     if (status != null && !status.isEmpty()) {
       String targetStatus = status.toLowerCase();
@@ -60,22 +56,20 @@ public class ExamController {
         .filter(exam -> targetStatus.equals(exam.get("status")))
         .toList();
     }
-    
-    // 计算总数
+
     long total = filteredList.size();
-    
-    // 分页处理
+
     int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
     int limit = Math.max(size, 1);
     List<Map<String, Object>> pagedList = filteredList.stream()
       .skip(offset)
       .limit(limit)
       .toList();
-    
+
     HashMap<String, Object> data = new HashMap<>();
     data.put("list", pagedList);
     data.put("total", total);
-    return ResponseEntity.ok(ApiResponse.success("获取成功", data));
+    return ResponseEntity.ok(ApiResponse.success("Fetched successfully", data));
   }
 
   @PostMapping("/exams")
@@ -86,24 +80,48 @@ public class ExamController {
     Long paperId = body.get("paperId") instanceof Number ? ((Number) body.get("paperId")).longValue() : null;
     String startTime = (String) body.get("startTime");
     Integer duration = body.get("duration") instanceof Number ? ((Number) body.get("duration")).intValue() : null;
-    Long id = service.create(me.getId(), name, paperId, startTime, duration);
+    List<Long> classIds = toLongList(body.get("classIds"));
+    if (classIds.isEmpty()) {
+      classIds = toLongList(body.get("classes"));
+    }
+    List<Long> studentIds = toLongList(body.get("studentIds"));
+    Long id = service.create(me.getId(), name, paperId, startTime, duration, classIds, studentIds);
     HashMap<String, Object> data = new HashMap<>();
     data.put("id", id);
-    return ResponseEntity.ok(ApiResponse.success("创建成功", data));
+    return ResponseEntity.ok(ApiResponse.success("Created successfully", data));
+  }
+
+  private List<Long> toLongList(Object value) {
+    if (!(value instanceof List<?> list)) {
+      return List.of();
+    }
+    List<Long> result = new java.util.ArrayList<>();
+    for (Object item : list) {
+      if (item instanceof Number n) {
+        result.add(n.longValue());
+      } else if (item instanceof String s && !s.isBlank()) {
+        try {
+          result.add(Long.parseLong(s));
+        } catch (NumberFormatException ignored) {
+          // Ignore non-numeric values.
+        }
+      }
+    }
+    return result;
   }
 
   @GetMapping("/exams/{id}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> detail(@PathVariable("id") Long id) {
     Map<String, Object> data = service.getDetail(id);
-    return ResponseEntity.ok(ApiResponse.success("获取成功", data));
+    return ResponseEntity.ok(ApiResponse.success("Fetched successfully", data));
   }
 
   @DeleteMapping("/exams/{id}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {
     service.delete(id);
-    return ResponseEntity.ok(ApiResponse.success("删除成功", null));
+    return ResponseEntity.ok(ApiResponse.success("Deleted successfully", null));
   }
 
   @PutMapping("/exams/{id}")
@@ -114,14 +132,14 @@ public class ExamController {
     Integer duration = body.get("duration") instanceof Number ? ((Number) body.get("duration")).intValue() : null;
     String description = (String) body.get("description");
     service.update(id, name, startTime, duration, description);
-    return ResponseEntity.ok(ApiResponse.success("更新成功", null));
+    return ResponseEntity.ok(ApiResponse.success("Updated successfully", null));
   }
 
   @GetMapping("/monitor/{examId}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> monitor(@PathVariable("examId") Long examId) {
     Map<String, Object> data = service.getMonitorData(examId);
-    return ResponseEntity.ok(ApiResponse.success("获取成功", data));
+    return ResponseEntity.ok(ApiResponse.success("Fetched successfully", data));
   }
 
   @PostMapping("/monitor/{examId}/warning")
@@ -136,7 +154,7 @@ public class ExamController {
     String message = (String) body.get("message");
     String type = (String) body.get("type");
     Map<String, Object> data = service.sendWarning(examId, studentId, message, type, me.getId());
-    return ResponseEntity.ok(ApiResponse.success("警告已发送", data));
+    return ResponseEntity.ok(ApiResponse.success("Warning sent", data));
   }
 
   @PostMapping("/monitor/{examId}/force-submit")
@@ -149,7 +167,6 @@ public class ExamController {
     List<Number> studentIds = (List<Number>) body.get("studentIds");
     String reason = (String) body.get("reason");
     Map<String, Object> data = service.forceSubmit(examId, studentIds, reason);
-    return ResponseEntity.ok(ApiResponse.success("强制收卷成功", data));
+    return ResponseEntity.ok(ApiResponse.success("Force submit success", data));
   }
 }
-

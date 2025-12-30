@@ -93,4 +93,15 @@
     LIMIT #{limit}
   </select>
 
+  <select id="selectByTypeSubject" resultMap="QuestionMap">
+    SELECT q.* FROM biz_question q
+    LEFT JOIN biz_question_type t ON t.type_id = q.type_id
+    <where>
+      <if test="typeCode != null and typeCode != ''">AND t.type_code = #{typeCode}</if>
+      <if test="subject != null and subject != ''">AND q.subject = #{subject}</if>
+      AND q.status = 1
+    </where>
+    ORDER BY q.create_time DESC
+  </select>
+
 </mapper>

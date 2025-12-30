@@ -12,4 +12,5 @@ public interface QuestionMapper {
   int deleteById(@Param("id") Long id);
   Question selectById(@Param("id") Long id);
   List<Question> selectByTypeSubjectDifficultyLimit(@Param("typeCode") String typeCode, @Param("subject") String subject, @Param("difficulty") Integer difficulty, @Param("limit") int limit);
+  List<Question> selectByTypeSubject(@Param("typeCode") String typeCode, @Param("subject") String subject);
 }

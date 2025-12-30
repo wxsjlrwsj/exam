@@ -8,9 +8,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 /** 试卷服务：分页、组卷、智能组卷 */
 @Service
@@ -61,31 +67,276 @@ public class PaperService {
 
   @Transactional
   public Long autoGenerate(Long creatorId, String subject, Integer difficulty, Integer totalScore, Map<String, Integer> typeDistribution) {
-    if (subject == null || subject.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "科目必填");
-    if (totalScore == null || totalScore <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "总分无效");
-    List<QuestionItem> items = new ArrayList<>();
-    int accumulated = 0;
-    for (Map.Entry<String, Integer> e : typeDistribution.entrySet()) {
-      String typeCode = e.getKey();
-      int countNeed = e.getValue();
-      List<Question> qs = questionMapper.selectByTypeSubjectDifficultyLimit(typeCode, subject, difficulty, countNeed);
-      for (Question q : qs) {
-        int scoreEach = Math.max(1, totalScore / Math.max(1, typeDistribution.values().stream().mapToInt(Integer::intValue).sum()));
-        items.add(new QuestionItem(q.getId(), scoreEach));
-        accumulated += scoreEach;
+    if (subject == null || subject.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "subject is required");
+    }
+    if (totalScore == null || totalScore <= 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "totalScore must be greater than 0");
+    }
+    if (typeDistribution == null || typeDistribution.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "typeDistribution is required");
+    }
+
+    Map<String, Integer> normalized = normalizeTypeDistribution(typeDistribution);
+    int totalQuestions = normalized.values().stream().mapToInt(Integer::intValue).sum();
+    if (totalQuestions <= 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "question count must be greater than 0");
+    }
+    if (totalScore < totalQuestions) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "totalScore is too small for question count");
+    }
+
+    List<Question> selected = new ArrayList<>();
+    for (Map.Entry<String, Integer> entry : normalized.entrySet()) {
+      String typeCode = entry.getKey();
+      int countNeed = entry.getValue();
+      if (countNeed <= 0) {
+        continue;
       }
+      List<Question> pool = questionMapper.selectByTypeSubject(typeCode, subject);
+      if (pool.size() < countNeed) {
+        throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          String.format("not enough questions for type %s: need %d, have %d", typeCode, countNeed, pool.size())
+        );
+      }
+      selected.addAll(pickQuestions(pool, countNeed, difficulty));
     }
-    if (items.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "题库不足，无法组卷");
-    // 调整最后一题以满足总分
-    if (accumulated != totalScore) {
-      int diff = totalScore - accumulated;
-      QuestionItem last = items.get(items.size() - 1);
-      last.score += diff;
+
+    if (selected.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "not enough questions to generate a paper");
     }
-    String name = subject + "智能组卷";
+
+    List<QuestionItem> items = assignScores(selected, totalScore);
+    String name = subject + " Auto Paper";
     return create(creatorId, name, subject, items, null);
   }
 
+  private Map<String, Integer> normalizeTypeDistribution(Map<String, Integer> typeDistribution) {
+    Map<String, Integer> normalized = new LinkedHashMap<>();
+    for (Map.Entry<String, Integer> entry : typeDistribution.entrySet()) {
+      String typeCode = normalizeTypeCode(entry.getKey());
+      if (typeCode == null || typeCode.isEmpty()) {
+        continue;
+      }
+      int count = entry.getValue() == null ? 0 : entry.getValue();
+      if (count <= 0) {
+        continue;
+      }
+      normalized.merge(typeCode, count, Integer::sum);
+    }
+    return normalized;
+  }
+
+  private String normalizeTypeCode(String typeCode) {
+    if (typeCode == null) {
+      return null;
+    }
+    String code = typeCode.trim();
+    return switch (code) {
+      case "single_choice" -> "SINGLE";
+      case "multiple_choice" -> "MULTI";
+      case "true_false" -> "TRUE_FALSE";
+      case "fill_blank" -> "FILL";
+      case "short_answer" -> "SHORT";
+      case "programming" -> "PROGRAM";
+      default -> code;
+    };
+  }
+
+  private List<Question> pickQuestions(List<Question> pool, int countNeed, Integer targetDifficulty) {
+    List<Question> ordered = new ArrayList<>(pool);
+    Random random = new Random();
+    if (targetDifficulty != null) {
+      ordered.sort(Comparator.comparingInt(q -> difficultyDistance(q, targetDifficulty)));
+      List<Question> shuffled = new ArrayList<>(ordered.size());
+      int idx = 0;
+      while (idx < ordered.size()) {
+        int distance = difficultyDistance(ordered.get(idx), targetDifficulty);
+        int end = idx + 1;
+        while (end < ordered.size() && difficultyDistance(ordered.get(end), targetDifficulty) == distance) {
+          end++;
+        }
+        List<Question> bucket = new ArrayList<>(ordered.subList(idx, end));
+        Collections.shuffle(bucket, random);
+        shuffled.addAll(bucket);
+        idx = end;
+      }
+      ordered = shuffled;
+    } else {
+      Collections.shuffle(ordered, random);
+    }
+    return pickWithDiversity(ordered, countNeed);
+  }
+
+  private int difficultyDistance(Question question, int targetDifficulty) {
+    int normalized = normalizeDifficulty(question.getDifficulty());
+    int target = normalizeDifficulty(targetDifficulty);
+    return Math.abs(normalized - target);
+  }
+
+  private int normalizeDifficulty(Integer difficulty) {
+    if (difficulty == null) {
+      return 3;
+    }
+    int value = difficulty;
+    if (value < 1) {
+      return 1;
+    }
+    if (value > 5) {
+      return 5;
+    }
+    return value;
+  }
+
+  private List<Question> pickWithDiversity(List<Question> ordered, int countNeed) {
+    List<Question> picked = new ArrayList<>();
+    Set<Long> pickedIds = new HashSet<>();
+    Set<String> usedKnowledge = new HashSet<>();
+
+    for (Question question : ordered) {
+      if (picked.size() >= countNeed) {
+        break;
+      }
+      if (question.getId() == null || pickedIds.contains(question.getId())) {
+        continue;
+      }
+      String key = extractKnowledgeKey(question.getKnowledgePoints());
+      if (!key.isEmpty() && usedKnowledge.contains(key)) {
+        continue;
+      }
+      picked.add(question);
+      pickedIds.add(question.getId());
+      if (!key.isEmpty()) {
+        usedKnowledge.add(key);
+      }
+    }
+
+    if (picked.size() < countNeed) {
+      for (Question question : ordered) {
+        if (picked.size() >= countNeed) {
+          break;
+        }
+        if (question.getId() == null || pickedIds.contains(question.getId())) {
+          continue;
+        }
+        picked.add(question);
+        pickedIds.add(question.getId());
+      }
+    }
+
+    if (picked.size() < countNeed) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "not enough questions to satisfy selection");
+    }
+
+    return picked;
+  }
+
+  private String extractKnowledgeKey(String knowledgePoints) {
+    if (knowledgePoints == null) {
+      return "";
+    }
+    String normalized = knowledgePoints
+      .replace('\uFF0C', ',')
+      .replace('\uFF1B', ';')
+      .replace('/', ',')
+      .replace('|', ',');
+    String[] parts = normalized.split("[,;\s]+");
+    for (String part : parts) {
+      String trimmed = part.trim();
+      if (!trimmed.isEmpty()) {
+        return trimmed;
+      }
+    }
+    return "";
+  }
+
+  private List<QuestionItem> assignScores(List<Question> questions, int totalScore) {
+    int questionCount = questions.size();
+    if (questionCount == 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "no questions selected");
+    }
+    if (totalScore < questionCount) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "totalScore is too small for question count");
+    }
+
+    List<Integer> weights = new ArrayList<>();
+    int weightSum = 0;
+    for (Question question : questions) {
+      int weight = normalizeDifficulty(question.getDifficulty());
+      weights.add(weight);
+      weightSum += weight;
+    }
+    if (weightSum <= 0) {
+      weightSum = questionCount;
+    }
+
+    List<Integer> scores = new ArrayList<>();
+    int accumulated = 0;
+    for (int i = 0; i < questions.size(); i++) {
+      int weight = weights.get(i);
+      int score = (int) Math.floor(((double) totalScore * weight) / weightSum);
+      if (score < 1) {
+        score = 1;
+      }
+      scores.add(score);
+      accumulated += score;
+    }
+
+    int diff = totalScore - accumulated;
+    if (diff != 0) {
+      adjustScores(scores, weights, diff);
+    }
+
+    List<QuestionItem> items = new ArrayList<>();
+    for (int i = 0; i < questions.size(); i++) {
+      items.add(new QuestionItem(questions.get(i).getId(), scores.get(i)));
+    }
+    return items;
+  }
+
+  private void adjustScores(List<Integer> scores, List<Integer> weights, int diff) {
+    int count = scores.size();
+    List<Integer> indices = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      indices.add(i);
+    }
+
+    if (diff > 0) {
+      indices.sort((a, b) -> Integer.compare(weights.get(b), weights.get(a)));
+      for (int i = 0; i < diff; i++) {
+        int idx = indices.get(i % indices.size());
+        scores.set(idx, scores.get(idx) + 1);
+      }
+      return;
+    }
+
+    int remaining = -diff;
+    indices.sort(Comparator.comparingInt(weights::get));
+    int guard = 0;
+    while (remaining > 0 && guard < count * 2) {
+      boolean changed = false;
+      for (int idx : indices) {
+        if (remaining == 0) {
+          break;
+        }
+        int score = scores.get(idx);
+        if (score > 1) {
+          scores.set(idx, score - 1);
+          remaining--;
+          changed = true;
+        }
+      }
+      if (!changed) {
+        break;
+      }
+      guard++;
+    }
+
+    if (remaining > 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "cannot allocate scores for totalScore");
+    }
+  }
   public Map<String, Object> getDetail(Long id) {
     Paper paper = paperMapper.selectById(id);
     if (paper == null) {
