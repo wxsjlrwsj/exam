@@ -7,7 +7,6 @@
     <id property="id" column="id"/>
     <result property="studentId" column="student_id"/>
     <result property="name" column="name"/>
-    <result property="description" column="description"/>
     <result property="isDefault" column="is_default"/>
     <result property="questionCount" column="question_count"/>
     <result property="createTime" column="create_time"/>
@@ -25,13 +24,13 @@
   </select>
 
   <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO biz_student_collection (student_id, name, description, is_default, question_count)
-    VALUES (#{studentId}, #{name}, #{description}, #{isDefault}, #{questionCount})
+    INSERT INTO biz_student_collection (student_id, name, is_default, question_count)
+    VALUES (#{studentId}, #{name}, #{isDefault}, #{questionCount})
   </insert>
 
   <update id="updateById">
     UPDATE biz_student_collection
-    SET name = #{name}, description = #{description}
+    SET name = #{name}
     WHERE id = #{id}
   </update>
 

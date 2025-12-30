@@ -1,11 +1,55 @@
 import request from '@/utils/request'
 
+const TYPE_CODE_MAP = {
+  single_choice: 'SINGLE',
+  multiple_choice: 'MULTI',
+  true_false: 'TRUE_FALSE',
+  fill_blank: 'FILL',
+  short_answer: 'SHORT',
+  programming: 'PROGRAM'
+}
+
+const normalizeTypeCode = (value) => {
+  if (!value) return value
+  return TYPE_CODE_MAP[value] || value
+}
+
+const normalizeQuestionPayload = (data) => {
+  if (!data || typeof data !== 'object') return data
+  const payload = { ...data }
+  if (payload.type && !payload.typeCode) {
+    payload.typeCode = normalizeTypeCode(payload.type)
+  }
+  delete payload.type
+  return payload
+}
+
+export function getSubjects() {
+  return request({
+    url: '/subjects',
+    method: 'get'
+  })
+}
+
+export function getClasses(params) {
+  return request({
+    url: '/classes',
+    method: 'get',
+    params
+  })
+}
+
 // Question Bank
 export function getQuestions(params) {
+  const query = { ...(params || {}) }
+  if (query.type && !query.typeCode) {
+    query.typeCode = normalizeTypeCode(query.type)
+    delete query.type
+  }
   return request({
     url: '/questions',
     method: 'get',
-    params
+    params: query
   })
 }
 
@@ -13,7 +57,7 @@ export function createQuestion(data) {
   return request({
     url: '/questions',
     method: 'post',
-    data
+    data: normalizeQuestionPayload(data)
   })
 }
 
@@ -21,7 +65,7 @@ export function updateQuestion(id, data) {
   return request({
     url: `/questions/${id}`,
     method: 'put',
-    data
+    data: normalizeQuestionPayload(data)
   })
 }
 
@@ -42,10 +86,24 @@ export function importQuestions(data) {
 }
 
 export function auditQuestion(id, data) {
+  const statusMap = { approved: 1, rejected: 2, pass: 1, reject: 2 }
+  const statusValue = typeof data?.status === 'string' ? statusMap[data.status] : data?.status
   return request({
-    url: `/questions/${id}/audit`,
-    method: 'post',
-    data
+    url: '/audit/question/process',
+    method: 'put',
+    data: {
+      ids: [id],
+      status: statusValue,
+      comment: data?.comment || ''
+    }
+  })
+}
+
+export function getAuditQuestions(params) {
+  return request({
+    url: '/audit/question/list',
+    method: 'get',
+    params
   })
 }
 
@@ -66,10 +124,33 @@ export function createPaper(data) {
   })
 }
 
+export function autoGeneratePaper(data) {
+  return request({
+    url: '/papers/auto-generate',
+    method: 'post',
+    data
+  })
+}
+
 export function deletePaper(id) {
   return request({
     url: `/papers/${id}`,
     method: 'delete'
+  })
+}
+
+export function getPaperDetail(id) {
+  return request({
+    url: `/papers/${id}`,
+    method: 'get'
+  })
+}
+
+export function updatePaper(id, data) {
+  return request({
+    url: `/papers/${id}`,
+    method: 'put',
+    data
   })
 }
 

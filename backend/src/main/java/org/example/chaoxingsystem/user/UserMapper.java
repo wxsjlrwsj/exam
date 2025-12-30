@@ -13,7 +13,7 @@ public interface UserMapper {
   Long countByEmail(@Param("email") String email);
   int insert(User user);
   int updatePasswordById(@Param("id") Long id, @Param("passwordHash") String passwordHash);
-  int updateProfileById(@Param("id") Long id, @Param("email") String email, @Param("phone") String phone);
+  int updateProfileById(@Param("id") Long id, @Param("email") String email, @Param("phone") String phone, @Param("bio") String bio);
   List<User> selectAll();
   List<User> searchByUserType(@Param("userType") String userType,
                               @Param("keyword") String keyword,

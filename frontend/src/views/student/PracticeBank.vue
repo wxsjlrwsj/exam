@@ -97,7 +97,7 @@
              <el-divider border-style="dashed" />
              
              <div class="q-answer-section">
-                <p><strong>参考答案：</strong><span class="text-success">{{ currentQuestion.answer }}</span></p>
+               <p><strong>参考答案：</strong><span class="text-success">{{ formatAnswer(currentQuestion) }}</span></p>
                 <div class="analysis-box">
                    <strong>解析：</strong>
                    <p>{{ currentQuestion.analysis || '暂无解析' }}</p>
@@ -200,7 +200,7 @@
 import { ref, reactive, onMounted, inject } from 'vue'
 import { Upload, Plus, View, Delete, Check } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { getPracticeQuestions } from '@/api/student'
+import { getPracticeQuestions, getCollections, addQuestionToCollection } from '@/api/student'
 import { filterValidQuestions } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage') || ElMessage
@@ -278,13 +278,64 @@ const getTypeTagEffect = (type) => {
     return 'light'
 }
 
-const parseOptions = (jsonStr) => {
-   if (!jsonStr) return []
-   try {
-      return JSON.parse(jsonStr)
-   } catch (e) {
-      return []
+const parseOptions = (v) => {
+   if (!v) return []
+   if (Array.isArray(v)) return v
+   if (typeof v === 'string') {
+      try { return JSON.parse(v) } catch (e) { return [] }
    }
+   return []
+}
+
+const formatAnswer = (q) => {
+  if (!q || q.answer == null) return ''
+  const t = q.type
+  let raw = q.answer
+  let parsed = null
+  try {
+    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+  } catch (e) {
+    parsed = null
+  }
+  if (t === 'single_choice') {
+    if (parsed && typeof parsed === 'string') return parsed
+    if (parsed && Array.isArray(parsed) && parsed.length > 0) return String(parsed[0])
+    if (typeof raw === 'string') return raw.replace(/^"+|"+$/g, '')
+    return String(raw)
+  }
+  if (t === 'multiple_choice') {
+    if (parsed && Array.isArray(parsed)) return parsed.join(', ')
+    if (typeof raw === 'string' && raw.includes(',')) {
+      return raw.split(',').map(s => s.trim()).join(', ')
+    }
+    if (typeof raw === 'string') return raw.replace(/^\\[|\\]$/g, '')
+    return String(raw)
+  }
+  if (t === 'true_false') {
+    const v = parsed !== null ? parsed : raw
+    if (v === true || v === 'T' || v === 'true' || v === 'True') return '正确'
+    if (v === false || v === 'F' || v === 'false' || v === 'False') return '错误'
+    return String(v)
+  }
+  if (t === 'fill_blank') {
+    if (parsed && Array.isArray(parsed)) {
+      return parsed.map((v, i) => `空${i + 1}: ${v}`).join('；')
+    }
+    if (typeof raw === 'string') {
+      try {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr)) return arr.map((v, i) => `空${i + 1}: ${v}`).join('；')
+      } catch {}
+    }
+    return String(raw)
+  }
+  if (t === 'short_answer') {
+    if (parsed && typeof parsed === 'string') return parsed
+    if (parsed && typeof parsed === 'object') return JSON.stringify(parsed)
+    if (typeof raw === 'string') return raw.replace(/^"+|"+$/g, '')
+    return String(raw)
+  }
+  return typeof raw === 'string' ? raw : JSON.stringify(raw)
 }
 
 const loadQuestionList = async () => {
@@ -382,28 +433,33 @@ const submitUpload = () => {
 // Collection Logic
 const handleAddToCollection = (row) => {
    targetQuestionId.value = row.id
-   // Mock API call to get collections with status for this question
-   // GET /api/student/collections?questionId=row.id
-   
-   // Randomly assigning state for demo
-   const demoCollections = mockUserCollections.map(c => ({
-       ...c,
-       hasQuestion: Math.random() > 0.5
-   }))
-   userCollections.value = demoCollections
-   
-   collectionDialogVisible.value = true
+   getCollections()
+     .then(list => {
+       userCollections.value = (list || []).map(c => ({
+         id: c.id,
+         name: c.name,
+         count: c.questionCount,
+         isDefault: !!c.isDefault,
+         hasQuestion: false
+       }))
+       collectionDialogVisible.value = true
+     })
+     .catch(() => {
+       showMessage('加载题集失败', 'error')
+     })
 }
 
 const toggleCollection = (collection) => {
-    if (collection.hasQuestion) return // Already added
-    
-    // Call API to add
-    // POST /api/student/collections/{id}/questions { questionId: targetQuestionId.value }
-    
-    collection.hasQuestion = true
-    collection.count++ // Optimistic update
-    showMessage(`已添加到 "${collection.name}"`, 'success')
+    if (collection.hasQuestion) return
+    addQuestionToCollection(collection.id, { questionId: targetQuestionId.value })
+      .then(() => {
+        collection.hasQuestion = true
+        collection.count++
+        showMessage(`已添加到 "${collection.name}"`, 'success')
+      })
+      .catch(() => {
+        showMessage('添加失败', 'error')
+      })
 }
 
 onMounted(() => {

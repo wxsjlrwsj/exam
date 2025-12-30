@@ -35,8 +35,7 @@ public class StudentCollectionController {
     public ResponseEntity<ApiResponse<Long>> create(Authentication auth, @RequestBody Map<String, Object> body) {
         var me = userService.getByUsername(auth.getName());
         String name = (String) body.get("name");
-        String description = (String) body.get("description");
-        Long id = collectionService.create(me.getId(), name, description);
+        Long id = collectionService.create(me.getId(), name);
         return ResponseEntity.ok(ApiResponse.success("创建成功", id));
     }
 
@@ -44,8 +43,7 @@ public class StudentCollectionController {
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<ApiResponse<Void>> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String name = (String) body.get("name");
-        String description = (String) body.get("description");
-        collectionService.update(id, name, description);
+        collectionService.update(id, name);
         return ResponseEntity.ok(ApiResponse.success("更新成功", null));
     }
 

@@ -26,22 +26,20 @@ public class StudentCollectionService {
     }
 
     @Transactional
-    public Long create(Long studentId, String name, String description) {
+    public Long create(Long studentId, String name) {
         StudentCollection collection = new StudentCollection();
         collection.setStudentId(studentId);
         collection.setName(name);
-        collection.setDescription(description);
         collection.setIsDefault(false);
         collection.setQuestionCount(0);
         collectionMapper.insert(collection);
         return collection.getId();
     }
 
-    public void update(Long id, String name, String description) {
+    public void update(Long id, String name) {
         StudentCollection collection = new StudentCollection();
         collection.setId(id);
         collection.setName(name);
-        collection.setDescription(description);
         collectionMapper.updateById(collection);
     }
 
@@ -53,9 +51,16 @@ public class StudentCollectionService {
 
     public Map<String, Object> getQuestions(Long collectionId, String type, String subject, int page, int size) {
         int offset = (page - 1) * size;
-        long total = collectionQuestionMapper.countByCollection(collectionId, type, subject);
+        String serverType = toServerTypeCode(type);
+        long total = collectionQuestionMapper.countByCollection(collectionId, serverType, subject);
         List<Map<String, Object>> list = collectionQuestionMapper.selectQuestionsByCollection(
-            collectionId, type, subject, offset, size);
+            collectionId, serverType, subject, offset, size);
+        for (Map<String, Object> item : list) {
+            Object code = item.get("type_code");
+            String uiType = toUiType(code == null ? null : String.valueOf(code));
+            item.remove("type_code");
+            item.put("type", uiType);
+        }
         
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
@@ -87,11 +92,36 @@ public class StudentCollectionService {
             StudentCollection defaultCollection = new StudentCollection();
             defaultCollection.setStudentId(studentId);
             defaultCollection.setName("我的错题集");
-            defaultCollection.setDescription("系统自动创建的错题集");
             defaultCollection.setIsDefault(true);
             defaultCollection.setQuestionCount(0);
             collectionMapper.insert(defaultCollection);
         }
+    }
+    
+    private String toServerTypeCode(String ui) {
+        if (ui == null || ui.isEmpty()) return ui;
+        return switch (ui) {
+            case "single_choice" -> "SINGLE";
+            case "multiple_choice" -> "MULTI";
+            case "true_false" -> "TRUE_FALSE";
+            case "fill_blank" -> "FILL";
+            case "short_answer" -> "SHORT";
+            case "programming" -> "PROGRAM";
+            default -> ui;
+        };
+    }
+    
+    private String toUiType(String code) {
+        if (code == null || code.isEmpty()) return "";
+        return switch (code) {
+            case "SINGLE" -> "single_choice";
+            case "MULTI" -> "multiple_choice";
+            case "TRUE_FALSE" -> "true_false";
+            case "FILL" -> "fill_blank";
+            case "SHORT" -> "short_answer";
+            case "PROGRAM" -> "programming";
+            default -> code;
+        };
     }
 }
 

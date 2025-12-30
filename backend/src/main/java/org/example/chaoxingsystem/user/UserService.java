@@ -129,12 +129,17 @@ public class UserService {
 
   @Transactional
   public boolean updateProfile(String username, String email, String phone) {
+    return updateProfile(username, email, phone, null);
+  }
+
+  @Transactional
+  public boolean updateProfile(String username, String email, String phone, String bio) {
     User u = userMapper.selectByUsername(username);
     if (u == null) { return false; }
     if (!u.getEmail().equalsIgnoreCase(email) && userMapper.countByEmail(email) > 0) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "邮箱已存在");
     }
-    int updated = userMapper.updateProfileById(u.getId(), email.trim().toLowerCase(), phone != null ? phone.trim() : null);
+    int updated = userMapper.updateProfileById(u.getId(), email.trim().toLowerCase(), phone != null ? phone.trim() : null, bio != null ? bio.trim() : null);
     return updated > 0;
   }
 

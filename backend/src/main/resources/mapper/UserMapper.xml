@@ -3,19 +3,19 @@
 <mapper namespace="org.example.chaoxingsystem.user.UserMapper">
 
   <select id="selectByUsername" parameterType="string" resultType="org.example.chaoxingsystem.user.User">
-    SELECT id, username, email, phone, qq_number, password_hash, user_type, real_name, avatar, created_at
+    SELECT id, username, email, phone, qq_number, password_hash, user_type, real_name, avatar, bio, created_at
     FROM users
     WHERE username = #{username}
   </select>
 
   <select id="selectById" parameterType="long" resultType="org.example.chaoxingsystem.user.User">
-    SELECT id, username, email, phone, qq_number, password_hash, user_type, real_name, avatar, created_at
+    SELECT id, username, email, phone, qq_number, password_hash, user_type, real_name, avatar, bio, created_at
     FROM users
     WHERE id = #{id}
   </select>
 
   <select id="selectByEmail" parameterType="string" resultType="org.example.chaoxingsystem.user.User">
-    SELECT id, username, email, phone, password_hash, user_type, real_name, avatar, created_at
+    SELECT id, username, email, phone, password_hash, user_type, real_name, avatar, bio, created_at
     FROM users
     WHERE email = #{email}
   </select>
@@ -29,8 +29,8 @@
   </select>
 
   <insert id="insert" parameterType="org.example.chaoxingsystem.user.User" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO users (username, email, phone, qq_number, password_hash, user_type, real_name, avatar)
-    VALUES (#{username}, #{email}, #{phone}, #{qqNumber}, #{passwordHash}, #{userType}, #{realName}, #{avatar})
+    INSERT INTO users (username, email, phone, qq_number, password_hash, user_type, real_name, avatar, bio)
+    VALUES (#{username}, #{email}, #{phone}, #{qqNumber}, #{passwordHash}, #{userType}, #{realName}, #{avatar}, #{bio})
   </insert>
 
   <update id="updatePasswordById" parameterType="map">
@@ -41,18 +41,19 @@
   <update id="updateProfileById" parameterType="map">
     UPDATE users SET
       email = #{email},
-      phone = #{phone}
+      phone = #{phone},
+      bio = #{bio}
     WHERE id = #{id}
   </update>
 
   <select id="selectAll" resultType="org.example.chaoxingsystem.user.User">
-    SELECT id, username, email, phone, password_hash, user_type, real_name, avatar, created_at
+    SELECT id, username, email, phone, password_hash, user_type, real_name, avatar, bio, created_at
     FROM users
     ORDER BY id
   </select>
 
   <select id="searchByUserType" resultType="org.example.chaoxingsystem.user.User">
-    SELECT id, username, email, phone, password_hash, user_type, real_name, avatar, created_at
+    SELECT id, username, email, phone, password_hash, user_type, real_name, avatar, bio, created_at
     FROM users
     WHERE user_type = #{userType}
       <if test="keyword != null and keyword != ''">

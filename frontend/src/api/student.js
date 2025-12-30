@@ -143,6 +143,20 @@ export function deleteCollection(id) {
 }
 
 /**
+ * 更新收藏夹
+ * @param {Number} id - 收藏夹ID
+ * @param {Object} data - 更新数据
+ * @returns {Promise}
+ */
+export function updateCollection(id, data) {
+  return request({
+    url: `/student/collections/${id}`,
+    method: 'put',
+    data
+  })
+}
+
+/**
  * 获取收藏夹题目
  * @param {Number} id - 收藏夹ID
  * @param {Object} params - 查询参数

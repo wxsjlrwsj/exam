@@ -497,7 +497,7 @@
 import { ref, reactive, onMounted, onUnmounted, inject, watch } from 'vue'
 import { VideoCamera, VideoPlay, User, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getExams, getExamPaper } from '@/api/student'
+import { getExams, getExamPaper, submitExam } from '@/api/student'
 import { filterValidExams } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage') || ElMessage
@@ -978,7 +978,7 @@ const handleOptionClick = (q, key) => {
     if(q.type === 'multiple_choice') toggleMultipleChoice(q.id, key)
 }
 
-const handleSubmitExam = (force = false) => {
+const handleSubmitExam = async (force = false) => {
     // If called from template click event, force is an event object, treat as false
     const isForce = typeof force === 'boolean' ? force : false
     
@@ -992,27 +992,35 @@ const handleSubmitExam = (force = false) => {
         showCancelButton: !isForce,
         closeOnClickModal: false,
         closeOnPressEscape: false
-    }).then(() => {
-        // Submit Logic
-        clearInterval(examTimer)
-        stopAntiCheat()
-        stopExamCamera()
-        examTakingVisible.value = false
-        
-        // Update local status for demo
-        const exam = examList.value.find(e => e.id === currentExamTaking.value.id)
-        if(exam) {
-            exam.status = 'pending_grading'
-            exam.timeTaken = currentExamTaking.value.duration * 60 - remainingTime.value
-        }
-        
-        ElMessageBox.alert(`交卷成功！\n用时：${formatDuration(currentExamTaking.value.duration * 60 - remainingTime.value)}`, '考试结束', {
-            confirmButtonText: '返回列表',
-            callback: () => {
-                if (document.exitFullscreen) document.exitFullscreen().catch(e => {})
-                loadExamList()
+    }).then(async () => {
+        // 后端交卷
+        const used = currentExamTaking.value.duration * 60 - remainingTime.value
+        try {
+            await submitExam(currentExamTaking.value.id, {
+                answers: examAnswers.value,
+                durationUsed: used
+            })
+            // 成功后释放资源并更新UI
+            clearInterval(examTimer)
+            stopAntiCheat()
+            stopExamCamera()
+            examTakingVisible.value = false
+            const exam = examList.value.find(e => e.id === currentExamTaking.value.id)
+            if (exam) {
+                exam.status = 'pending_grading'
+                exam.recordStatus = 1
+                exam.timeTaken = used
             }
-        })
+            ElMessageBox.alert(`交卷成功！\n用时：${formatDuration(used)}`, '考试结束', {
+                confirmButtonText: '返回列表',
+                callback: () => {
+                    if (document.exitFullscreen) document.exitFullscreen().catch(e => {})
+                    loadExamList()
+                }
+            })
+        } catch (err) {
+            ElMessage.error('交卷失败，请稍后重试')
+        }
     }).catch(() => {})
 }
 

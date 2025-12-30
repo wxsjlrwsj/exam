@@ -10,6 +10,8 @@ public class Exam {
   private String startTime;
   private String endTime;
   private Integer duration;
+  private Integer totalScore;
+  private Integer passScore;
   private Integer status;
   private Long creatorId;
   private Instant createTime;
@@ -26,6 +28,10 @@ public class Exam {
   public void setEndTime(String endTime) { this.endTime = endTime; }
   public Integer getDuration() { return duration; }
   public void setDuration(Integer duration) { this.duration = duration; }
+  public Integer getTotalScore() { return totalScore; }
+  public void setTotalScore(Integer totalScore) { this.totalScore = totalScore; }
+  public Integer getPassScore() { return passScore; }
+  public void setPassScore(Integer passScore) { this.passScore = passScore; }
   public Integer getStatus() { return status; }
   public void setStatus(Integer status) { this.status = status; }
   public Long getCreatorId() { return creatorId; }

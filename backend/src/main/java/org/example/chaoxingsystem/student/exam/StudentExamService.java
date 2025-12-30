@@ -17,13 +17,17 @@ public class StudentExamService {
   private final PaperMapper paperMapper;
   private final StudentExamMapper studentExamMapper;
   private final org.example.chaoxingsystem.teacher.score.ScoreMapper scoreMapper;
+  private final org.example.chaoxingsystem.student.errorbook.ErrorBookService errorBookService;
+  private final org.example.chaoxingsystem.student.collection.StudentCollectionService collectionService;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public StudentExamService(ExamMapper examMapper, PaperMapper paperMapper, StudentExamMapper studentExamMapper, org.example.chaoxingsystem.teacher.score.ScoreMapper scoreMapper) {
+  public StudentExamService(ExamMapper examMapper, PaperMapper paperMapper, StudentExamMapper studentExamMapper, org.example.chaoxingsystem.teacher.score.ScoreMapper scoreMapper, org.example.chaoxingsystem.student.errorbook.ErrorBookService errorBookService, org.example.chaoxingsystem.student.collection.StudentCollectionService collectionService) {
     this.examMapper = examMapper;
     this.paperMapper = paperMapper;
     this.studentExamMapper = studentExamMapper;
     this.scoreMapper = scoreMapper;
+    this.errorBookService = errorBookService;
+    this.collectionService = collectionService;
   }
 
   private String normalizeType(String code) {
@@ -51,11 +55,29 @@ public class StudentExamService {
     if (now.isBefore(st) || now.isAfter(et)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "不在考试时间范围内");
     var p = paperMapper.selectById(e.getPaperId());
     List<Map<String, Object>> qs = paperMapper.selectPaperQuestionViews(e.getPaperId());
+    List<Map<String, Object>> outQs = new java.util.ArrayList<>();
+    for (Map<String, Object> m : qs) {
+      Long qid = null;
+      try { qid = m.get("id") != null ? Long.valueOf(String.valueOf(m.get("id"))) : null; } catch (Exception ignored) {}
+      String type = normalizeType(m.get("type_code") != null ? String.valueOf(m.get("type_code")) : null);
+      String content = m.get("content") != null ? String.valueOf(m.get("content")) : null;
+      String options = m.get("options") != null ? String.valueOf(m.get("options")) : null;
+      Integer score = null;
+      Object sObj = m.get("score");
+      if (sObj instanceof Number) score = ((Number) sObj).intValue();
+      Map<String, Object> row = new HashMap<>();
+      row.put("id", qid);
+      row.put("type", type);
+      row.put("content", content);
+      row.put("options", options);
+      row.put("score", score);
+      outQs.add(row);
+    }
     Map<String, Object> data = new HashMap<>();
     data.put("paperId", p != null ? p.getId() : null);
     data.put("name", p != null ? p.getName() : null);
     data.put("subject", p != null ? p.getSubject() : null);
-    data.put("questions", qs);
+    data.put("questions", outQs);
     return data;
   }
 
@@ -105,6 +127,7 @@ public class StudentExamService {
       studentExamMapper.insertAnswer(recordId, qid, ansJson);
     }
     int totalScore = 0;
+    java.util.List<Long> wrongQids = new java.util.ArrayList<>();
     for (Map<String, Object> m : qs) {
       Object idObj = m.get("id");
       Long qid = null;
@@ -151,10 +174,28 @@ public class StudentExamService {
       if (isCorrect && qScore != null) {
         totalScore += qScore;
         scoreMapper.updateAnswerScore(recordId, qid, qScore, null);
+      } else {
+        if (stuAns != null && ("single_choice".equals(type) || "multiple_choice".equals(type) || "true_false".equals(type))) {
+          String wrongAnswer = null;
+          try { wrongAnswer = objectMapper.writeValueAsString(stuAns); } catch (Exception ignored) {}
+          errorBookService.addErrorQuestion(studentId, qid, examId, wrongAnswer);
+          wrongQids.add(qid);
+        }
       }
     }
     scoreMapper.updateRecordScore(recordId, totalScore, 1);
     studentExamMapper.markSubmitted(recordId);
+    if (!wrongQids.isEmpty()) {
+      collectionService.ensureDefaultCollection(studentId);
+      java.util.List<org.example.chaoxingsystem.student.collection.StudentCollection> cols = collectionService.getByStudentId(studentId);
+      org.example.chaoxingsystem.student.collection.StudentCollection def = null;
+      for (var c : cols) { if (c.getIsDefault() != null && c.getIsDefault()) { def = c; break; } }
+      if (def != null) {
+        for (Long qid2 : wrongQids) {
+          try { collectionService.addQuestion(def.getId(), qid2); } catch (Exception ignored) {}
+        }
+      }
+    }
   }
 
 

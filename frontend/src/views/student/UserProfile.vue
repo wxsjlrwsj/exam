@@ -52,21 +52,21 @@
           <el-tabs v-model="activeTab">
             <el-tab-pane label="基本资料" name="basic">
               <el-form :model="form" label-width="80px" class="profile-form">
-                <el-form-item label="姓名">
-                  <el-input v-model="form.name" />
-                </el-form-item>
-                <el-form-item label="邮箱">
-                  <el-input v-model="form.email" />
-                </el-form-item>
-                <el-form-item label="手机号">
-                  <el-input v-model="form.phone" />
-                </el-form-item>
-                <el-form-item label="个人简介">
-                  <el-input v-model="form.bio" type="textarea" :rows="4" />
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="handleSaveProfile">保存修改</el-button>
-                </el-form-item>
+              <el-form-item label="姓名">
+                <el-input v-model="form.name" disabled />
+              </el-form-item>
+              <el-form-item label="邮箱">
+                <el-input v-model="form.email" />
+              </el-form-item>
+              <el-form-item label="手机号">
+                <el-input v-model="form.phone" />
+              </el-form-item>
+              <el-form-item label="个人简介">
+                <el-input v-model="form.bio" type="textarea" :rows="4" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleSaveProfile">保存修改</el-button>
+              </el-form-item>
               </el-form>
             </el-tab-pane>
             <el-tab-pane label="安全设置" name="security">
@@ -96,9 +96,11 @@
 import { ref, reactive, inject, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { User, Message, School, Timer, Camera } from '@element-plus/icons-vue'
+import { getUserProfile, updateUserProfile, changePassword } from '@/api/student'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
-const showMessage = inject('showMessage')
+const showMessage = inject('showMessage') || ElMessage
 
 const activeTab = ref('basic')
 
@@ -106,6 +108,7 @@ onMounted(() => {
   if (route.query.tab) {
     activeTab.value = route.query.tab
   }
+  loadProfile()
 })
 
 watch(() => route.query.tab, (newTab) => {
@@ -117,20 +120,20 @@ watch(() => route.query.tab, (newTab) => {
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 const userInfo = reactive({
-  name: '张三',
+  name: '',
   role: 'student',
-  studentId: '2023001',
-  email: 'zhangsan@example.com',
-  class: '计算机科学与技术2301班',
-  registerTime: '2023-09-01',
+  studentId: '',
+  email: '',
+  class: '',
+  registerTime: '',
   avatar: localStorage.getItem('userAvatar') || defaultAvatar
 })
 
 const form = reactive({
-  name: '张三',
-  email: 'zhangsan@example.com',
-  phone: '13800138000',
-  bio: '好好学习，天天向上。'
+  name: '',
+  email: '',
+  phone: '',
+  bio: ''
 })
 
 const securityForm = reactive({
@@ -139,14 +142,36 @@ const securityForm = reactive({
   confirmPassword: ''
 })
 
-const handleSaveProfile = () => {
-  showMessage('个人资料保存成功', 'success')
-  // 更新显示的名称
-  userInfo.name = form.name
-  userInfo.email = form.email
+const formatRegTime = (t) => {
+  if (!t) return ''
+  try {
+    const d = new Date(t)
+    if (!isNaN(d.getTime())) return d.toLocaleString()
+  } catch (_) {}
+  return String(t)
 }
 
-const handleChangePassword = () => {
+const loadProfile = async () => {
+  const profile = await getUserProfile()
+  userInfo.name = profile.name || profile.username || ''
+  userInfo.email = profile.email || ''
+  userInfo.avatar = profile.avatar || userInfo.avatar || defaultAvatar
+  userInfo.studentId = profile.studentNo || ''
+  userInfo.class = profile.className || ''
+  userInfo.registerTime = formatRegTime(profile.registerTime)
+  form.name = userInfo.name
+  form.email = userInfo.email
+  form.phone = profile.phone || ''
+  form.bio = profile.bio || ''
+}
+
+const handleSaveProfile = async () => {
+  await updateUserProfile({ email: form.email, phone: form.phone, bio: form.bio })
+  await loadProfile()
+  showMessage('个人资料保存成功', 'success')
+}
+
+const handleChangePassword = async () => {
   if (securityForm.newPassword !== securityForm.confirmPassword) {
     showMessage('两次输入的密码不一致', 'error')
     return
@@ -155,6 +180,7 @@ const handleChangePassword = () => {
     showMessage('请输入当前密码', 'warning')
     return
   }
+  await changePassword({ oldPassword: securityForm.oldPassword, newPassword: securityForm.newPassword })
   showMessage('密码修改成功，请重新登录', 'success')
   securityForm.oldPassword = ''
   securityForm.newPassword = ''
