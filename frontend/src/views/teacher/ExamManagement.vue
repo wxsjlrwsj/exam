@@ -173,6 +173,7 @@
           </el-form>
 
           <el-table 
+            ref="questionTableRef"
             :data="filteredMockQuestions" 
             border 
             style="width: 100%; height: 400px; overflow-y: auto;"
@@ -225,6 +226,38 @@
       </template>
     </el-dialog>
 
+    <!-- 试卷预览对话框 -->
+    <el-dialog v-model="paperPreviewVisible" title="试卷预览" width="900px">
+      <div v-if="paperPreview">
+        <el-descriptions :column="2" border size="small" style="margin-bottom: 15px;">
+          <el-descriptions-item label="试卷名称">{{ paperPreview.name }}</el-descriptions-item>
+          <el-descriptions-item label="所属科目">{{ paperPreview.subject }}</el-descriptions-item>
+          <el-descriptions-item label="题目数量">{{ paperPreview.questionCount }}</el-descriptions-item>
+          <el-descriptions-item label="总分">{{ paperPreview.totalScore }}</el-descriptions-item>
+        </el-descriptions>
+        <el-table :data="paperPreviewQuestions" border style="width: 100%" max-height="420">
+          <el-table-column prop="id" label="ID" width="80" />
+          <el-table-column prop="type" label="题型" width="120">
+            <template #default="scope">
+              {{ getQuestionTypeLabel(scope.row.type) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="content" label="题目内容" show-overflow-tooltip />
+          <el-table-column prop="score" label="分值" width="80" />
+          <el-table-column prop="difficulty" label="难度" width="120">
+            <template #default="scope">
+              <el-rate v-model="scope.row.difficulty" disabled text-color="#ff9900" />
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="paperPreviewVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <!-- 发布考试对话框 -->
     <el-dialog v-model="publishExamVisible" title="发布考试" width="600px">
       <el-form :model="examForm" label-width="100px">
@@ -242,9 +275,7 @@
         </el-form-item>
         <el-form-item label="参考班级">
           <el-select v-model="examForm.classes" multiple placeholder="请选择参考班级" style="width: 100%">
-            <el-option label="计算机科学与技术1班" value="cs1" />
-            <el-option label="计算机科学与技术2班" value="cs2" />
-            <el-option label="软件工程1班" value="se1" />
+            <el-option v-for="item in classOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -356,11 +387,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, inject, onUnmounted, computed } from 'vue'
+import { ref, reactive, onMounted, inject, onUnmounted, computed, nextTick } from 'vue'
 import { Plus, Edit, MagicStick, VideoCamera, ArrowLeft, Delete } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { getExams, createExam, deleteExam, getPapers, createPaper, deletePaper, getMonitorData, sendWarning, forceSubmit, getQuestions } from '@/api/teacher'
+import { getExams, createExam, deleteExam, getPapers, createPaper, autoGeneratePaper, deletePaper, getMonitorData, sendWarning, forceSubmit, getQuestions, getPaperDetail, updatePaper, getClasses } from '@/api/teacher'
 import { filterValidExams, filterValidPapers, filterValidQuestions } from '@/utils/dataValidator'
 
 const router = useRouter()
@@ -370,6 +401,7 @@ const showConfirm = inject('showConfirm')
 
 const activeModule = ref('exam')
 const examStatusTab = ref('upcoming')
+const classOptions = ref([])
 
 // --- Exam Logic ---
 const examList = ref([])
@@ -392,6 +424,16 @@ const loadExamList = async () => {
   } catch (error) {
       console.error(error)
       examList.value = []
+  }
+}
+
+const loadClassOptions = async () => {
+  try {
+    const res = await getClasses({ all: true })
+    classOptions.value = res.list || []
+  } catch (error) {
+    console.error(error)
+    classOptions.value = []
   }
 }
 
@@ -457,6 +499,12 @@ const paperPage = ref(1)
 const paperPageSize = ref(10)
 const paperTotal = ref(0)
 const paperList = ref([])
+const questionTableRef = ref(null)
+const paperPreviewVisible = ref(false)
+const paperPreview = ref(null)
+const paperPreviewQuestions = ref([])
+const isEditingPaper = ref(false)
+const editingPaperId = ref(null)
 
 const questionTypes = [
   { label: '单选题', value: 'single_choice' },
@@ -466,6 +514,18 @@ const questionTypes = [
   { label: '简答题', value: 'short_answer' },
   { label: '编程题', value: 'programming' }
 ]
+
+const mapTypeCodeToUi = (value) => {
+  const map = {
+    SINGLE: 'single_choice',
+    MULTI: 'multiple_choice',
+    TRUE_FALSE: 'true_false',
+    FILL: 'fill_blank',
+    SHORT: 'short_answer',
+    PROGRAM: 'programming'
+  }
+  return map[value] || value
+}
 
 const getQuestionTypeLabel = (type) => {
   const found = questionTypes.find(item => item.value === type)
@@ -531,6 +591,8 @@ const filterQuestions = () => {
 const handleCreatePaper = (mode) => {
   paperMode.value = mode
   createPaperVisible.value = true
+  isEditingPaper.value = false
+  editingPaperId.value = null
   // Reset Form
   paperForm.name = ''
   paperForm.subject = ''
@@ -562,35 +624,73 @@ const handleQuestionSelectionChange = (val) => {
 
 const confirmCreatePaper = async () => {
   if (!paperForm.name || !paperForm.subject) {
-    showMessage('请完善试卷基本信息', 'warning')
+    showMessage('Please complete the basic paper info', 'warning')
     return
   }
   
   try {
+    if (isEditingPaper.value) {
+      if (!selectedQuestions.value.length) {
+        showMessage('Please select at least one question', 'warning')
+        return
+      }
       const data = {
-          name: paperForm.name,
-          subject: paperForm.subject,
-          mode: paperMode.value,
-          // ... other fields
+        name: paperForm.name,
+        subject: paperForm.subject,
+        questions: selectedQuestions.value.map(q => ({
+          id: q.id,
+          score: q.score || 10
+        }))
       }
-      if (paperMode.value === 'manual') {
-          data.questionIds = selectedQuestions.value.map(q => q.id)
-      } else {
-          data.rules = {
-              single: paperForm.singleCount,
-              multi: paperForm.multiCount,
-              judge: paperForm.judgeCount,
-              difficulty: paperForm.difficulty
-          }
-      }
-      
-      await createPaper(data)
+      await updatePaper(editingPaperId.value, data)
+      isEditingPaper.value = false
+      editingPaperId.value = null
       createPaperVisible.value = false
-      showMessage('试卷创建成功', 'success')
+      showMessage('Paper updated successfully', 'success')
       loadPaperList()
+      return
+    }
+
+    if (paperMode.value === 'manual') {
+      if (!selectedQuestions.value.length) {
+        showMessage('Please select at least one question', 'warning')
+        return
+      }
+      const data = {
+        name: paperForm.name,
+        subject: paperForm.subject,
+        questions: selectedQuestions.value.map(q => ({
+          id: q.id,
+          score: q.score || 10
+        }))
+      }
+      await createPaper(data)
+    } else {
+      const totalCount = (paperForm.singleCount || 0) + (paperForm.multiCount || 0) + (paperForm.judgeCount || 0)
+      if (totalCount <= 0) {
+        showMessage('Please set question counts', 'warning')
+        return
+      }
+      const typeDistribution = {
+        SINGLE: paperForm.singleCount || 0,
+        MULTI: paperForm.multiCount || 0,
+        TRUE_FALSE: paperForm.judgeCount || 0
+      }
+      const difficultyMap = { easy: 1, medium: 3, hard: 5 }
+      const data = {
+        subject: paperForm.subject,
+        difficulty: difficultyMap[paperForm.difficulty] || null,
+        totalScore: totalCount * 10,
+        typeDistribution
+      }
+      await autoGeneratePaper(data)
+    }
+    createPaperVisible.value = false
+    showMessage('Paper created successfully', 'success')
+    loadPaperList()
   } catch (error) {
-      console.error(error)
-      showMessage('创建失败', 'error')
+    console.error(error)
+    showMessage('Create failed', 'error')
   }
 }
 
@@ -641,7 +741,7 @@ const confirmPublishExam = async () => {
           paperId: selectedPaperForExam.id,
           startTime: formatDateTime(examForm.startTime),
           duration: examForm.duration,
-          classes: examForm.classes
+          classIds: examForm.classes
       }
       await createExam(data)
       publishExamVisible.value = false
@@ -667,8 +767,59 @@ const handleViewPaperAnalysis = (row) => {
   })
 }
 
-const handlePreviewPaper = (row) => showMessage(`预览试卷ID: ${row.id}`, 'info')
-const handleEditPaper = (row) => showMessage(`编辑试卷ID: ${row.id}`, 'info')
+const handlePreviewPaper = async (row) => {
+  try {
+    const res = await getPaperDetail(row.id)
+    paperPreview.value = res
+    paperPreviewQuestions.value = (res.questions || []).map((q, idx) => ({
+      id: q.questionId || q.id || idx + 1,
+      type: mapTypeCodeToUi(q.type_code || q.typeCode || q.type),
+      content: q.content,
+      difficulty: q.difficulty,
+      score: q.score
+    }))
+    paperPreviewVisible.value = true
+  } catch (error) {
+    console.error(error)
+    showMessage('试卷预览加载失败', 'error')
+  }
+}
+
+const handleEditPaper = async (row) => {
+  paperMode.value = 'manual'
+  createPaperVisible.value = true
+  isEditingPaper.value = true
+  editingPaperId.value = row.id
+  paperForm.name = row.name
+  paperForm.subject = row.subject
+  selectedQuestions.value = []
+  questionFilter.type = ''
+  questionFilter.difficulty = ''
+
+  try {
+    const [questionsRes, paperRes] = await Promise.all([
+      getQuestions({ size: 200, subject: row.subject }),
+      getPaperDetail(row.id)
+    ])
+    const validQuestions = filterValidQuestions(questionsRes.list || [])
+    mockQuestions.value = validQuestions
+    filterQuestions()
+
+    const questionIds = new Set(
+      (paperRes.questions || []).map(q => q.questionId || q.id).filter(Boolean)
+    )
+    selectedQuestions.value = mockQuestions.value.filter(q => questionIds.has(q.id))
+
+    await nextTick()
+    if (questionTableRef.value) {
+      questionTableRef.value.clearSelection()
+      selectedQuestions.value.forEach(q => questionTableRef.value.toggleRowSelection(q, true))
+    }
+  } catch (error) {
+    console.error(error)
+    showMessage('试卷编辑加载失败', 'error')
+  }
+}
 const handleDeletePaper = (row) => {
   showConfirm(`确定要删除试卷"${row.name}"吗？`, '删除确认', 'warning')
     .then(async () => {
@@ -867,6 +1018,7 @@ onMounted(() => {
   if (route.query.examStatusTab) {
     examStatusTab.value = route.query.examStatusTab
   }
+  loadClassOptions()
   loadExamList()
   loadPaperList()
 })

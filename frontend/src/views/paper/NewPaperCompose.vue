@@ -108,7 +108,7 @@ const totalScore = computed(() => {
 const loadQuestions = async () => {
   try {
     const res = await request.get('/questions', { params: { size: 100 } })
-    availableQuestions.value = res.data.list || []
+    availableQuestions.value = res?.list || []
   } catch (error) {
     console.error('加载题目失败:', error)
   }

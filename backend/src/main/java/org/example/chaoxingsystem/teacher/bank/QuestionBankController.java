@@ -24,11 +24,13 @@ import java.util.List;
 @ModuleCheck(moduleCode = "tch_bank")
 public class QuestionBankController {
   private final QuestionService service;
+  private final QuestionImportService importService;
   private final UserService userService;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public QuestionBankController(QuestionService service, UserService userService) {
+  public QuestionBankController(QuestionService service, QuestionImportService importService, UserService userService) {
     this.service = service;
+    this.importService = importService;
     this.userService = userService;
   }
 
@@ -92,11 +94,15 @@ public class QuestionBankController {
 
   @PostMapping(value = "/questions/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<HashMap<String, Object>>> importFile(@RequestParam("file") MultipartFile file) {
-    // 简化：不解析文件，返回 0 条导入结果
+  public ResponseEntity<ApiResponse<HashMap<String, Object>>> importFile(Authentication auth, @RequestParam("file") MultipartFile file) {
+    var me = userService.getByUsername(auth.getName());
+    QuestionImportService.ImportResult result = importService.importExcel(file, me.getId());
     HashMap<String, Object> data = new HashMap<>();
-    data.put("imported", 0);
+    data.put("total", result.total);
+    data.put("imported", result.imported);
+    data.put("failed", result.failed);
+    data.put("errors", result.errors);
     data.put("filename", file.getOriginalFilename());
-    return ResponseEntity.ok(ApiResponse.success("导入成功", data));
+    return ResponseEntity.ok(ApiResponse.success("import finished", data));
   }
 }

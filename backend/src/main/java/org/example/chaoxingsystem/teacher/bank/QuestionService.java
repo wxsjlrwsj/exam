@@ -47,6 +47,7 @@ public class QuestionService {
     q.setKnowledgePoints(knowledgePoints);
     q.setFileId(fileId);
     q.setCreatorId(creatorId);
+    q.setStatus(1);
     questionMapper.insert(q);
     return q.getId();
   }

@@ -10,6 +10,30 @@
  */
 export function isValidQuestion(question) {
   if (!question || typeof question !== 'object') return false
+
+  if (!question.type) {
+    const typeIdMap = {
+      1: 'single_choice',
+      2: 'multiple_choice',
+      3: 'true_false',
+      4: 'fill_blank',
+      5: 'short_answer',
+      6: 'programming'
+    }
+    const typeCodeMap = {
+      SINGLE: 'single_choice',
+      MULTI: 'multiple_choice',
+      TRUE_FALSE: 'true_false',
+      FILL: 'fill_blank',
+      SHORT: 'short_answer',
+      PROGRAM: 'programming'
+    }
+    if (question.typeId != null && typeIdMap[question.typeId]) {
+      question.type = typeIdMap[question.typeId]
+    } else if (question.typeCode && typeCodeMap[question.typeCode]) {
+      question.type = typeCodeMap[question.typeCode]
+    }
+  }
   
   // 必须字段检查
   const requiredFields = ['id', 'content', 'type']
