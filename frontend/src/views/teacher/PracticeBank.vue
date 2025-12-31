@@ -12,7 +12,7 @@
         <el-card class="box-card" shadow="never" :body-style="{ padding: '0' }">
             <template #header>
               <div class="card-header">
-                <span>所授学科</span>
+                <span>所授课程</span>
               </div>
             </template>
             <el-menu

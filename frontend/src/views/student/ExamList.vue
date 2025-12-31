@@ -171,6 +171,11 @@
             </div>
         </template>
     </el-dialog>
+    
+    <FaceVerification
+      v-model="faceDialogVisible"
+      @verified="onFaceVerified"
+    />
 
     <!-- Pre-Exam Check Dialog -->
     <el-dialog v-model="preExamDialogVisible" :show-close="false" width="600px" :close-on-click-modal="false">
@@ -499,6 +504,7 @@ import { VideoCamera, VideoPlay, User, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getExams, getExamPaper, submitExam } from '@/api/student'
 import { filterValidExams } from '@/utils/dataValidator'
+import FaceVerification from '@/components/FaceVerification.vue'
 
 const showMessage = inject('showMessage') || ElMessage
 
@@ -665,15 +671,21 @@ const hasPassedCameraCheck = ref(false)
 const cameraVideoRef = ref(null)
 const examToStart = ref(null)
 let preExamMediaStream = null
+const faceDialogVisible = ref(false)
+const faceVerificationPassed = ref(false)
+const pendingExamForFace = ref(null)
 
 const openPreExam = (exam) => {
+    if (!faceVerificationPassed.value) {
+        pendingExamForFace.value = exam
+        faceDialogVisible.value = true
+        return
+    }
     examToStart.value = exam
     preExamDialogVisible.value = true
     stopPreExamCamera()
-    
-    // Auto check if already passed before
     if (hasPassedCameraCheck.value) {
-        checkCamera(true) // Silent check
+        checkCamera(true)
     } else {
         isCameraReady.value = false
     }
@@ -1005,6 +1017,7 @@ const handleSubmitExam = async (force = false) => {
             stopAntiCheat()
             stopExamCamera()
             examTakingVisible.value = false
+            faceVerificationPassed.value = false
             const exam = examList.value.find(e => e.id === currentExamTaking.value.id)
             if (exam) {
                 exam.status = 'pending_grading'
@@ -1022,6 +1035,21 @@ const handleSubmitExam = async (force = false) => {
             ElMessage.error('交卷失败，请稍后重试')
         }
     }).catch(() => {})
+}
+
+const onFaceVerified = (result) => {
+    if (result?.verified) {
+        faceVerificationPassed.value = true
+        faceDialogVisible.value = false
+        if (pendingExamForFace.value) {
+            openPreExam(pendingExamForFace.value)
+            pendingExamForFace.value = null
+        }
+    } else {
+        faceVerificationPassed.value = false
+        faceDialogVisible.value = false
+        ElMessage.error('人脸验证失败，请重试')
+    }
 }
 
 onMounted(() => {

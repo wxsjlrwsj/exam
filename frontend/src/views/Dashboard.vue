@@ -121,6 +121,15 @@
               <el-icon v-if="isModuleDisabled('tch_bank')" class="disabled-icon"><CircleClose /></el-icon>
             </el-menu-item>
             <el-menu-item 
+              index="/dashboard/teacher/course-management"
+              :class="{ 'is-disabled-module': isModuleDisabled('tch_course') }"
+              @click="handleMenuClick($event, 'tch_course')"
+            >
+              <el-icon><Reading /></el-icon>
+              <span>课程管理</span>
+              <el-icon v-if="isModuleDisabled('tch_course')" class="disabled-icon"><CircleClose /></el-icon>
+            </el-menu-item>
+            <el-menu-item 
               index="/dashboard/teacher/exam-management"
               :class="{ 'is-disabled-module': isModuleDisabled('tch_exam') }"
               @click="handleMenuClick($event, 'tch_exam')"
@@ -137,15 +146,6 @@
               <el-icon><TrendCharts /></el-icon>
               <span>成绩管理</span>
               <el-icon v-if="isModuleDisabled('tch_score')" class="disabled-icon"><CircleClose /></el-icon>
-            </el-menu-item>
-            <el-menu-item 
-              index="/dashboard/teacher/question-audit"
-              :class="{ 'is-disabled-module': isModuleDisabled('tch_audit') }"
-              @click="handleMenuClick($event, 'tch_audit')"
-            >
-              <el-icon><Check /></el-icon>
-              <span>题目审核</span>
-              <el-icon v-if="isModuleDisabled('tch_audit')" class="disabled-icon"><CircleClose /></el-icon>
             </el-menu-item>
           </template>
         </el-menu>
@@ -194,9 +194,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
-  Document, Collection, Files, Calendar, Edit, 
+  Document, Collection, Files, Calendar, Edit, Reading, 
   DataAnalysis, PieChart, Setting, Fold, ArrowDown,
-  Menu, OfficeBuilding, Lock, Check, Monitor, EditPen, User, TrendCharts, CircleClose, House
+  Menu, OfficeBuilding, Lock, Monitor, EditPen, User, TrendCharts, CircleClose, House
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 

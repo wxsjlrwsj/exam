@@ -7,8 +7,8 @@
     :close-on-click-modal="false"
   >
     <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
-      <el-form-item label="科目" prop="subject">
-        <el-select v-model="form.subject" placeholder="请选择科目" style="width: 100%" filterable>
+      <el-form-item label="课程" prop="subject">
+        <el-select v-model="form.subject" placeholder="请选择课程" style="width: 100%" filterable>
           <el-option v-for="item in subjects" :key="item.id" :label="item.name" :value="item.name" />
         </el-select>
       </el-form-item>
@@ -131,7 +131,7 @@ const knowledgePointOptions = [
 ]
 
 const rules = {
-  subject: [{ required: true, message: '请选择科目', trigger: 'change' }],
+  subject: [{ required: true, message: '请选择课程', trigger: 'change' }],
   type: [{ required: true, message: '请选择题型', trigger: 'change' }],
   content: [{ required: true, message: '请输入题目内容', trigger: 'blur' }],
   answer: [{ required: true, message: '请输入正确答案', trigger: 'blur' }],

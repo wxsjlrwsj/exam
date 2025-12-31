@@ -25,7 +25,7 @@
             qt.type_code,
             e.name AS exam_name
         FROM biz_student_error_book eb
-        INNER JOIN biz_question q ON eb.question_id = q.id
+        INNER JOIN biz_exam_question q ON eb.question_id = q.id
         LEFT JOIN biz_question_type qt ON q.type_id = qt.type_id
         LEFT JOIN biz_exam e ON eb.exam_id = e.id
         WHERE eb.student_id = #{studentId}
@@ -46,7 +46,7 @@
     <select id="countErrors" resultType="long">
         SELECT COUNT(*)
         FROM biz_student_error_book eb
-        INNER JOIN biz_question q ON eb.question_id = q.id
+        INNER JOIN biz_exam_question q ON eb.question_id = q.id
         WHERE eb.student_id = #{studentId}
         <if test="typeId != null">
             AND q.type_id = #{typeId}
@@ -119,4 +119,3 @@
     </delete>
 
 </mapper>
-

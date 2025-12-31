@@ -295,6 +295,7 @@ CREATE TABLE `biz_student` (
   `major_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `enrollment_year` int DEFAULT NULL,
   `politics_status` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `face_photo` mediumtext COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_id` (`user_id`),
   UNIQUE KEY `student_no` (`student_no`)

@@ -39,7 +39,7 @@ public class OrgController {
 
   /** 获取组织机构树 */
   @GetMapping("/tree")
-  @PreAuthorize("hasRole('ADMIN')")
+  @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
   public ResponseEntity<ApiResponse<List<?>>> tree() {
     var data = service.getTree();
     return ResponseEntity.ok(ApiResponse.success("success", data));

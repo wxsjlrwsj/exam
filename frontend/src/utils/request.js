@@ -28,14 +28,16 @@ service.interceptors.request.use(
 // Response interceptor（响应拦截器：处理错误、401）
 service.interceptors.response.use(
     response => {
-        const res = response.data
-        // 非200状态码抛错
-        if (res.code !== 200) {
-            console.error('API Error:', res.message)
-            return Promise.reject(new Error(res.message || 'Error'))
-        } else {
-            return res.data // 只返回接口数据部分
+        const ct = (response.headers && (response.headers['content-type'] || response.headers['Content-Type'])) || ''
+        const isBlob = response.request && response.request.responseType === 'blob'
+        if (isBlob || ct.includes('application/octet-stream') || ct.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+            return response.data
         }
+        const res = response.data
+        if (res.code !== 200) {
+            return Promise.reject(new Error(res.message || 'Error'))
+        }
+        return res.data
     },
     error => {
         console.log('err' + error)

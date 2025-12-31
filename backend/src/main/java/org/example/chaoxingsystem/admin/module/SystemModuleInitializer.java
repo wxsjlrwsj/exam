@@ -31,7 +31,7 @@ public class SystemModuleInitializer {
     modules.add(build("考题题库", "tch_bank", "question", "1.0", true, true, "/dashboard/teacher/question-bank", "teacher,admin", "", "教师考题题库"));
     modules.add(build("考试管理", "tch_exam", "exam", "1.0", true, true, "/dashboard/teacher/exam-management", "teacher,admin", "", "发布考试与监考"));
     modules.add(build("成绩管理", "tch_score", "score", "1.0", true, true, "/dashboard/teacher/score-management", "teacher,admin", "", "阅卷与统计"));
-    modules.add(build("题目审核", "tch_audit", "question", "1.0", true, true, "/dashboard/teacher/question-audit", "teacher,admin", "", "题目上传申请审核"));
+    modules.add(build("题目审核", "tch_audit", "question", "1.0", true, false, "", "teacher", "", "题目上传申请审核"));
     modules.add(build("试卷管理", "tch_paper", "exam", "1.0", true, true, "/dashboard/admin/paper-management", "teacher,admin", "", "试卷管理"));
     for (SystemModule m : modules) {
       if (mapper.countByCode(m.getCode()) == 0) {

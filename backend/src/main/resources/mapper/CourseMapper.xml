@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.teacher.course.CourseMapper">
+
+  <resultMap id="CourseMap" type="org.example.chaoxingsystem.teacher.course.Course">
+    <id property="id" column="id"/>
+    <result property="name" column="name"/>
+    <result property="description" column="description"/>
+    <result property="creatorId" column="creator_id"/>
+    <result property="createTime" column="create_time"/>
+  </resultMap>
+
+  <select id="selectByTeacher" resultType="map">
+    SELECT 
+      s.id, 
+      s.name, 
+      s.description, 
+      NULL AS creator_id,
+      s.create_time,
+      1 AS isCreator,
+      (SELECT COUNT(1) FROM biz_teaching_class tc WHERE tc.subject_id = s.id) AS classCount
+    FROM biz_subject s
+    WHERE EXISTS (SELECT 1 FROM biz_teacher_subject_map ts WHERE ts.subject_id = s.id AND ts.teacher_id = #{teacherId})
+    ORDER BY s.create_time DESC, s.id DESC
+  </select>
+
+  <select id="selectById" resultMap="CourseMap">
+    SELECT s.id, s.name, s.description, NULL AS creator_id, s.create_time
+    FROM biz_subject s WHERE s.id = #{id}
+  </select>
+
+  <insert id="insert" parameterType="org.example.chaoxingsystem.teacher.course.Course" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_subject (name, description)
+    VALUES (#{name}, #{description})
+  </insert>
+
+  <update id="updateById" parameterType="org.example.chaoxingsystem.teacher.course.Course">
+    UPDATE biz_subject
+    SET name = #{name},
+        description = #{description}
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM biz_subject WHERE id = #{id}
+  </delete>
+
+  <select id="selectCourseTeachers" resultType="map">
+    SELECT u.id AS id, u.username, u.real_name AS name
+    FROM biz_teacher_subject_map ts
+    JOIN users u ON u.id = ts.teacher_id
+    WHERE ts.subject_id = #{courseId}
+    ORDER BY u.real_name ASC, u.id ASC
+  </select>
+
+  <insert id="insertCourseTeacher">
+    INSERT IGNORE INTO biz_teacher_subject_map (subject_id, teacher_id)
+    VALUES (#{courseId}, #{teacherId})
+  </insert>
+
+  <delete id="deleteCourseTeacher">
+    DELETE FROM biz_teacher_subject_map
+    WHERE subject_id = #{courseId} AND teacher_id = #{teacherId}
+  </delete>
+
+  <delete id="deleteCourseTeachersByCourse">
+    DELETE FROM biz_teacher_subject_map WHERE subject_id = #{courseId}
+  </delete>
+</mapper>

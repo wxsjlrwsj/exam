@@ -32,7 +32,8 @@ public class QuestionService {
 
   @Transactional
   public Long create(Long creatorId, String typeCode, String content, String optionsJson, String answerJson, Integer difficulty, String subject, String knowledgePoints, String fileId) {
-    QuestionType type = typeMapper.selectByCode(typeCode);
+    String normalizedCode = normalizeTypeCode(typeCode);
+    QuestionType type = typeMapper.selectByCode(normalizedCode);
     if (type == null || type.getIsActive() == null || type.getIsActive() == 0) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "题型无效或未启用");
     }
@@ -47,6 +48,7 @@ public class QuestionService {
     q.setKnowledgePoints(knowledgePoints);
     q.setFileId(fileId);
     q.setCreatorId(creatorId);
+    q.setStatus(1);
     questionMapper.insert(q);
     return q.getId();
   }
@@ -57,7 +59,8 @@ public class QuestionService {
     if (exist == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "题目不存在");
     Integer typeId = exist.getTypeId();
     if (cmd.typeCode != null && !cmd.typeCode.isEmpty()) {
-      QuestionType type = typeMapper.selectByCode(cmd.typeCode);
+      String normalizedCode = normalizeTypeCode(cmd.typeCode);
+      QuestionType type = typeMapper.selectByCode(normalizedCode);
       if (type == null || type.getIsActive() == null || type.getIsActive() == 0) {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "题型无效或未启用");
       }
@@ -101,6 +104,20 @@ public class QuestionService {
     } catch (Exception ex) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "答案结构不合法");
     }
+  }
+
+  private String normalizeTypeCode(String typeCode) {
+    if (typeCode == null) return null;
+    String code = typeCode.trim();
+    return switch (code) {
+      case "single_choice" -> "SINGLE";
+      case "multiple_choice" -> "MULTI";
+      case "true_false" -> "TRUE_FALSE";
+      case "fill_blank" -> "FILL";
+      case "short_answer" -> "SHORT";
+      case "programming" -> "PROGRAM";
+      default -> code;
+    };
   }
 
   /** 更新命令对象 */

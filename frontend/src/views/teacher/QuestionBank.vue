@@ -3,8 +3,12 @@
     <div class="page-header">
       <h2 class="page-title">考题管理</h2>
       <div class="header-actions">
+        <input ref="fileInputRef" type="file" @change="onImportFileChange" style="display:none" />
         <el-button type="success" @click="handleImport">
           <el-icon><Upload /></el-icon>批量导入
+        </el-button>
+        <el-button type="info" @click="handleDownloadTemplate">
+          <el-icon><Download /></el-icon>下载模板
         </el-button>
         <el-button type="primary" @click="handleAddQuestion">
           <el-icon><Plus /></el-icon>添加题目
@@ -17,7 +21,7 @@
         <el-card class="box-card" shadow="never" :body-style="{ padding: '0' }">
             <template #header>
               <div class="card-header">
-                <span>所授学科</span>
+                <span>所授课程</span>
               </div>
             </template>
             <el-menu
@@ -72,6 +76,7 @@
           <el-tag v-for="tag in scope.row.knowledgePoints" :key="tag" size="small" class="mr-1">{{ tag }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column prop="subject" label="学科" width="120" align="center" />
       <el-table-column prop="difficulty" label="难度" width="120" align="center">
         <template #default="scope">
           <el-rate
@@ -81,11 +86,20 @@
           />
         </template>
       </el-table-column>
+      <el-table-column prop="creatorId" label="创建人ID" width="120" align="center" />
+      <el-table-column prop="fileId" label="文件ID" width="160" align="center" />
+      <el-table-column prop="status" label="状态" width="120" align="center">
+        <template #default="scope">
+          <el-tag v-if="scope.row.status === 1" type="success">启用</el-tag>
+          <el-tag v-else type="info">禁用</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="160" align="center" />
       <el-table-column label="操作" width="200" fixed="right" align="center">
         <template #default="scope">
           <el-button link type="primary" @click="handleEdit(scope.row)">编辑</el-button>
           <el-button link type="primary" @click="handlePreview(scope.row)">预览</el-button>
+          <el-button link type="warning" @click="handleToggleStatus(scope.row)">{{ scope.row.status === 1 ? '停用' : '启用' }}</el-button>
           <el-button link type="danger" @click="handleDelete(scope.row)">删除</el-button>
         </template>
       </el-table-column>
@@ -144,10 +158,11 @@
 
 <script setup>
 import { ref, reactive, onMounted, inject } from 'vue'
-import { Plus, Upload, Delete, Document, Collection, Menu } from '@element-plus/icons-vue'
+import { Plus, Upload, Delete, Document, Collection, Menu, Download } from '@element-plus/icons-vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
-import { getQuestions, createQuestion, updateQuestion, deleteQuestion, getSubjects } from '@/api/teacher'
+import { getExamQuestions, createExamQuestion, updateExamQuestion, deleteExamQuestion, getSubjects, importExamQuestions } from '@/api/teacher'
 import { filterValidQuestions } from '@/utils/dataValidator'
+import http from '@/utils/request'
 
 const showMessage = inject('showMessage')
 const showConfirm = inject('showConfirm')
@@ -234,12 +249,12 @@ const loadData = async () => {
       size: pageSize.value,
       ...filterForm
     }
-    const res = await getQuestions(params)
+    const res = await getExamQuestions(params)
     // Adapt response if needed, assuming API returns { list: [], total: 0 } or { data: { list: [], total: 0 } }
     // Based on request.js interceptor, it returns res.data directly if code===200
     if (res && res.list) {
         // 过滤掉无效数据，只显示数据库中真实存在的题目
-        const validQuestions = filterValidQuestions(res.list)
+        const validQuestions = filterValidQuestions(res.list).map(adaptExamQuestion)
         questionList.value = validQuestions
         total.value = res.total
         
@@ -287,10 +302,10 @@ const handleQuestionSubmit = async (formData) => {
   submitting.value = true
   try {
     if (dialogType.value === 'add') {
-      await createQuestion(formData)
+      await createExamQuestion(formData)
       showMessage('添加成功', 'success')
     } else {
-      await updateQuestion(currentQuestionData.value.id, formData)
+      await updateExamQuestion(currentQuestionData.value.id, formData)
       showMessage('修改成功', 'success')
     }
     dialogVisible.value = false
@@ -308,11 +323,35 @@ const handlePreview = (row) => {
   previewVisible.value = true
 }
 
+const adaptExamQuestion = (q) => {
+  const r = { ...q }
+  try {
+    if (typeof r.options === 'string' && r.options.trim().length) {
+      const parsed = JSON.parse(r.options)
+      r.options = Array.isArray(parsed) ? parsed : []
+    } else if (!Array.isArray(r.options)) {
+      r.options = []
+    }
+  } catch {
+    r.options = []
+  }
+  if (typeof r.knowledgePoints === 'string') {
+    const normalized = r.knowledgePoints
+      .replace(/\uFF0C/g, ',')
+      .replace(/\uFF1B/g, ';')
+      .replace(/[|/]/g, ',')
+    r.knowledgePoints = normalized.split(/[,\s;]+/).map(s => s.trim()).filter(Boolean)
+  } else if (!Array.isArray(r.knowledgePoints)) {
+    r.knowledgePoints = []
+  }
+  return r
+}
+
 const handleDelete = (row) => {
   showConfirm('确定要删除该题目吗？', '提示', 'warning')
     .then(async () => {
       try {
-        await deleteQuestion(row.id)
+        await deleteExamQuestion(row.id)
         showMessage('删除成功', 'success')
         loadData()
       } catch (error) {
@@ -323,8 +362,52 @@ const handleDelete = (row) => {
     .catch(() => {})
 }
 
+const handleToggleStatus = async (row) => {
+  try {
+    const next = row.status === 1 ? 0 : 1
+    await updateExamQuestion(row.id, { status: next })
+    showMessage(next === 1 ? '已启用' : '已停用', 'success')
+    loadData()
+  } catch (e) {
+    showMessage('状态更新失败', 'error')
+  }
+}
+
 const handleImport = () => {
-  showMessage('批量导入功能待后端接口就绪', 'info')
+  if (fileInputRef.value) fileInputRef.value.click()
+}
+
+const fileInputRef = ref(null)
+const handleDownloadTemplate = async () => {
+  try {
+    const blob = await http.get('/exam-questions/import/template', { responseType: 'blob' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '题库导入模板.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    showMessage('下载失败', 'error')
+  }
+}
+const onImportFileChange = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  const form = new FormData()
+  form.append('file', file)
+  try {
+    const res = await importExamQuestions(form)
+    const imported = res?.imported ?? 0
+    showMessage(`导入成功：${imported} 条`, 'success')
+    loadData()
+  } catch (error) {
+    showMessage('导入失败', 'error')
+  } finally {
+    e.target.value = ''
+  }
 }
 
 const handleSizeChange = (val) => {

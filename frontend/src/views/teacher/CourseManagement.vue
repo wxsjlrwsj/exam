@@ -514,7 +514,7 @@ const loadCourses = async () => {
   loadingCourses.value = true
   try {
     const res = await getCourses()
-    courses.value = res.data || []
+    courses.value = res || []
   } catch (e) {
     courses.value = []
   } finally {
@@ -534,8 +534,8 @@ const selectCourse = async (course) => {
 const loadCourseDetail = async (courseId) => {
   try {
     const res = await getCourseDetail(courseId)
-    if (res.data) {
-      Object.assign(currentCourse.value, res.data)
+    if (res) {
+      Object.assign(currentCourse.value, res)
     }
   } catch (e) {
     console.error(e)
@@ -641,7 +641,7 @@ const searchingTeachers = ref(false)
 const loadCourseTeachers = async (courseId) => {
   try {
     const res = await getCourseTeachers(courseId)
-    courseTeachers.value = res.data || []
+    courseTeachers.value = res || []
   } catch (e) {
     courseTeachers.value = []
   }
@@ -655,7 +655,7 @@ const searchTeachers = async (query) => {
   searchingTeachers.value = true
   try {
     const res = await getAllTeachers({ keyword: query })
-    teacherOptions.value = res.data || []
+    teacherOptions.value = res || []
   } catch (e) {
     teacherOptions.value = []
   } finally {
@@ -702,7 +702,7 @@ const loadTeachingClasses = async (courseId) => {
   loadingClasses.value = true
   try {
     const res = await getTeachingClasses(courseId)
-    teachingClasses.value = res.data || []
+    teachingClasses.value = res || []
   } catch (e) {
     teachingClasses.value = []
   } finally {
@@ -831,7 +831,7 @@ const loadClassStudents = async (classId) => {
   loadingStudents.value = true
   try {
     const res = await getTeachingClassStudents(classId)
-    classStudents.value = res.data || []
+    classStudents.value = res || []
   } catch (e) {
     classStudents.value = []
   } finally {
@@ -842,7 +842,7 @@ const loadClassStudents = async (classId) => {
 const loadOrgTree = async () => {
   try {
     const res = await getOrgTree()
-    orgTree.value = res.data || []
+    orgTree.value = res || []
   } catch (e) {
     orgTree.value = []
   }
@@ -893,7 +893,7 @@ const searchStudentsForAdd = async (query) => {
   searchingStudents.value = true
   try {
     const res = await searchStudents({ keyword: query })
-    studentSearchResults.value = res.data || []
+    studentSearchResults.value = res || []
   } catch (e) {
     studentSearchResults.value = []
   } finally {

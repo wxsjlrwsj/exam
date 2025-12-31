@@ -9,12 +9,18 @@ import org.example.chaoxingsystem.teacher.bank.dto.UpdateQuestionRequest;
 import org.example.chaoxingsystem.user.UserService;
 import org.example.chaoxingsystem.user.dto.ApiResponse;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.List;
 
@@ -24,11 +30,13 @@ import java.util.List;
 @ModuleCheck(moduleCode = "tch_bank")
 public class QuestionBankController {
   private final QuestionService service;
+  private final QuestionImportService importService;
   private final UserService userService;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public QuestionBankController(QuestionService service, UserService userService) {
+  public QuestionBankController(QuestionService service, QuestionImportService importService, UserService userService) {
     this.service = service;
+    this.importService = importService;
     this.userService = userService;
   }
 
@@ -57,7 +65,8 @@ public class QuestionBankController {
     String optionsJson = req.getOptions() != null ? objectMapper.writeValueAsString(req.getOptions()) : null;
     String answerJson = objectMapper.writeValueAsString(req.getAnswer());
     String fileId = (req.getUseFile() != null && !req.getUseFile()) ? null : req.getFileId();
-    Long id = service.create(me.getId(), req.getTypeCode(), req.getContent(), optionsJson, answerJson, req.getDifficulty(), req.getSubject(), req.getKnowledgePoints(), fileId);
+    String kp = toKnowledgePointsString(req.getKnowledgePoints());
+    Long id = service.create(me.getId(), req.getTypeCode(), req.getContent(), optionsJson, answerJson, req.getDifficulty(), req.getSubject(), kp, fileId);
     HashMap<String, Object> data = new HashMap<>();
     data.put("id", id);
     return ResponseEntity.ok(ApiResponse.success("创建成功", data));
@@ -75,7 +84,7 @@ public class QuestionBankController {
     cmd.analysis = req.getAnalysis();
     cmd.difficulty = req.getDifficulty();
     cmd.subject = req.getSubject();
-    cmd.knowledgePoints = req.getKnowledgePoints();
+    cmd.knowledgePoints = toKnowledgePointsString(req.getKnowledgePoints());
     cmd.fileId = req.getFileId();
     cmd.status = req.getStatus();
     cmd.useFile = req.getUseFile();
@@ -92,11 +101,52 @@ public class QuestionBankController {
 
   @PostMapping(value = "/questions/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<HashMap<String, Object>>> importFile(@RequestParam("file") MultipartFile file) {
-    // 简化：不解析文件，返回 0 条导入结果
+  public ResponseEntity<ApiResponse<HashMap<String, Object>>> importFile(Authentication auth, @RequestParam("file") MultipartFile file) {
+    var me = userService.getByUsername(auth.getName());
+    QuestionImportService.ImportResult result = importService.importExcel(file, me.getId());
     HashMap<String, Object> data = new HashMap<>();
-    data.put("imported", 0);
+    data.put("total", result.total);
+    data.put("imported", result.imported);
+    data.put("failed", result.failed);
+    data.put("errors", result.errors);
     data.put("filename", file.getOriginalFilename());
-    return ResponseEntity.ok(ApiResponse.success("导入成功", data));
+    return ResponseEntity.ok(ApiResponse.success("import finished", data));
+  }
+
+  @GetMapping(value = "/questions/import/template")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<byte[]> downloadTemplate() {
+    try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      Sheet sheet = workbook.createSheet("模板");
+      Row header = sheet.createRow(0);
+      String[] headers = new String[] { "题型", "学科", "题目内容", "难度", "选项", "答案", "解析", "知识点", "文件ID" };
+      for (int i = 0; i < headers.length; i++) {
+        header.createCell(i).setCellValue(headers[i]);
+        sheet.autoSizeColumn(i);
+      }
+      workbook.write(baos);
+      HttpHeaders headersObj = new HttpHeaders();
+      headersObj.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"题库导入模板.xlsx\"");
+      return ResponseEntity
+        .ok()
+        .headers(headersObj)
+        .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        .body(baos.toByteArray());
+    } catch (Exception e) {
+      return ResponseEntity
+        .badRequest()
+        .contentType(MediaType.TEXT_PLAIN)
+        .body(("failed to generate template: " + e.getMessage()).getBytes());
+    }
+  }
+
+  private String toKnowledgePointsString(Object v) {
+    if (v == null) return null;
+    if (v instanceof java.util.Collection<?> c) {
+      java.util.List<String> list = new java.util.ArrayList<>();
+      for (Object o : c) { if (o != null) list.add(String.valueOf(o)); }
+      return String.join(",", list);
+    }
+    return String.valueOf(v);
   }
 }
