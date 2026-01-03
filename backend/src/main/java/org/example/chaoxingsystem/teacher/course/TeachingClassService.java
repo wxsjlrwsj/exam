@@ -31,21 +31,25 @@ public class TeachingClassService {
     map.put("name", c.getName());
     map.put("assignedTeacherId", c.getAssignedTeacherId());
     map.put("createTime", c.getCreateTime());
+    map.put("academicYear", c.getAcademicYear());
+    map.put("semester", c.getSemester());
     return map;
   }
 
   @Transactional
-  public Long create(Long courseId, String name, Long assignedTeacherId) {
+  public Long create(Long courseId, String name, Long assignedTeacherId, String academicYear, String semester) {
     TeachingClass tc = new TeachingClass();
     tc.setCourseId(courseId);
     tc.setName(name);
     tc.setAssignedTeacherId(assignedTeacherId);
+    tc.setAcademicYear(academicYear);
+    tc.setSemester(semester);
     mapper.insert(tc);
     return tc.getId();
   }
 
   @Transactional
-  public void update(Long id, String name, Long assignedTeacherId) {
+  public void update(Long id, String name, Long assignedTeacherId, String academicYear, String semester) {
     TeachingClass exist = mapper.selectById(id);
     if (exist == null) return;
     TeachingClass tc = new TeachingClass();
@@ -53,6 +57,8 @@ public class TeachingClassService {
     tc.setCourseId(exist.getCourseId());
     tc.setName(name != null ? name : exist.getName());
     tc.setAssignedTeacherId(assignedTeacherId != null ? assignedTeacherId : exist.getAssignedTeacherId());
+    tc.setAcademicYear(academicYear != null ? academicYear : exist.getAcademicYear());
+    tc.setSemester(semester != null ? semester : exist.getSemester());
     mapper.updateById(tc);
   }
 
@@ -84,6 +90,8 @@ public class TeachingClassService {
     u.setCourseId(tc.getCourseId());
     u.setName(tc.getName());
     u.setAssignedTeacherId(teacherUserId);
+    u.setAcademicYear(tc.getAcademicYear());
+    u.setSemester(tc.getSemester());
     mapper.updateById(u);
   }
 

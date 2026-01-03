@@ -31,4 +31,9 @@ public interface UserMapper {
                                           @Param("keyword") String keyword,
                                           @Param("orgId") Long orgId,
                                           @Param("orgType") String orgType);
+
+  List<java.util.Map<String, Object>> searchStudents(@Param("keyword") String keyword,
+                                                     @Param("offset") int offset,
+                                                     @Param("limit") int limit);
+  Long countStudents(@Param("keyword") String keyword);
 }

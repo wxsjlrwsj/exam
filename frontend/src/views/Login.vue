@@ -107,8 +107,19 @@ const handleLogin = async () => {
 
       showMessage('登录成功，欢迎回来！', 'success')
 
-      // 所有角色登录后统一跳转到首页
-      router.push({ name: 'DashboardHome' })
+      // 清理上次用户的禁用模块缓存，避免路由守卫误拦截
+      localStorage.removeItem('disabledModules')
+      // 角色定向跳转
+      const utype = String(userInfo.userType || '').toLowerCase()
+      if (utype === 'teacher') {
+        router.push({ name: 'TeacherCourseManagement' })
+      } else if (utype === 'student') {
+        router.push({ name: 'StudentExamList' })
+      } else if (utype === 'admin') {
+        router.push({ name: 'AdminFunctionModule' })
+      } else {
+        router.push({ name: 'DashboardHome' })
+      }
     } catch (error) {
       // request.js 已经处理了错误提示，这里主要处理 fallback 逻辑
       // showMessage('登录失败: ' + (error.message || '未知错误'), 'error')
@@ -124,7 +135,17 @@ const handleLogin = async () => {
         localStorage.setItem('username', loginForm.username)
 
         showMessage('登录成功（测试账号）', 'success')
-        router.push({ name: 'DashboardHome' })
+        localStorage.removeItem('disabledModules')
+        const utype2 = String(userType || '').toLowerCase()
+        if (utype2 === 'teacher') {
+          router.push({ name: 'TeacherCourseManagement' })
+        } else if (utype2 === 'student') {
+          router.push({ name: 'StudentExamList' })
+        } else if (utype2 === 'admin') {
+          router.push({ name: 'AdminFunctionModule' })
+        } else {
+          router.push({ name: 'DashboardHome' })
+        }
       }
     } finally {
       loading.value = false

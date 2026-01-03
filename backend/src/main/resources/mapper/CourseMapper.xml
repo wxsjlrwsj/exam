@@ -15,9 +15,9 @@
       s.id, 
       s.name, 
       s.description, 
-      NULL AS creator_id,
+      s.creator_user_id AS creator_id,
       s.create_time,
-      1 AS isCreator,
+      CASE WHEN s.creator_user_id = #{teacherId} THEN 1 ELSE 0 END AS isCreator,
       (SELECT COUNT(1) FROM biz_teaching_class tc WHERE tc.subject_id = s.id) AS classCount
     FROM biz_subject s
     WHERE EXISTS (SELECT 1 FROM biz_teacher_subject_map ts WHERE ts.subject_id = s.id AND ts.teacher_id = #{teacherId})
@@ -25,19 +25,20 @@
   </select>
 
   <select id="selectById" resultMap="CourseMap">
-    SELECT s.id, s.name, s.description, NULL AS creator_id, s.create_time
+    SELECT s.id, s.name, s.description, s.creator_user_id AS creator_id, s.create_time
     FROM biz_subject s WHERE s.id = #{id}
   </select>
 
   <insert id="insert" parameterType="org.example.chaoxingsystem.teacher.course.Course" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO biz_subject (name, description)
-    VALUES (#{name}, #{description})
+    INSERT INTO biz_subject (name, description, creator_user_id)
+    VALUES (#{name}, #{description}, #{creatorId})
   </insert>
 
   <update id="updateById" parameterType="org.example.chaoxingsystem.teacher.course.Course">
     UPDATE biz_subject
     SET name = #{name},
-        description = #{description}
+        description = #{description},
+        creator_user_id = #{creatorId}
     WHERE id = #{id}
   </update>
 
@@ -49,8 +50,12 @@
     SELECT u.id AS id, u.username, u.real_name AS name
     FROM biz_teacher_subject_map ts
     JOIN users u ON u.id = ts.teacher_id
+    JOIN biz_subject s ON s.id = ts.subject_id
     WHERE ts.subject_id = #{courseId}
-    ORDER BY u.real_name ASC, u.id ASC
+    ORDER BY 
+      CASE WHEN u.id = s.creator_user_id THEN 0 ELSE 1 END,
+      ts.assign_time ASC,
+      u.id ASC
   </select>
 
   <insert id="insertCourseTeacher">

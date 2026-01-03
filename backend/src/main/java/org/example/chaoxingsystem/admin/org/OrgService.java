@@ -11,9 +11,11 @@ import java.util.stream.Collectors;
 @Service
 public class OrgService {
   private final OrganizationMapper mapper;
+  private final StudentProfileMapper studentMapper;
 
-  public OrgService(OrganizationMapper mapper) {
+  public OrgService(OrganizationMapper mapper, StudentProfileMapper studentMapper) {
     this.mapper = mapper;
+    this.studentMapper = studentMapper;
   }
 
   /** 获取完整组织树 */
@@ -33,6 +35,13 @@ public class OrgService {
       node.put("code", o.getCode());
       node.put("type", o.getType());
       node.put("parentId", o.getParentId());
+      if ("class".equalsIgnoreCase(String.valueOf(o.getType()))) {
+        long cnt = 0;
+        try {
+          cnt = studentMapper.countByClassId(o.getId());
+        } catch (Exception ignore) {}
+        node.put("memberCount", cnt);
+      }
       node.put("children", buildChildren(byParent, o.getId()));
       result.add(node);
     }

@@ -135,4 +135,37 @@
       </choose>
   </select>
 
+  <select id="searchStudents" resultType="java.util.Map">
+    SELECT 
+      u.id AS id,
+      COALESCE(s.real_name, u.real_name) AS name,
+      s.student_no AS studentNo
+    FROM users u
+    LEFT JOIN biz_student s ON s.user_id = u.id
+    WHERE u.user_type = 'student'
+    <if test="keyword != null and keyword != ''">
+      AND (
+        u.username LIKE CONCAT('%', #{keyword}, '%')
+        OR u.real_name LIKE CONCAT('%', #{keyword}, '%')
+        OR s.student_no LIKE CONCAT('%', #{keyword}, '%')
+      )
+    </if>
+    ORDER BY u.id ASC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="countStudents" resultType="long">
+    SELECT COUNT(1)
+    FROM users u
+    LEFT JOIN biz_student s ON s.user_id = u.id
+    WHERE u.user_type = 'student'
+    <if test="keyword != null and keyword != ''">
+      AND (
+        u.username LIKE CONCAT('%', #{keyword}, '%')
+        OR u.real_name LIKE CONCAT('%', #{keyword}, '%')
+        OR s.student_no LIKE CONCAT('%', #{keyword}, '%')
+      )
+    </if>
+  </select>
+
 </mapper>

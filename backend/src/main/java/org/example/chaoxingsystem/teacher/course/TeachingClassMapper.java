@@ -14,4 +14,5 @@ public interface TeachingClassMapper {
   List<Map<String, Object>> selectClassStudents(@Param("classId") Long classId);
   int insertClassStudent(@Param("classId") Long classId, @Param("userId") Long userId);
   int deleteClassStudent(@Param("classId") Long classId, @Param("userId") Long userId);
+  int deleteClassStudentsByCourseId(@Param("courseId") Long courseId);
 }

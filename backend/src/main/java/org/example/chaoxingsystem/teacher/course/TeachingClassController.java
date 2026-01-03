@@ -39,7 +39,9 @@ public class TeachingClassController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> create(@PathVariable("courseId") Long courseId, @RequestBody Map<String, Object> body) {
     String name = (String) body.get("name");
     Long assignedTeacherId = body.get("assignedTeacherId") instanceof Number ? ((Number) body.get("assignedTeacherId")).longValue() : null;
-    Long id = service.create(courseId, name, assignedTeacherId);
+    String academicYear = body.get("academicYear") != null ? String.valueOf(body.get("academicYear")) : null;
+    String semester = body.get("semester") != null ? String.valueOf(body.get("semester")) : null;
+    Long id = service.create(courseId, name, assignedTeacherId, academicYear, semester);
     HashMap<String, Object> data = new HashMap<>();
     data.put("id", id);
     return ResponseEntity.ok(ApiResponse.success("创建成功", data));
@@ -50,7 +52,9 @@ public class TeachingClassController {
   public ResponseEntity<ApiResponse<Void>> update(@PathVariable("id") Long id, @RequestBody Map<String, Object> body) {
     String name = (String) body.get("name");
     Long assignedTeacherId = body.get("assignedTeacherId") instanceof Number ? ((Number) body.get("assignedTeacherId")).longValue() : null;
-    service.update(id, name, assignedTeacherId);
+    String academicYear = body.get("academicYear") != null ? String.valueOf(body.get("academicYear")) : null;
+    String semester = body.get("semester") != null ? String.valueOf(body.get("semester")) : null;
+    service.update(id, name, assignedTeacherId, academicYear, semester);
     return ResponseEntity.ok(ApiResponse.success("更新成功", null));
   }
 

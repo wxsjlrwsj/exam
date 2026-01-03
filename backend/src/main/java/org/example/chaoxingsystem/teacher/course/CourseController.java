@@ -46,6 +46,20 @@ public class CourseController {
     String name = (String) body.get("name");
     String description = (String) body.get("description");
     Long id = service.create(me.getId(), name, description);
+    Object teacherIdsObj = body.get("teacherIds");
+    if (teacherIdsObj instanceof java.util.Collection<?> col) {
+      for (Object o : col) {
+        if (o instanceof Number) {
+          service.addCourseTeacher(id, ((Number) o).longValue());
+        } else if (o instanceof String s) {
+          try { service.addCourseTeacher(id, Long.parseLong(s)); } catch (NumberFormatException ignore) {}
+        }
+      }
+    } else if (teacherIdsObj instanceof Number n) {
+      service.addCourseTeacher(id, n.longValue());
+    } else if (teacherIdsObj instanceof String s) {
+      try { service.addCourseTeacher(id, Long.parseLong(s)); } catch (NumberFormatException ignore) {}
+    }
     HashMap<String, Object> data = new HashMap<>();
     data.put("id", id);
     return ResponseEntity.ok(ApiResponse.success("创建成功", data));
@@ -91,4 +105,3 @@ public class CourseController {
     return ResponseEntity.ok(ApiResponse.success("移除成功", null));
   }
 }
-

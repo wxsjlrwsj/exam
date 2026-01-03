@@ -10,9 +10,11 @@ import java.util.Map;
 @Service
 public class CourseService {
   private final CourseMapper courseMapper;
+  private final TeachingClassMapper teachingClassMapper;
 
-  public CourseService(CourseMapper courseMapper) {
+  public CourseService(CourseMapper courseMapper, TeachingClassMapper teachingClassMapper) {
     this.courseMapper = courseMapper;
+    this.teachingClassMapper = teachingClassMapper;
   }
 
   public List<Map<String, Object>> listByTeacher(Long teacherUserId) {
@@ -34,6 +36,26 @@ public class CourseService {
     map.put("description", c.getDescription());
     map.put("creatorId", c.getCreatorId());
     map.put("createTime", c.getCreateTime());
+    List<Map<String, Object>> teachers = courseMapper.selectCourseTeachers(id);
+    map.put("teachers", teachers);
+    String creatorName = null;
+    if (teachers != null && !teachers.isEmpty()) {
+      if (c.getCreatorId() != null) {
+        for (Map<String, Object> t : teachers) {
+          Object idObj = t.get("id");
+          if (idObj instanceof Number && ((Number) idObj).longValue() == c.getCreatorId()) {
+            Object nameObj = t.get("name");
+            creatorName = nameObj != null ? String.valueOf(nameObj) : null;
+            break;
+          }
+        }
+      }
+      if (creatorName == null) {
+        Object nameObj = teachers.get(0).get("name");
+        creatorName = nameObj != null ? String.valueOf(nameObj) : null;
+      }
+    }
+    map.put("creatorName", creatorName);
     return map;
   }
 
@@ -62,6 +84,8 @@ public class CourseService {
 
   @Transactional
   public void delete(Long id) {
+    teachingClassMapper.deleteClassStudentsByCourseId(id);
+    teachingClassMapper.deleteByCourseId(id);
     courseMapper.deleteCourseTeachersByCourse(id);
     courseMapper.deleteById(id);
   }

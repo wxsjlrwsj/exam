@@ -23,6 +23,11 @@ services:
       - ./backend/db_patches/20251231_separate_exam_practice_questions.sql:/docker-entrypoint-initdb.d/09-exam-bank-separation.sql:ro
       - ./backend/db_patches/20251231_seed_exam_questions.sql:/docker-entrypoint-initdb.d/10-exam-bank-seed.sql:ro
       - ./backend/db_patches/20251231_seed_exam_questions_compiler_database.sql:/docker-entrypoint-initdb.d/11-exam-bank-seed-compiler-db.sql:ro
+      - ./backend/db_patches/20260103_add_creator_user_id_to_biz_subject.sql:/docker-entrypoint-initdb.d/12-subject-creator-user.sql:ro
+      - ./backend/db_patches/20260103_add_assign_time_to_teacher_subject_map.sql:/docker-entrypoint-initdb.d/13-ts-assign-time.sql:ro
+      - ./backend/db_patches/20260103_seed_teachers_4_5.sql:/docker-entrypoint-initdb.d/14-seed-teacher4-5.sql:ro
+      - ../backend/db_patches/20260103_add_academic_year_semester_to_teaching_class.sql:/docker-entrypoint-initdb.d/15-teaching-class-year-semester.sql:ro
+      - ./backend/db_patches/20260103_migrate_class_student_to_biz_student.sql:/docker-entrypoint-initdb.d/16-migrate-class-student.sql:ro
 
     command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
     healthcheck:
