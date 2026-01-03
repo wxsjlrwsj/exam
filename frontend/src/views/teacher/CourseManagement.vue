@@ -137,6 +137,35 @@
           <div class="class-section">
             <div class="section-header">
               <h4>教学班列表</h4>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <el-select
+                  v-model="filterYear"
+                  placeholder="学年"
+                  clearable
+                  style="width: 120px"
+                >
+                  <el-option label="全部" value="" />
+                  <el-option
+                    v-for="y in yearOptions"
+                    :key="y"
+                    :label="y"
+                    :value="y"
+                  />
+                </el-select>
+                <el-select
+                  v-model="filterSemester"
+                  placeholder="学期"
+                  clearable
+                  style="width: 110px"
+                >
+                  <el-option label="全部" value="" />
+                  <el-option
+                    v-for="s in semesterOptions"
+                    :key="s"
+                    :label="s"
+                    :value="s"
+                  />
+                </el-select>
               <el-input
                 v-model="classFilter"
                 placeholder="搜索教学班..."
@@ -144,6 +173,7 @@
                 clearable
                 style="width: 200px"
               />
+              </div>
             </div>
 
             <el-table 
@@ -754,12 +784,41 @@ const removeTeacher = async (teacher) => {
 const teachingClasses = ref([])
 const loadingClasses = ref(false)
 const classFilter = ref('')
+const filterYear = ref('')
+const filterSemester = ref('')
 
 const filteredClasses = computed(() => {
-  if (!classFilter.value) return teachingClasses.value
-  return teachingClasses.value.filter(c =>
-    c.name.toLowerCase().includes(classFilter.value.toLowerCase())
-  )
+  let list = teachingClasses.value
+  if (filterYear.value) {
+    list = list.filter(c => String(c.academicYear || '') === String(filterYear.value))
+  }
+  if (filterSemester.value) {
+    list = list.filter(c => String(c.semester || '') === String(filterSemester.value))
+  }
+  if (classFilter.value) {
+    const kw = classFilter.value.toLowerCase()
+    list = list.filter(c => String(c.name || '').toLowerCase().includes(kw))
+  }
+  return list
+})
+
+const yearOptions = computed(() => {
+  const s = new Set()
+  for (const c of teachingClasses.value) {
+    const y = String(c.academicYear || '').trim()
+    if (y) s.add(y)
+  }
+  return Array.from(s).sort()
+})
+
+const semesterOptions = computed(() => {
+  const s = new Set()
+  for (const c of teachingClasses.value) {
+    const v = String(c.semester || '').trim()
+    if (v) s.add(v)
+  }
+  const arr = Array.from(s)
+  return arr.length ? arr : ['春','秋']
 })
 
 const loadTeachingClasses = async (courseId) => {
