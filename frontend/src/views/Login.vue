@@ -43,12 +43,13 @@
 
 <script setup>
 import { ref, reactive, inject } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import ParticlesBackground from '../components/ParticlesBackground.vue'
 
 const router = useRouter()
+const route = useRoute()
 const showMessage = inject('showMessage')
 const loading = ref(false)
 
@@ -109,17 +110,12 @@ const handleLogin = async () => {
 
       // 清理上次用户的禁用模块缓存，避免路由守卫误拦截
       localStorage.removeItem('disabledModules')
-      // 角色定向跳转
-      const utype = String(userInfo.userType || '').toLowerCase()
-      if (utype === 'teacher') {
-        router.push({ name: 'TeacherCourseManagement' })
-      } else if (utype === 'student') {
-        router.push({ name: 'StudentExamList' })
-      } else if (utype === 'admin') {
-        router.push({ name: 'AdminFunctionModule' })
-      } else {
-        router.push({ name: 'DashboardHome' })
+      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+      if (redirect) {
+        router.replace(redirect)
+        return
       }
+      router.push({ name: 'DashboardHome' })
     } catch (error) {
       // request.js 已经处理了错误提示，这里主要处理 fallback 逻辑
       // showMessage('登录失败: ' + (error.message || '未知错误'), 'error')
@@ -136,16 +132,12 @@ const handleLogin = async () => {
 
         showMessage('登录成功（测试账号）', 'success')
         localStorage.removeItem('disabledModules')
-        const utype2 = String(userType || '').toLowerCase()
-        if (utype2 === 'teacher') {
-          router.push({ name: 'TeacherCourseManagement' })
-        } else if (utype2 === 'student') {
-          router.push({ name: 'StudentExamList' })
-        } else if (utype2 === 'admin') {
-          router.push({ name: 'AdminFunctionModule' })
-        } else {
-          router.push({ name: 'DashboardHome' })
+        const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+        if (redirect) {
+          router.replace(redirect)
+          return
         }
+        router.push({ name: 'DashboardHome' })
       }
     } finally {
       loading.value = false
