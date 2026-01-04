@@ -134,7 +134,7 @@ const handleLogin = async () => {
 
   loading.value = true
   try {
-    const preferRemember = loginForm.rememberMe || localStorage.getItem('rememberMe') === 'true'
+    const preferRemember = loginForm.rememberMe
     if (!loginForm.password && preferRemember) {
       try {
         const r = await request.post('/auth/refresh')
