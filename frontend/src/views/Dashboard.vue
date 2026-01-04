@@ -171,7 +171,8 @@
                 <el-dropdown-menu>
                   <el-dropdown-item command="profile">个人信息</el-dropdown-item>
                   <el-dropdown-item command="settings">账号设置</el-dropdown-item>
-                  <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
+                  <el-dropdown-item divided command="logout">退出登录（保留免登录）</el-dropdown-item>
+                  <el-dropdown-item command="logout-hard">彻底退出（清除免登录）</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -199,9 +200,11 @@ import {
   Menu, OfficeBuilding, Lock, Monitor, EditPen, User, TrendCharts, CircleClose, House
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 const sidebarCollapsed = ref(false)
 const username = ref(localStorage.getItem('username') || '用户')
 const userType = ref(localStorage.getItem('userType') || 'student')
@@ -239,13 +242,25 @@ const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
 
-const handleCommand = (command) => {
+const handleCommand = async (command) => {
   if (command === 'logout') {
-    localStorage.removeItem('token')
+    userStore.logout()
     localStorage.removeItem('userType')
     localStorage.removeItem('username')
     localStorage.removeItem('userAvatar')
-    router.push('/login')
+    router.push('/login?noAutoLogin=1')
+  } else if (command === 'logout-hard') {
+    try {
+      const request = (await import('@/utils/request')).default
+      await request.post('/logout')
+    } catch (e) {}
+    userStore.logout()
+    localStorage.removeItem('userType')
+    localStorage.removeItem('username')
+    localStorage.removeItem('userAvatar')
+    localStorage.removeItem('rememberMe')
+    localStorage.removeItem('tokenExpire')
+    router.push('/login?noAutoLogin=1')
   } else if (command === 'profile') {
     if (userType.value === 'student') {
       router.push({ name: 'StudentProfile', query: { tab: 'basic' } })
@@ -267,10 +282,9 @@ const updateUserInfo = () => {
 }
 
 onMounted(() => {
-  // 检查登录状态
-  const token = localStorage.getItem('token')
-  if (!token) {
-    router.push('/login')
+  const isLoggedIn = userStore.isLoggedIn
+  if (!isLoggedIn) {
+    router.push('/login?noAutoLogin=1')
   }
   window.addEventListener('user-info-update', updateUserInfo)
   window.addEventListener('storage', storageHandler)

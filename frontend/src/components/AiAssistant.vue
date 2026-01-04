@@ -209,6 +209,7 @@ const sendMessage = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({
@@ -228,10 +229,11 @@ const sendMessage = async () => {
     // 读取流式响应
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
+    let streamEnded = false
 
     while (true) {
       const { done, value } = await reader.read()
-      if (done) break
+      if (done || streamEnded) break
 
       const chunk = decoder.decode(value)
       const lines = chunk.split('\n')
@@ -240,6 +242,7 @@ const sendMessage = async () => {
         if (line.startsWith('data:')) {
           const data = line.substring(5).trim()
           if (data === '[DONE]') {
+            streamEnded = true
             break
           }
           // 追加内容到最后一条消息
@@ -261,9 +264,22 @@ const sendMessage = async () => {
         message: message,
         history: buildHistoryJson()
       })
-      aiStore.addMessage('assistant', res.data.data?.reply || '抱歉，AI服务暂时不可用')
+      const lastMsg = aiStore.messages[aiStore.messages.length - 1]
+      const fallbackText = res.data?.data?.reply || ''
+      // 若已产生部分流式内容，则不再追加“抱歉”类文本，避免重复
+      if (!lastMsg || !lastMsg.content || lastMsg.content.trim().length === 0) {
+        aiStore.addMessage('assistant', fallbackText || '抱歉，AI服务暂时不可用')
+      } else {
+        // 如果已有内容且后端返回明确的补充文本，则谨慎追加
+        if (fallbackText && fallbackText !== '抱歉，AI服务暂时不可用，请稍后重试。') {
+          lastMsg.content += '\n' + fallbackText
+        }
+      }
     } catch (e) {
-      aiStore.addMessage('assistant', '抱歉，AI服务暂时不可用，请稍后重试。')
+      const lastMsg = aiStore.messages[aiStore.messages.length - 1]
+      if (!lastMsg || !lastMsg.content || lastMsg.content.trim().length === 0) {
+        aiStore.addMessage('assistant', '抱歉，AI服务暂时不可用，请稍后重试。')
+      }
     }
   } finally {
     aiStore.setLoading(false)

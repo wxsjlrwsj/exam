@@ -42,12 +42,9 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     token.value = ''
     userInfo.value = null
-    rememberMe.value = false
-    
     // 清除 localStorage
     localStorage.removeItem('token')
     localStorage.removeItem('userInfo')
-    localStorage.removeItem('rememberMe')
     localStorage.removeItem('tokenExpire')
   }
 

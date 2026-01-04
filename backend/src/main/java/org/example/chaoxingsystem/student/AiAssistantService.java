@@ -24,7 +24,7 @@ public class AiAssistantService {
 
     private static final Logger log = LoggerFactory.getLogger(AiAssistantService.class);
 
-    @Value("${ai.deepseek.api-key:sk-b78603dc052244768e98c5ccd8be7ebb}")
+    @Value("${ai.deepseek.api-key:}")
     private String apiKey;
 
     @Value("${ai.deepseek.api-url:https://api.deepseek.com/chat/completions}")
@@ -63,6 +63,12 @@ public class AiAssistantService {
         executor.execute(() -> {
             HttpURLConnection conn = null;
             try {
+                if (apiKey == null || apiKey.trim().isEmpty()) {
+                    log.error("AI服务未配置API密钥");
+                    emitter.send(SseEmitter.event().data("抱歉，AI服务未配置API密钥，暂时不可用。"));
+                    emitter.complete();
+                    return;
+                }
                 URL url = new URL(apiUrl);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
@@ -139,6 +145,10 @@ public class AiAssistantService {
     public String chat(String question, String message, String history) {
         HttpURLConnection conn = null;
         try {
+            if (apiKey == null || apiKey.trim().isEmpty()) {
+                log.error("AI服务未配置API密钥");
+                return "抱歉，AI服务未配置API密钥，暂时不可用。";
+            }
             URL url = new URL(apiUrl);
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");

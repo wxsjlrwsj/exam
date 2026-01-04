@@ -7,13 +7,15 @@
         <h1 class="title">超星考试系统</h1>
         <p class="subtitle">智慧教学管理平台</p>
       </div>
-      <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" class="login-form">
+      <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" class="login-form" autocomplete="on">
         <el-form-item prop="username">
           <el-input 
             v-model="loginForm.username" 
             placeholder="用户名 (admin/teacher/student)" 
             :prefix-icon="User"
             size="large"
+            name="username"
+            autocomplete="username"
           />
         </el-form-item>
         <el-form-item prop="password">
@@ -23,6 +25,8 @@
             placeholder="密码" 
             :prefix-icon="Lock"
             size="large"
+            name="password"
+            autocomplete="current-password"
             @keyup.enter="handleLogin"
           />
         </el-form-item>
@@ -45,7 +49,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, inject } from 'vue'
+import { ref, reactive, inject, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -64,6 +68,58 @@ const loginForm = reactive({
   rememberMe: false
 })
 
+onMounted(async () => {
+  try {
+    const noAuto = String(route.query?.noAutoLogin || '') === '1'
+    if (noAuto) return
+    const preferRemember = localStorage.getItem('rememberMe') === 'true'
+    const hasToken = !!userStore.token
+    if (hasToken) {
+      router.replace({ name: 'DashboardHome' })
+      return
+    }
+    if (!preferRemember) return
+    const last = Number(sessionStorage.getItem('autoLoginTriedAt') || '0')
+    if (Date.now() - last < 3000) return
+    sessionStorage.setItem('autoLoginTriedAt', String(Date.now()))
+    const r = await request.post('/auth/refresh')
+    if (r && r.token && r.userInfo) {
+      const token = r.token
+      let fullUserInfo = { ...r.userInfo }
+      try {
+        if (String(r.userInfo.userType).toLowerCase() === 'student') {
+          const prof = await request.get('/student/profile', {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          fullUserInfo = {
+            ...r.userInfo,
+            name: (prof && prof.name) ? prof.name : (r.userInfo.realName || r.userInfo.username),
+            avatar: prof?.avatar || '',
+            role: 'student'
+          }
+          window.dispatchEvent(new Event('user-info-update'))
+        } else {
+          fullUserInfo = {
+            ...r.userInfo,
+            name: r.userInfo.username,
+            role: r.userInfo.userType
+          }
+        }
+      } catch {}
+      userStore.login({
+        token,
+        userInfo: fullUserInfo,
+        rememberMe: true
+      })
+      localStorage.setItem('userType', fullUserInfo.role || r.userInfo.userType)
+      localStorage.setItem('username', fullUserInfo.name || r.userInfo.username)
+      localStorage.removeItem('disabledModules')
+      router.replace({ name: 'DashboardHome' })
+    }
+  } catch (e) {}
+})
+ 
+
 const loginRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' }
@@ -76,13 +132,60 @@ const loginRules = {
 const handleLogin = async () => {
   if (!loginFormRef.value) return
 
-  await loginFormRef.value.validate(async (valid) => {
-    if (!valid) return
-    loading.value = true
-    try {
+  loading.value = true
+  try {
+    const preferRemember = loginForm.rememberMe || localStorage.getItem('rememberMe') === 'true'
+    if (!loginForm.password && preferRemember) {
+      try {
+        const r = await request.post('/auth/refresh')
+        if (r && r.token && r.userInfo) {
+          const token = r.token
+          let fullUserInfo = { ...r.userInfo }
+          try {
+            if (String(r.userInfo.userType).toLowerCase() === 'student') {
+              const prof = await request.get('/student/profile', {
+                headers: { Authorization: `Bearer ${token}` }
+              })
+              fullUserInfo = {
+                ...r.userInfo,
+                name: (prof && prof.name) ? prof.name : (r.userInfo.realName || r.userInfo.username),
+                avatar: prof?.avatar || '',
+                role: 'student'
+              }
+              window.dispatchEvent(new Event('user-info-update'))
+            } else {
+              fullUserInfo = {
+                ...r.userInfo,
+                name: r.userInfo.username,
+                role: r.userInfo.userType
+              }
+            }
+          } catch {}
+          userStore.login({
+            token,
+            userInfo: fullUserInfo,
+            rememberMe: true
+          })
+          localStorage.setItem('userType', fullUserInfo.role || r.userInfo.userType)
+          localStorage.setItem('username', fullUserInfo.name || r.userInfo.username)
+          showMessage('已使用免登录凭证进入', 'success')
+          localStorage.removeItem('disabledModules')
+          const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+          if (redirect) {
+            router.replace(redirect)
+            return
+          }
+          router.push({ name: 'DashboardHome' })
+          return
+        }
+      } catch {}
+    }
+    await loginFormRef.value.validate(async (valid) => {
+      if (!valid) return
       const resp = await request.post('/auth/login', {
         username: loginForm.username,
-        password: loginForm.password
+        password: loginForm.password,
+        rememberMe: loginForm.rememberMe
       })
       // request.js 拦截器返回 res.data (即后端的 data 字段)
       // 所以 resp 就是 { token: "...", userInfo: {...} }
@@ -98,7 +201,11 @@ const handleLogin = async () => {
       let fullUserInfo = { ...userInfo }
       try {
         if (String(userInfo.userType).toLowerCase() === 'student') {
-          const prof = await request.get('/student/profile')
+          const prof = await request.get('/student/profile', {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          })
           fullUserInfo = {
             ...userInfo,
             name: (prof && prof.name) ? prof.name : (userInfo.realName || userInfo.username || loginForm.username),
@@ -142,7 +249,8 @@ const handleLogin = async () => {
         return
       }
       router.push({ name: 'DashboardHome' })
-    } catch (error) {
+    })
+  } catch (error) {
       // request.js 已经处理了错误提示，这里主要处理 fallback 逻辑
       // showMessage('登录失败: ' + (error.message || '未知错误'), 'error')
 
@@ -184,7 +292,6 @@ const handleLogin = async () => {
     } finally {
       loading.value = false
     }
-  })
 }
 const loginFormRef = ref(null)
 </script>

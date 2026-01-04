@@ -38,12 +38,17 @@ public class AiAssistantController {
      * @return AI回复
      */
     @PostMapping("/chat")
-    public Map<String, Object> chat(@RequestBody Map<String, String> request) {
+    public org.springframework.http.ResponseEntity<org.example.chaoxingsystem.user.dto.ApiResponse<java.util.Map<String, String>>> chat(@RequestBody Map<String, String> request) {
         String question = request.get("question");
         String message = request.get("message");
         String history = request.get("history");
-        
-        String reply = aiAssistantService.chat(question, message, history);
-        return Map.of("code", 200, "data", Map.of("reply", reply));
+        try {
+            String reply = aiAssistantService.chat(question, message, history);
+            return org.springframework.http.ResponseEntity.ok(org.example.chaoxingsystem.user.dto.ApiResponse.success("成功", java.util.Map.of("reply", reply)));
+        } catch (Exception e) {
+            return org.springframework.http.ResponseEntity
+                    .status(503)
+                    .body(org.example.chaoxingsystem.user.dto.ApiResponse.error(503, "AI服务暂不可用"));
+        }
     }
 }

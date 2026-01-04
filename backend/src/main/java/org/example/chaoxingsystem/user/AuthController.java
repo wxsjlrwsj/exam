@@ -79,7 +79,20 @@ public class AuthController {
     String resolvedType = userService.resolveUserType(user);
     UserInfo info = new UserInfo(user.getId(), user.getUsername(), user.getRealName(), resolvedType, user.getAvatar());
     LoginData data = new LoginData(token, info);
-    return ResponseEntity.ok(ApiResponse.success("登录成功", data));
+    // 设置刷新令牌 Cookie
+    boolean remember = request.getRememberMe() != null && request.getRememberMe();
+    long expires = remember ? 7L * 24L * 60L * 60L : 24L * 60L * 60L;
+    String refresh = tokenService.generateRefreshToken(user, expires);
+    org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("refresh_token", refresh)
+      .httpOnly(true)
+      .secure(false)
+      .path("/")
+      .sameSite("Lax")
+      .maxAge(expires)
+      .build();
+    return ResponseEntity.ok()
+      .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
+      .body(ApiResponse.success("登录成功", data));
   }
 
   @PostMapping("/auth/login")
@@ -132,6 +145,51 @@ public class AuthController {
       return ResponseEntity.status(404).body(ApiResponse.error(404, "用户不存在"));
     }
     return ResponseEntity.ok(ApiResponse.success("获取成功", info));
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<ApiResponse<Void>> logout() {
+    org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("refresh_token", "")
+      .httpOnly(true)
+      .secure(false)
+      .path("/")
+      .sameSite("Lax")
+      .maxAge(0)
+      .build();
+    return ResponseEntity.ok()
+      .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
+      .body(ApiResponse.success("已退出登录", null));
+  }
+
+  @PostMapping("/auth/refresh")
+  public ResponseEntity<ApiResponse<LoginData>> refresh(jakarta.servlet.http.HttpServletRequest req) {
+    jakarta.servlet.http.Cookie[] cookies = req.getCookies();
+    if (cookies == null) {
+      return ResponseEntity.status(401).body(ApiResponse.error(401, "未登录"));
+    }
+    String rt = null;
+    for (jakarta.servlet.http.Cookie c : cookies) {
+      if ("refresh_token".equals(c.getName())) {
+        rt = c.getValue();
+        break;
+      }
+    }
+    if (rt == null || rt.isEmpty()) {
+      return ResponseEntity.status(401).body(ApiResponse.error(401, "未登录"));
+    }
+    TokenService.TokenData td = tokenService.parseAndValidateRefresh(rt);
+    if (td == null) {
+      return ResponseEntity.status(401).body(ApiResponse.error(401, "令牌失效"));
+    }
+    UserInfo info = userService.getUserInfoByUsername(td.getUsername());
+    if (info == null) {
+      return ResponseEntity.status(404).body(ApiResponse.error(404, "用户不存在"));
+    }
+    // 重新生成访问令牌（保持原先无过期的行为）
+    User user = userService.getByUsername(td.getUsername());
+    String token = tokenService.generateToken(user);
+    LoginData data = new LoginData(token, info);
+    return ResponseEntity.ok(ApiResponse.success("刷新成功", data));
   }
 
   @GetMapping("/admin/users")

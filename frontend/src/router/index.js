@@ -150,7 +150,7 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   
   // 检查Token是否过期
@@ -158,7 +158,7 @@ router.beforeEach((to, from, next) => {
     userStore.checkTokenExpire()
   }
   
-  const isAuthenticated = userStore.isLoggedIn
+  let isAuthenticated = userStore.isLoggedIn
   const userType = userStore.userRole || localStorage.getItem('userType')
   
   // 模拟从本地存储获取禁用的模块列表 (实际应从后端API获取配置)
@@ -172,7 +172,25 @@ router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - 在线考试系统` : '在线考试系统'
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next({ name: 'Login', query: { redirect: to.fullPath } })
+    try {
+      const request = (await import('@/utils/request')).default
+      const resp = await request.post('/auth/refresh')
+      if (resp && resp.token && resp.userInfo) {
+        userStore.login({
+          token: resp.token,
+          userInfo: resp.userInfo,
+          rememberMe: localStorage.getItem('rememberMe') === 'true'
+        })
+        isAuthenticated = true
+      }
+    } catch (e) {
+      // ignore
+    }
+    if (!isAuthenticated) {
+      next({ name: 'Login', query: { redirect: to.fullPath, noAutoLogin: '1' } })
+    } else {
+      next()
+    }
   } else if (to.meta.moduleCode && disabledModules.includes(to.meta.moduleCode)) {
     next({ name: 'DashboardHome' })
   } else if (to.meta.roles && (!userType || !to.meta.roles.includes(userType))) {

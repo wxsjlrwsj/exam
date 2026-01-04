@@ -121,6 +121,42 @@ service.interceptors.request.use(async (config) => {
   const handle = async () => {
     await sleep(200)
 
+    // 登录
+    if (method === 'post' && path === '/auth/login') {
+      const body = config.data || {}
+      let userType = 'student'
+      const u = String(body.username || '').toLowerCase()
+      if (u.includes('admin')) userType = 'admin'
+      else if (u.includes('teacher')) userType = 'teacher'
+      const token = 'mock-token-' + Date.now()
+      const userInfo = {
+        id: Date.now(),
+        name: body.username || '用户',
+        username: body.username || 'user',
+        role: userType,
+        userType
+      }
+      return okPayload({ token, userInfo })
+    }
+
+    // 刷新登录（记住我）
+    if (method === 'post' && path === '/auth/refresh') {
+      const hasRemember = localStorage.getItem('rememberMe') === 'true'
+      const userInfoStr = localStorage.getItem('userInfo')
+      let userInfo = null
+      try { userInfo = JSON.parse(userInfoStr || 'null') } catch {}
+      if (hasRemember && userInfo) {
+        const token = 'mock-token-' + Date.now()
+        return okPayload({ token, userInfo })
+      }
+      return { code: 401, data: { data: null }, message: 'Unauthorized' }
+    }
+
+    // 退出
+    if (method === 'post' && path === '/logout') {
+      return emptyOk()
+    }
+
     // 课程列表
     if (method === 'get' && path === '/courses') {
       return okPayload(courses)
@@ -334,6 +370,18 @@ service.interceptors.request.use(async (config) => {
       return okPayload(filtered)
     }
 
+    // 学生个人资料
+    if (method === 'get' && path === '/student/profile') {
+      const infoStr = localStorage.getItem('userInfo')
+      let info = null
+      try { info = JSON.parse(infoStr || 'null') } catch {}
+      const profile = {
+        name: info?.name || info?.username || '学生',
+        avatar: ''
+      }
+      return okPayload(profile)
+    }
+
     // ==================== 考试管理 ====================
     // 获取考试列表（支持按课程筛选）
     if (method === 'get' && path === '/exams') {
@@ -417,10 +465,12 @@ service.interceptors.request.use(async (config) => {
     path?.startsWith('/exams') ||
     path?.startsWith('/papers') ||
     path?.startsWith('/student/') ||
+    path?.startsWith('/auth/') ||
     path === '/org/tree' ||
     path === '/system/module-config' ||
     path === '/users/teachers' ||
-    path === '/users/students'
+    path === '/users/students' ||
+    path === '/logout'
 
   if (isMockTarget) {
     config.adapter = async () => {

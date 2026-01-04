@@ -12,6 +12,8 @@ public class LoginRequest {
   @Size(min = 6, max = 100)
   private String password;
 
+  private Boolean rememberMe;
+
   public String getUsername() {
     return username;
   }
@@ -26,5 +28,13 @@ public class LoginRequest {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+
+  public Boolean getRememberMe() {
+    return rememberMe != null ? rememberMe : Boolean.FALSE;
+  }
+
+  public void setRememberMe(Boolean rememberMe) {
+    this.rememberMe = rememberMe;
   }
 }

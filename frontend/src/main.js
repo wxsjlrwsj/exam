@@ -7,6 +7,10 @@ import App from './App.vue'
 import router from './router'
 import './style.css'
 
+if (import.meta.env.DEV) {
+  import('./mock/index.js')
+}
+
 const app = createApp(App)
 const pinia = createPinia()
 
