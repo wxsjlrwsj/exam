@@ -44,20 +44,20 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      JAVA_OPTS: -Duser.timezone=Asia/Shanghai
-      DB_URL: jdbc:mysql://mysql:3306/chaoxing?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8
-      DB_DRIVER: com.mysql.cj.jdbc.Driver
-      DB_USER: root
-      DB_PASSWORD: root
-      SPRING_SQL_INIT_MODE: never
-      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
-      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
-      SECURITY_TOKEN_SECRET: change-me-dev
-      SECURITY_CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:5173
-      BAIDU_FACE_API_KEY: ${BAIDU_FACE_API_KEY:-}
-      BAIDU_FACE_SECRET_KEY: ${BAIDU_FACE_SECRET_KEY:-}
-      BAIDU_FACE_THRESHOLD: ${BAIDU_FACE_THRESHOLD:-80.0}
-      AI_DEEPSEEK_API_KEY: ${AI_DEEPSEEK_API_KEY:-}
+      - JAVA_OPTS=-Duser.timezone=Asia/Shanghai
+      - DB_URL=jdbc:mysql://mysql:3306/chaoxing?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8
+      - DB_DRIVER=com.mysql.cj.jdbc.Driver
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - SPRING_SQL_INIT_MODE=never
+      - SECURITY_TOKEN_SECRET=change-me-dev
+      - SECURITY_CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173
+      - SPRING_MAIL_USERNAME
+      - SPRING_MAIL_PASSWORD
+      - BAIDU_FACE_API_KEY
+      - BAIDU_FACE_SECRET_KEY
+      - BAIDU_FACE_THRESHOLD
+      - AI_DEEPSEEK_API_KEY
     ports:
       - "8083:8083"
 
