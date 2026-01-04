@@ -212,8 +212,12 @@ import AiAssistant from '@/components/AiAssistant.vue'
 import { ElMessage } from 'element-plus'
 import { getPracticeQuestions, getCollections, addQuestionToCollection } from '@/api/student'
 import { filterValidQuestions } from '@/utils/dataValidator'
+import { useAiAssistantStore } from '@/stores/aiAssistant'
 
 const showMessage = inject('showMessage') || ElMessage
+
+// 使用Pinia store
+const aiStore = useAiAssistantStore()
 
 // --- State ---
 const loading = ref(false)
@@ -224,9 +228,8 @@ const questionList = ref([])
 const detailDialogVisible = ref(false)
 const currentQuestion = ref(null)
 
-// AI助手状态
+// AI助手引用
 const aiAssistantRef = ref(null)
-const currentQuestionText = ref('')
 
 // Upload State
 const uploadDialogVisible = ref(false)
@@ -409,27 +412,29 @@ const handleViewDetail = (row) => {
 // AI辅助解题
 const openAiAssistant = () => {
   if (currentQuestion.value) {
-    // 构建题目文本
-    let questionText = `【${getQuestionTypeLabel(currentQuestion.value.type)}】${currentQuestion.value.subject}\n\n`
-    questionText += `题目：${currentQuestion.value.content}\n`
+    // 构建题目数据对象
+    const questionData = {
+      type: getQuestionTypeLabel(currentQuestion.value.type),
+      content: currentQuestion.value.content,
+      subject: currentQuestion.value.subject,
+      options: [],
+      answer: currentQuestion.value.answer || '',
+      analysis: currentQuestion.value.analysis || ''
+    }
     
     // 添加选项（如果有）
     if (['single_choice', 'multiple_choice'].includes(currentQuestion.value.type)) {
       const options = parseOptions(currentQuestion.value.options)
       if (options.length > 0) {
-        questionText += '\n选项：\n'
-        options.forEach(opt => {
-          questionText += `${opt.key}. ${opt.value}\n`
-        })
+        questionData.options = options.map(opt => ({
+          label: opt.key,
+          content: opt.value
+        }))
       }
     }
     
-    currentQuestionText.value = questionText
-    
-    // 打开AI助手
-    if (aiAssistantRef.value) {
-      aiAssistantRef.value.openChat()
-    }
+    // 使用Pinia store打开AI助手
+    aiStore.openAssistant(questionData)
   }
 }
 

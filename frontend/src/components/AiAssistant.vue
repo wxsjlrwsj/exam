@@ -113,57 +113,37 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch, defineProps, defineEmits } from 'vue'
+import { ref, nextTick, watch, computed } from 'vue'
 import { ChatDotRound, Close, Delete, User, Promotion } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { useAiAssistantStore } from '@/stores/aiAssistant'
 import axios from 'axios'
 
-const props = defineProps({
-  question: {
-    type: String,
-    default: ''
-  },
-  visible: {
-    type: Boolean,
-    default: false
-  }
-})
+// 使用Pinia store
+const aiStore = useAiAssistantStore()
 
-const emit = defineEmits(['update:visible'])
-
-const isOpen = ref(false)
 const inputMessage = ref('')
-const messages = ref([])
-const isLoading = ref(false)
 const messagesContainer = ref(null)
-const currentQuestion = ref('')
 
-// 监听props变化
-watch(() => props.question, (newVal) => {
-  if (newVal) {
-    currentQuestion.value = newVal
-  }
-})
-
-watch(() => props.visible, (newVal) => {
-  isOpen.value = newVal
-})
+// 从store获取状态
+const isOpen = computed(() => aiStore.isVisible)
+const messages = computed(() => aiStore.messages)
+const isLoading = computed(() => aiStore.isLoading)
+const currentQuestion = computed(() => aiStore.currentQuestion)
 
 // 打开聊天窗口
 const openChat = () => {
-  isOpen.value = true
-  emit('update:visible', true)
+  aiStore.openAssistant()
 }
 
 // 关闭聊天窗口
 const closeChat = () => {
-  isOpen.value = false
-  emit('update:visible', false)
+  aiStore.closeAssistant()
 }
 
 // 清空历史
 const clearHistory = () => {
-  messages.value = []
+  aiStore.clearMessages()
 }
 
 // 截断文本
@@ -196,8 +176,8 @@ const renderMarkdown = (text) => {
 
 // 构建历史消息JSON
 const buildHistoryJson = () => {
-  if (messages.value.length === 0) return ''
-  return messages.value.map(msg => {
+  if (aiStore.conversationHistory.length === 0) return ''
+  return aiStore.conversationHistory.map(msg => {
     const role = msg.role === 'user' ? 'user' : 'assistant'
     const content = msg.content.replace(/"/g, '\\"').replace(/\n/g, '\\n')
     return `{"role":"${role}","content":"${content}"}`
@@ -213,16 +193,12 @@ const sendQuickMessage = (text) => {
 // 发送消息
 const sendMessage = async () => {
   const message = inputMessage.value.trim()
-  if (!message || isLoading.value) return
+  if (!message || aiStore.isLoading) return
 
-  // 添加用户消息
-  messages.value.push({
-    role: 'user',
-    content: message,
-    time: getCurrentTime()
-  })
+  // 添加用户消息到store
+  aiStore.addMessage('user', message)
   inputMessage.value = ''
-  isLoading.value = true
+  aiStore.setLoading(true)
 
   await nextTick()
   scrollToBottom()
@@ -236,7 +212,7 @@ const sendMessage = async () => {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({
-        question: currentQuestion.value || '无具体题目',
+        question: aiStore.currentQuestion || '无具体题目',
         message: message,
         history: buildHistoryJson()
       })
@@ -247,12 +223,7 @@ const sendMessage = async () => {
     }
 
     // 添加AI消息占位
-    const aiMessageIndex = messages.value.length
-    messages.value.push({
-      role: 'assistant',
-      content: '',
-      time: getCurrentTime()
-    })
+    aiStore.addMessage('assistant', '')
 
     // 读取流式响应
     const reader = response.body.getReader()
@@ -271,8 +242,11 @@ const sendMessage = async () => {
           if (data === '[DONE]') {
             break
           }
-          // 追加内容
-          messages.value[aiMessageIndex].content += data
+          // 追加内容到最后一条消息
+          const lastMsg = aiStore.messages[aiStore.messages.length - 1]
+          if (lastMsg) {
+            lastMsg.content += data
+          }
           await nextTick()
           scrollToBottom()
         }
@@ -283,24 +257,16 @@ const sendMessage = async () => {
     // 使用非流式API作为备用
     try {
       const res = await axios.post('/api/student/ai/chat', {
-        question: currentQuestion.value || '无具体题目',
+        question: aiStore.currentQuestion || '无具体题目',
         message: message,
         history: buildHistoryJson()
       })
-      messages.value.push({
-        role: 'assistant',
-        content: res.data.data?.reply || '抱歉，AI服务暂时不可用',
-        time: getCurrentTime()
-      })
+      aiStore.addMessage('assistant', res.data.data?.reply || '抱歉，AI服务暂时不可用')
     } catch (e) {
-      messages.value.push({
-        role: 'assistant',
-        content: '抱歉，AI服务暂时不可用，请稍后重试。',
-        time: getCurrentTime()
-      })
+      aiStore.addMessage('assistant', '抱歉，AI服务暂时不可用，请稍后重试。')
     }
   } finally {
-    isLoading.value = false
+    aiStore.setLoading(false)
     await nextTick()
     scrollToBottom()
   }
@@ -315,7 +281,7 @@ const scrollToBottom = () => {
 
 // 设置当前题目
 const setQuestion = (question) => {
-  currentQuestion.value = question
+  aiStore.setCurrentQuestion(question)
 }
 
 // 暴露方法
