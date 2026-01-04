@@ -83,13 +83,15 @@ public class AuthController {
     boolean remember = request.getRememberMe() != null && request.getRememberMe();
     long expires = remember ? 7L * 24L * 60L * 60L : 24L * 60L * 60L;
     String refresh = tokenService.generateRefreshToken(user, expires);
-    org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("refresh_token", refresh)
+    org.springframework.http.ResponseCookie.ResponseCookieBuilder cookieBuilder = org.springframework.http.ResponseCookie.from("refresh_token", refresh)
       .httpOnly(true)
       .secure(false)
       .path("/")
-      .sameSite("Lax")
-      .maxAge(expires)
-      .build();
+      .sameSite("Lax");
+    if (remember) {
+      cookieBuilder.maxAge(expires);
+    }
+    org.springframework.http.ResponseCookie cookie = cookieBuilder.build();
     return ResponseEntity.ok()
       .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
       .body(ApiResponse.success("登录成功", data));
