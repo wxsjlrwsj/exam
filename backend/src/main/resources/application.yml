@@ -35,3 +35,9 @@ security:
     secret: change-me-dev
   cors:
     allowed-origins: http://localhost:5173,http://localhost:8080
+
+baidu:
+  face:
+    api-key: ${BAIDU_FACE_API_KEY:}
+    secret-key: ${BAIDU_FACE_SECRET_KEY:}
+    threshold: ${BAIDU_FACE_THRESHOLD:80.0}

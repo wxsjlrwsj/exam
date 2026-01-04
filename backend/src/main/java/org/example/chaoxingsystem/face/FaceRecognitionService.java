@@ -16,34 +16,28 @@ import java.util.regex.Pattern;
 @Service
 public class FaceRecognitionService {
 
-    @Value("${baidu.face.api-key}")
+    @Value("${baidu.face.api-key:}")
     private String apiKey;
 
-    @Value("${baidu.face.secret-key}")
+    @Value("${baidu.face.secret-key:}")
     private String secretKey;
 
-    @Value("${baidu.face.threshold}")
+    @Value("${baidu.face.threshold:80.0}")
     private double threshold;
 
     public double compareFaces(String base64Image1, String base64Image2) {
         try {
-            System.out.println("[FaceRecognition] Starting face comparison");
-            System.out.println("[FaceRecognition] Image1 length: " + (base64Image1 != null ? base64Image1.length() : 0));
-            System.out.println("[FaceRecognition] Image2 length: " + (base64Image2 != null ? base64Image2.length() : 0));
-            
-            // 获取 access token
+            if (apiKey == null || apiKey.isBlank() || secretKey == null || secretKey.isBlank()) {
+                throw new FaceRecognitionException(500, "人脸识别未配置，请联系管理员设置百度人脸API凭证");
+            }
+
             String accessToken = getAccessToken(apiKey, secretKey);
-            System.out.println("[FaceRecognition] Got access token");
-            
-            // 调用人脸比对 API
             double score = faceMatchScore(accessToken, base64Image1, base64Image2);
-            System.out.println("[FaceRecognition] Match score: " + score);
-            
             return score;
+        } catch (FaceRecognitionException e) {
+            throw e;
         } catch (Exception e) {
-            System.err.println("[FaceRecognition] Exception: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("人脸识别失败: " + e.getMessage(), e);
+            throw new FaceRecognitionException(503, "人脸识别服务暂时不可用，请稍后重试");
         }
     }
 
@@ -52,78 +46,136 @@ public class FaceRecognitionService {
                 + "&client_id=" + URLEncoder.encode(apiKey, "UTF-8")
                 + "&client_secret=" + URLEncoder.encode(secretKey, "UTF-8");
         String json = httpGet(url);
-        Pattern p = Pattern.compile("\"access_token\"\\s*:\\s*\"([^\"]+)\"");
-        Matcher m = p.matcher(json);
-        if (m.find()) {
-            return m.group(1);
+        try {
+            JSONObject obj = new JSONObject(json);
+            String token = obj.optString("access_token", "");
+            if (!token.isBlank()) {
+                return token;
+            }
+            String err = obj.optString("error_description", obj.optString("error", ""));
+            if (err.isBlank()) err = json;
+            throw new FaceRecognitionException(503, "获取百度access_token失败: " + err);
+        } catch (FaceRecognitionException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new FaceRecognitionException(503, "获取百度access_token失败");
         }
-        throw new IllegalStateException("无法获取access_token: " + json);
     }
 
     private double faceMatchScore(String accessToken, String base64Img1, String base64Img2) throws IOException {
-        // 先尝试 V2 API
+        String cleanImg1 = (base64Img1 == null ? "" : base64Img1).replaceAll("\\s+", "");
+        String cleanImg2 = (base64Img2 == null ? "" : base64Img2).replaceAll("\\s+", "");
+
+        if (cleanImg1.isBlank() || cleanImg2.isBlank()) {
+            throw new FaceRecognitionException(400, "照片数据不能为空");
+        }
+
+        FaceMatchAttempt v2Attempt = tryMatchV2(accessToken, cleanImg1, cleanImg2);
+        if (v2Attempt.score != null) {
+            return v2Attempt.score;
+        }
+
+        FaceMatchAttempt v3Attempt = tryMatchV3(accessToken, cleanImg1, cleanImg2);
+        if (v3Attempt.score != null) {
+            return v3Attempt.score;
+        }
+
+        FaceMatchAttempt err = v3Attempt.errorCode != null ? v3Attempt : v2Attempt;
+        if (err.errorCode != null) {
+            int code = err.errorCode;
+            String msg = err.errorMessage == null ? "" : err.errorMessage;
+            throw toFriendlyException(code, msg);
+        }
+
+        throw new FaceRecognitionException(503, "人脸识别服务返回异常，请稍后重试");
+    }
+
+    private FaceMatchAttempt tryMatchV2(String accessToken, String base64Img1, String base64Img2) throws IOException {
         String endpointV2 = "https://aip.baidubce.com/rest/2.0/face/v2/match?access_token=" + URLEncoder.encode(accessToken, "UTF-8");
         String images = URLEncoder.encode(base64Img1 + "," + base64Img2, "UTF-8");
-        String bodyV2 = "images=" + images + "&ext_fields=qualities&image_liveness=faceliveness,faceliveness";
+        String bodyV2 = "images=" + images;
         String respV2 = httpPost(endpointV2, bodyV2);
-        
-        System.out.println("[FaceRecognition] V2 API Response: " + respV2.substring(0, Math.min(200, respV2.length())));
-        
-        Pattern pScore = Pattern.compile("\"score\"\\s*:\\s*(\\d+(?:\\.\\d+)?)");
-        Matcher mScore = pScore.matcher(respV2);
-        if (mScore.find()) {
-            return Double.parseDouble(mScore.group(1));
-        }
-        
-        // 检查是否需要回退到 V3 API
-        Pattern pErr = Pattern.compile("\"error_code\"\\s*:\\s*(\\d+)");
-        Matcher mErr = pErr.matcher(respV2);
-        if (mErr.find()) {
-            int code = Integer.parseInt(mErr.group(1));
-            System.out.println("[FaceRecognition] V2 API error code: " + code + ", trying V3 API");
-            
-            if (code == 6 || code == 17 || code == 100) {
-                // 使用 V3 API
-                String endpointV3 = "https://aip.baidubce.com/rest/2.0/face/v3/match?access_token=" + URLEncoder.encode(accessToken, "UTF-8");
-                
-                // 清理 base64 字符串中的换行符和空格
-                String cleanImg1 = base64Img1.replaceAll("\\s+", "");
-                String cleanImg2 = base64Img2.replaceAll("\\s+", "");
-                
-                // 使用 JSONArray 和 JSONObject 构建请求
-                JSONArray jsonArray = new JSONArray();
-                
-                JSONObject img1Obj = new JSONObject();
-                img1Obj.put("image", cleanImg1);
-                img1Obj.put("image_type", "BASE64");
-                img1Obj.put("face_type", "LIVE");
-                img1Obj.put("quality_control", "LOW");
-                img1Obj.put("liveness_control", "NONE");
-                jsonArray.put(img1Obj);
-                
-                JSONObject img2Obj = new JSONObject();
-                img2Obj.put("image", cleanImg2);
-                img2Obj.put("image_type", "BASE64");
-                img2Obj.put("face_type", "LIVE");
-                img2Obj.put("quality_control", "NONE");
-                jsonArray.put(img2Obj);
-                
-                String json = jsonArray.toString();
-                System.out.println("[FaceRecognition] V3 API Request length: " + json.length());
-                
-                String respV3 = httpPostJson(endpointV3, json);
-                
-                System.out.println("[FaceRecognition] V3 API Response: " + respV3.substring(0, Math.min(200, respV3.length())));
-                
-                Matcher mScoreV3 = pScore.matcher(respV3);
-                if (mScoreV3.find()) {
-                    return Double.parseDouble(mScoreV3.group(1));
-                }
-                throw new IllegalStateException("V3 API响应中未找到score: " + respV3);
+        return parseMatchResponse(respV2);
+    }
+
+    private FaceMatchAttempt tryMatchV3(String accessToken, String base64Img1, String base64Img2) throws IOException {
+        String endpointV3 = "https://aip.baidubce.com/rest/2.0/face/v3/match?access_token=" + URLEncoder.encode(accessToken, "UTF-8");
+
+        JSONArray jsonArray = new JSONArray();
+        JSONObject img1Obj = new JSONObject();
+        img1Obj.put("image", base64Img1);
+        img1Obj.put("image_type", "BASE64");
+        img1Obj.put("face_type", "LIVE");
+        img1Obj.put("quality_control", "LOW");
+        img1Obj.put("liveness_control", "NONE");
+        jsonArray.put(img1Obj);
+
+        JSONObject img2Obj = new JSONObject();
+        img2Obj.put("image", base64Img2);
+        img2Obj.put("image_type", "BASE64");
+        img2Obj.put("face_type", "LIVE");
+        img2Obj.put("quality_control", "NONE");
+        jsonArray.put(img2Obj);
+
+        String respV3 = httpPostJson(endpointV3, jsonArray.toString());
+        return parseMatchResponse(respV3);
+    }
+
+    private FaceMatchAttempt parseMatchResponse(String resp) {
+        try {
+            JSONObject obj = new JSONObject(resp);
+            Integer errorCode = obj.has("error_code") ? obj.optInt("error_code") : null;
+            if (errorCode != null && errorCode != 0) {
+                return FaceMatchAttempt.error(errorCode, obj.optString("error_msg", ""));
             }
+
+            JSONObject resultObj = obj.optJSONObject("result");
+            if (resultObj != null) {
+                if (resultObj.has("score")) {
+                    return FaceMatchAttempt.score(resultObj.optDouble("score"));
+                }
+                JSONArray resultArr = resultObj.optJSONArray("result");
+                if (resultArr != null && resultArr.length() > 0) {
+                    JSONObject first = resultArr.optJSONObject(0);
+                    if (first != null && first.has("score")) {
+                        return FaceMatchAttempt.score(first.optDouble("score"));
+                    }
+                }
+            }
+
+            JSONArray resultArr = obj.optJSONArray("result");
+            if (resultArr != null && resultArr.length() > 0) {
+                JSONObject first = resultArr.optJSONObject(0);
+                if (first != null && first.has("score")) {
+                    return FaceMatchAttempt.score(first.optDouble("score"));
+                }
+            }
+
+            Pattern pScore = Pattern.compile("\"score\"\\s*:\\s*(\\d+(?:\\.\\d+)?)");
+            Matcher mScore = pScore.matcher(resp);
+            if (mScore.find()) {
+                return FaceMatchAttempt.score(Double.parseDouble(mScore.group(1)));
+            }
+
+            if (errorCode != null && errorCode == 0) {
+                return FaceMatchAttempt.empty();
+            }
+            return FaceMatchAttempt.empty();
+        } catch (Exception e) {
+            return FaceMatchAttempt.empty();
         }
-        
-        throw new IllegalStateException("响应中未找到score: " + respV2);
+    }
+
+    private FaceRecognitionException toFriendlyException(int errorCode, String errorMsg) {
+        String msg = errorMsg == null ? "" : errorMsg;
+        return switch (errorCode) {
+            case 216201, 216202, 216200, 216203 -> new FaceRecognitionException(400, "照片无效，请重新拍照后重试");
+            case 222202 -> new FaceRecognitionException(400, "未检测到人脸，请正对摄像头并保持光线充足");
+            case 222203 -> new FaceRecognitionException(400, "人脸质量不佳，请重新拍照后重试");
+            case 17, 18 -> new FaceRecognitionException(503, "人脸识别服务繁忙，请稍后重试");
+            case 100 -> new FaceRecognitionException(503, "人脸识别服务授权失效，请联系管理员");
+            default -> new FaceRecognitionException(503, "人脸识别失败: " + (msg.isBlank() ? ("error_code=" + errorCode) : msg));
+        };
     }
 
     private String httpGet(String urlStr) throws IOException {
@@ -204,5 +256,42 @@ public class FaceRecognitionService {
 
     public double getThreshold() {
         return threshold;
+    }
+
+    public static class FaceRecognitionException extends RuntimeException {
+        private final int code;
+
+        public FaceRecognitionException(int code, String message) {
+            super(message);
+            this.code = code;
+        }
+
+        public int getCode() {
+            return code;
+        }
+    }
+
+    private static class FaceMatchAttempt {
+        private final Double score;
+        private final Integer errorCode;
+        private final String errorMessage;
+
+        private FaceMatchAttempt(Double score, Integer errorCode, String errorMessage) {
+            this.score = score;
+            this.errorCode = errorCode;
+            this.errorMessage = errorMessage;
+        }
+
+        static FaceMatchAttempt score(double score) {
+            return new FaceMatchAttempt(score, null, null);
+        }
+
+        static FaceMatchAttempt error(int errorCode, String errorMessage) {
+            return new FaceMatchAttempt(null, errorCode, errorMessage);
+        }
+
+        static FaceMatchAttempt empty() {
+            return new FaceMatchAttempt(null, null, null);
+        }
     }
 }

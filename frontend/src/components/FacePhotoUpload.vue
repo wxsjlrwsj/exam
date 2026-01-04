@@ -78,7 +78,7 @@ const handleUpload = async ({ file }) => {
   reader.onload = async (e) => {
     try {
       const base64 = e.target.result
-      await request.post('/face/upload-photo', { photo: base64 })
+      await request.post('/face/upload-photo', { photo: base64 }, { timeout: 30000 })
       ElMessage.success('照片上传成功!')
       hasPhoto.value = true
       photoPreview.value = base64

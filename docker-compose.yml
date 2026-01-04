@@ -54,9 +54,9 @@ services:
 
       SECURITY_TOKEN_SECRET: change-me-dev
       SECURITY_CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:5173
-      BAIDU_FACE_API_KEY: placeholder
-      BAIDU_FACE_SECRET_KEY: placeholder
-      BAIDU_FACE_THRESHOLD: "60"
+      BAIDU_FACE_API_KEY: ${BAIDU_FACE_API_KEY:-}
+      BAIDU_FACE_SECRET_KEY: ${BAIDU_FACE_SECRET_KEY:-}
+      BAIDU_FACE_THRESHOLD: ${BAIDU_FACE_THRESHOLD:-80.0}
     ports:
       - "8083:8083"
 

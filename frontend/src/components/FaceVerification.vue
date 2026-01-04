@@ -176,7 +176,7 @@ const captureAndVerify = async () => {
     
     const base64Image = canvas.toDataURL('image/jpeg', 0.8)
     
-    const response = await request.post('/face/verify', { photo: base64Image })
+    const response = await request.post('/face/verify', { photo: base64Image }, { timeout: 30000 })
     verificationResult.value = response
     
     if (response.verified) {
@@ -185,7 +185,8 @@ const captureAndVerify = async () => {
       ElMessage.error('人脸验证失败，请重新拍照')
     }
   } catch (error) {
-    ElMessage.error('验证失败: ' + (error.message || '未知错误'))
+    const serverMsg = error?.response?.data?.message
+    ElMessage.error('验证失败: ' + (serverMsg || error.message || '未知错误'))
   } finally {
     verifying.value = false
   }
