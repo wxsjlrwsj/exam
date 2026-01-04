@@ -163,6 +163,9 @@
        </div>
        <template #footer>
           <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <el-button type="success" @click="openAiAssistant">
+             <el-icon><ChatDotRound /></el-icon> AI辅助解题
+          </el-button>
           <el-button type="danger" @click="handleRemoveQuestion(currentQuestion)">
              <el-icon><Delete /></el-icon> 移出题集
           </el-button>
@@ -401,12 +404,19 @@
        </template>
     </el-dialog>
 
+    <!-- AI辅助解题组件 -->
+    <AiAssistant 
+      ref="aiAssistantRef" 
+      :question="currentQuestionText" 
+    />
+
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, inject } from 'vue'
-import { Plus, Delete, VideoPlay, Timer } from '@element-plus/icons-vue'
+import { Plus, Delete, VideoPlay, Timer, ChatDotRound } from '@element-plus/icons-vue'
+import AiAssistant from '@/components/AiAssistant.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 import { updateCollection } from '@/api/student'
@@ -424,6 +434,10 @@ const pageSize = ref(10)
 const total = ref(0)
 const detailDialogVisible = ref(false)
 const currentQuestion = ref(null)
+
+// AI助手状态
+const aiAssistantRef = ref(null)
+const currentQuestionText = ref('')
 
 const isManageMode = ref(false) // Question Manage Mode
 const selectedRows = ref([])
@@ -585,6 +599,33 @@ const loadQuestions = async () => {
   total.value = data?.total || 0
   questionList.value = list
   loading.value = false
+}
+
+// AI辅助解题
+const openAiAssistant = () => {
+  if (currentQuestion.value) {
+    // 构建题目文本
+    let questionText = `【${getQuestionTypeLabel(currentQuestion.value.type)}】${currentQuestion.value.subject}\n\n`
+    questionText += `题目：${currentQuestion.value.content}\n`
+    
+    // 添加选项（如果有）
+    if (['single_choice', 'multiple_choice'].includes(currentQuestion.value.type)) {
+      const options = parseOptions(currentQuestion.value.options)
+      if (options.length > 0) {
+        questionText += '\n选项：\n'
+        options.forEach(opt => {
+          questionText += `${opt.key}. ${opt.value}\n`
+        })
+      }
+    }
+    
+    currentQuestionText.value = questionText
+    
+    // 打开AI助手
+    if (aiAssistantRef.value) {
+      aiAssistantRef.value.openChat()
+    }
+  }
 }
 
 // Actions

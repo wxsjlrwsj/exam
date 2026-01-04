@@ -35,3 +35,10 @@ security:
     secret: change-me-dev
   cors:
     allowed-origins: http://localhost:5173,http://localhost:8080
+
+# AI辅助解题配置
+ai:
+  deepseek:
+    api-key: ${AI_DEEPSEEK_API_KEY}
+    api-url: https://api.deepseek.com/chat/completions
+    model: deepseek-chat
