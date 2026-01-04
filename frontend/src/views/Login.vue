@@ -43,12 +43,13 @@
 
 <script setup>
 import { ref, reactive, inject } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import ParticlesBackground from '../components/ParticlesBackground.vue'
 
 const router = useRouter()
+const route = useRoute()
 const showMessage = inject('showMessage')
 const loading = ref(false)
 
@@ -89,11 +90,31 @@ const handleLogin = async () => {
 
       localStorage.setItem('token', token)
       localStorage.setItem('userType', userInfo.userType)
-      localStorage.setItem('username', userInfo.username || loginForm.username)
+      try {
+        if (String(userInfo.userType).toLowerCase() === 'student') {
+          const prof = await request.get('/student/profile')
+          const displayName = (prof && prof.name) ? prof.name : (userInfo.realName || userInfo.username || loginForm.username)
+          localStorage.setItem('username', displayName)
+          if (prof && prof.avatar) {
+            localStorage.setItem('userAvatar', prof.avatar)
+          }
+          window.dispatchEvent(new Event('user-info-update'))
+        } else {
+          localStorage.setItem('username', userInfo.username || loginForm.username)
+        }
+      } catch (e) {
+        localStorage.setItem('username', userInfo.username || loginForm.username)
+      }
 
       showMessage('登录成功，欢迎回来！', 'success')
 
-      // 所有角色登录后统一跳转到首页
+      // 清理上次用户的禁用模块缓存，避免路由守卫误拦截
+      localStorage.removeItem('disabledModules')
+      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+      if (redirect) {
+        router.replace(redirect)
+        return
+      }
       router.push({ name: 'DashboardHome' })
     } catch (error) {
       // request.js 已经处理了错误提示，这里主要处理 fallback 逻辑
@@ -110,6 +131,12 @@ const handleLogin = async () => {
         localStorage.setItem('username', loginForm.username)
 
         showMessage('登录成功（测试账号）', 'success')
+        localStorage.removeItem('disabledModules')
+        const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+        if (redirect) {
+          router.replace(redirect)
+          return
+        }
         router.push({ name: 'DashboardHome' })
       }
     } finally {

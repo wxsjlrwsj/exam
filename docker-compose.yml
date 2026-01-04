@@ -2,6 +2,7 @@ name: chaoxing-system
 services:
   mysql:
     image: mysql:8.0
+    container_name: chaoxing-mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -11,8 +12,23 @@ services:
       - ./backend/complete-init.sql:/docker-entrypoint-initdb.d/00-complete-init.sql:ro
       - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./backend/src/main/resources/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./backend/db_migration_teacher_college.sql:/docker-entrypoint-initdb.d/03-teacher-college-migration.sql:ro
       - ./backend/db_migration_teacher.sql:/docker-entrypoint-initdb.d/03-teacher-migration.sql:ro
       - ./backend/db_migration_error_book.sql:/docker-entrypoint-initdb.d/04-error-book-migration.sql:ro
+      - ./backend/db_patches/20251231_add_biz_teacher_subject.sql:/docker-entrypoint-initdb.d/05-teacher-subject-patch.sql:ro
+      - ./backend/db_patches/20251231_replace_course_with_subject.sql:/docker-entrypoint-initdb.d/06-subject-class-patch.sql:ro
+      - ./backend/db_patches/20251231_add_face_photo_to_biz_student.sql:/docker-entrypoint-initdb.d/07-face-photo-patch.sql:ro
+      - ./backend/db_patches/20251231_add_face_photo_to_biz_student.sql:/docker-entrypoint-initdb.d/07-face-photo-patch.sql:ro
+      - ./backend/db_patches/20251231_hide_tch_audit_for_admin.sql:/docker-entrypoint-initdb.d/08-hide-tch-audit.sql:ro
+      - ./backend/db_patches/20251231_separate_exam_practice_questions.sql:/docker-entrypoint-initdb.d/09-exam-bank-separation.sql:ro
+      - ./backend/db_patches/20251231_seed_exam_questions.sql:/docker-entrypoint-initdb.d/10-exam-bank-seed.sql:ro
+      - ./backend/db_patches/20251231_seed_exam_questions_compiler_database.sql:/docker-entrypoint-initdb.d/11-exam-bank-seed-compiler-db.sql:ro
+      - ./backend/db_patches/20260103_add_creator_user_id_to_biz_subject.sql:/docker-entrypoint-initdb.d/12-subject-creator-user.sql:ro
+      - ./backend/db_patches/20260103_add_assign_time_to_teacher_subject_map.sql:/docker-entrypoint-initdb.d/13-ts-assign-time.sql:ro
+      - ./backend/db_patches/20260103_seed_teachers_4_5.sql:/docker-entrypoint-initdb.d/14-seed-teacher4-5.sql:ro
+      - ./backend/db_patches/20260103_add_academic_year_semester_to_teaching_class.sql:/docker-entrypoint-initdb.d/15-teaching-class-year-semester.sql:ro
+      - ./backend/db_patches/20260103_migrate_class_student_to_biz_student.sql:/docker-entrypoint-initdb.d/16-migrate-class-student.sql:ro
+
     command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
@@ -22,6 +38,7 @@ services:
 
   backend:
     build: ./backend
+    container_name: chaoxing-backend
     restart: unless-stopped
     depends_on:
       mysql:
@@ -34,14 +51,18 @@ services:
       DB_PASSWORD: root
       SPRING_SQL_INIT_MODE: never
       SPRING_MAIL_USERNAME: 3444505236@qq.com
-      SPRING_MAIL_PASSWORD: jxtzdnobgylpchhc
+
       SECURITY_TOKEN_SECRET: change-me-dev
       SECURITY_CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:5173
+      BAIDU_FACE_API_KEY: ${BAIDU_FACE_API_KEY:-}
+      BAIDU_FACE_SECRET_KEY: ${BAIDU_FACE_SECRET_KEY:-}
+      BAIDU_FACE_THRESHOLD: ${BAIDU_FACE_THRESHOLD:-80.0}
     ports:
       - "8083:8083"
 
   frontend:
     build: ./frontend
+    container_name: chaoxing-frontend
     restart: unless-stopped
     depends_on:
       - backend

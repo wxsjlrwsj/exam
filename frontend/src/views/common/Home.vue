@@ -77,7 +77,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { 
   Bell, User, Reading, Edit, Calendar, DataAnalysis, 
-  Files, Setting, Monitor, Check, Collection, TrendCharts
+  Files, Setting, Monitor, Collection, TrendCharts
 } from '@element-plus/icons-vue'
 
 const userType = ref(localStorage.getItem('userType') || 'student')
@@ -111,7 +111,6 @@ const roleActions = {
   ],
   teacher: [
     { name: '发布考试', path: '/dashboard/teacher/exam-management', icon: 'Calendar', color: '#409EFF' },
-    { name: '题目审核', path: '/dashboard/teacher/question-audit', icon: 'Check', color: '#F56C6C' },
     { name: '题库管理', path: '/dashboard/teacher/question-bank', icon: 'Collection', color: '#67C23A' },
     { name: '成绩分析', path: '/dashboard/teacher/score-management', icon: 'TrendCharts', color: '#E6A23C' }
   ],

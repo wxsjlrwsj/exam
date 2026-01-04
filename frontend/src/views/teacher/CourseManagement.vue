@@ -137,6 +137,35 @@
           <div class="class-section">
             <div class="section-header">
               <h4>教学班列表</h4>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <el-select
+                  v-model="filterYear"
+                  placeholder="学年"
+                  clearable
+                  style="width: 120px"
+                >
+                  <el-option label="全部" value="" />
+                  <el-option
+                    v-for="y in yearOptions"
+                    :key="y"
+                    :label="y"
+                    :value="y"
+                  />
+                </el-select>
+                <el-select
+                  v-model="filterSemester"
+                  placeholder="学期"
+                  clearable
+                  style="width: 110px"
+                >
+                  <el-option label="全部" value="" />
+                  <el-option
+                    v-for="s in semesterOptions"
+                    :key="s"
+                    :label="s"
+                    :value="s"
+                  />
+                </el-select>
               <el-input
                 v-model="classFilter"
                 placeholder="搜索教学班..."
@@ -144,6 +173,7 @@
                 clearable
                 style="width: 200px"
               />
+              </div>
             </div>
 
             <el-table 
@@ -152,7 +182,7 @@
               border 
               stripe
               @row-click="handleClassRowClick"
-              style="cursor: pointer"
+              style="cursor: pointer; width: 100%"
             >
               <el-table-column prop="name" label="教学班名称" min-width="150">
                 <template #default="{ row }">
@@ -166,23 +196,27 @@
                   <el-tag type="info">{{ row.studentCount || 0 }}人</el-tag>
                 </template>
               </el-table-column>
+              <el-table-column prop="academicYear" label="学年" width="100" />
+              <el-table-column prop="semester" label="学期" width="90" />
               <el-table-column prop="createTime" label="创建时间" width="160" />
-              <el-table-column label="操作" width="180" fixed="right" v-if="currentCourse.isCreator">
+              <el-table-column label="操作" width="180" fixed="right">
                 <template #default="{ row }">
-                  <el-button link type="primary" size="small" @click.stop="handleEditClass(row)">
-                    编辑
-                  </el-button>
-                  <el-button link type="primary" size="small" @click.stop="handleManageStudents(row)">
-                    学生管理
-                  </el-button>
-                  <el-button link type="danger" size="small" @click.stop="handleDeleteClass(row)">
-                    删除
-                  </el-button>
+                  <template v-if="currentCourse?.isCreator">
+                    <el-button link type="primary" size="small" @click.stop="handleEditClass(row)">
+                      编辑
+                    </el-button>
+                    <el-button link type="primary" size="small" @click.stop="handleManageStudents(row)">
+                      学生管理
+                    </el-button>
+                    <el-button link type="danger" size="small" @click.stop="handleDeleteClass(row)">
+                      删除
+                    </el-button>
+                  </template>
                 </template>
               </el-table-column>
-            </el-table>
+              </el-table>
 
-            <el-empty v-if="filteredClasses.length === 0 && !loadingClasses" description="暂无教学班" />
+              <el-empty v-if="filteredClasses.length === 0 && !loadingClasses" description="暂无教学班" />
           </div>
         </el-card>
 
@@ -215,30 +249,6 @@
             :rows="4"
             placeholder="请输入课程简介"
           />
-        </el-form-item>
-        <el-form-item label="教学老师" prop="teacherIds">
-          <el-select
-            v-model="courseForm.teacherIds"
-            multiple
-            filterable
-            remote
-            reserve-keyword
-            placeholder="搜索并选择老师"
-            :remote-method="searchTeachers"
-            :loading="searchingTeachers"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="teacher in teacherOptions"
-              :key="teacher.id"
-              :label="teacher.name"
-              :value="teacher.id"
-            >
-              <span>{{ teacher.name }}</span>
-              <span style="color: #999; margin-left: 10px">{{ teacher.department }}</span>
-            </el-option>
-          </el-select>
-          <div class="form-tip">选择参与该课程教学的老师，他们将可以看到此课程</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -332,6 +342,15 @@
           </el-select>
           <div class="form-tip">从课程教学组中选择负责该教学班的老师</div>
         </el-form-item>
+        <el-form-item label="学年" prop="academicYear">
+          <el-input v-model="classForm.academicYear" placeholder="例如：2025" />
+        </el-form-item>
+        <el-form-item label="学期" prop="semester">
+          <el-select v-model="classForm.semester" placeholder="选择学期" style="width: 100%">
+            <el-option label="春" value="春" />
+            <el-option label="秋" value="秋" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="classDialogVisible = false">取消</el-button>
@@ -362,9 +381,10 @@
                 :props="{ label: 'name', children: 'children' }"
                 node-key="id"
                 show-checkbox
-                check-strictly
+                :check-strictly="false"
+                check-on-click-node
                 :filter-node-method="filterOrgNode"
-                @check-change="handleOrgCheck"
+                @check="handleOrgCheck"
               >
                 <template #default="{ node, data }">
                   <span class="org-node">
@@ -377,6 +397,22 @@
                   </span>
                 </template>
               </el-tree>
+              <div v-if="selectedAdminClassNames.length" style="margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span>已勾选班级（{{ selectedAdminClassNames.length }}个）</span>
+                  <el-button link type="primary" size="small" @click="clearSelectedClasses">清空</el-button>
+                </div>
+                <div>
+                  <el-tag
+                    v-for="name in selectedAdminClassNames"
+                    :key="name"
+                    size="small"
+                    style="margin: 2px"
+                  >
+                    {{ name }}
+                  </el-tag>
+                </div>
+              </div>
               <el-button 
                 type="primary" 
                 style="margin-top: 15px; width: 100%"
@@ -434,6 +470,16 @@
                     clearable
                     style="width: 150px"
                   />
+                  <el-button
+                    type="danger"
+                    plain
+                    size="small"
+                    :disabled="selectedStudents.length === 0"
+                    :loading="removingBatch"
+                    @click="removeSelectedStudents"
+                  >
+                    批量移除
+                  </el-button>
                 </div>
               </template>
               <el-table 
@@ -441,7 +487,9 @@
                 v-loading="loadingStudents"
                 border 
                 max-height="400"
+                @selection-change="handleStudentSelection"
               >
+                <el-table-column type="selection" width="40" />
                 <el-table-column prop="studentNo" label="学号" width="120" />
                 <el-table-column prop="name" label="姓名" width="100" />
                 <el-table-column prop="adminClassName" label="行政班" />
@@ -514,18 +562,21 @@ const loadCourses = async () => {
   loadingCourses.value = true
   try {
     const res = await getCourses()
-    courses.value = res.data || []
+    courses.value = res || []
   } catch (e) {
     courses.value = []
   } finally {
     loadingCourses.value = false
+    if (!currentCourse.value && courses.value.length > 0) {
+      await selectCourse(courses.value[0])
+    }
   }
 }
 
 const selectCourse = async (course) => {
   currentCourse.value = course
+  await loadCourseDetail(course.id)
   await Promise.all([
-    loadCourseDetail(course.id),
     loadTeachingClasses(course.id),
     loadCourseTeachers(course.id)
   ])
@@ -534,8 +585,8 @@ const selectCourse = async (course) => {
 const loadCourseDetail = async (courseId) => {
   try {
     const res = await getCourseDetail(courseId)
-    if (res.data) {
-      Object.assign(currentCourse.value, res.data)
+    if (res) {
+      Object.assign(currentCourse.value, res)
     }
   } catch (e) {
     console.error(e)
@@ -549,8 +600,7 @@ const savingCourse = ref(false)
 const courseForm = reactive({
   id: null,
   name: '',
-  description: '',
-  teacherIds: []
+  description: ''
 })
 
 const courseRules = {
@@ -561,7 +611,6 @@ const handleAddCourse = () => {
   courseForm.id = null
   courseForm.name = ''
   courseForm.description = ''
-  courseForm.teacherIds = []
   courseDialogVisible.value = true
 }
 
@@ -569,7 +618,6 @@ const handleEditCourse = (course) => {
   courseForm.id = course.id
   courseForm.name = course.name
   courseForm.description = course.description
-  courseForm.teacherIds = course.teachers?.map(t => t.id) || []
   courseDialogVisible.value = true
 }
 
@@ -603,6 +651,11 @@ const submitCourse = async () => {
         showMessage('课程创建成功', 'success')
       }
       courseDialogVisible.value = false
+      if (courseForm.id && currentCourse.value?.id === courseForm.id) {
+        await loadCourseDetail(courseForm.id)
+        currentCourse.value.name = courseForm.name
+        currentCourse.value.description = courseForm.description
+      }
       loadCourses()
     } catch (e) {
       console.error(e)
@@ -637,11 +690,52 @@ const courseTeachers = ref([])
 const newTeacherId = ref(null)
 const teacherOptions = ref([])
 const searchingTeachers = ref(false)
+const cnDigit = (ch) => {
+  const m = { '零':0,'一':1,'二':2,'两':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 }
+  return m[ch] ?? NaN
+}
+const cn2num = (s) => {
+  if (!s) return NaN
+  if (s.includes('十')) {
+    const parts = s.split('十')
+    const left = parts[0]
+    const right = parts[1]
+    const tens = left ? cnDigit(left) : 1
+    const ones = right ? cnDigit(right) : 0
+    if (Number.isNaN(tens) || Number.isNaN(ones)) return NaN
+    return tens * 10 + ones
+  }
+  const v = cnDigit(s)
+  return Number.isNaN(v) ? NaN : v
+}
+const extractOrder = (row) => {
+  const name = String(row.name || '')
+  const m = name.match(/教师(.+)$/)
+  if (m) {
+    const n = cn2num(m[1].trim())
+    if (!Number.isNaN(n)) return n
+  }
+  const uname = String(row.username || '')
+  const dm = uname.match(/teacher(\d+)/i)
+  if (dm) return parseInt(dm[1], 10)
+  return Number.MAX_SAFE_INTEGER
+}
+const sortTeachers = (list) => {
+  return (list || []).slice().sort((a, b) => {
+    const na = extractOrder(a)
+    const nb = extractOrder(b)
+    if (na !== nb) return na - nb
+    return String(a.name || '').localeCompare(String(b.name || ''), 'zh')
+  })
+}
 
 const loadCourseTeachers = async (courseId) => {
   try {
     const res = await getCourseTeachers(courseId)
-    courseTeachers.value = res.data || []
+    courseTeachers.value = res || []
+    if (currentCourse.value?.id === courseId) {
+      currentCourse.value.teachers = courseTeachers.value
+    }
   } catch (e) {
     courseTeachers.value = []
   }
@@ -654,8 +748,8 @@ const searchTeachers = async (query) => {
   }
   searchingTeachers.value = true
   try {
-    const res = await getAllTeachers({ keyword: query })
-    teacherOptions.value = res.data || []
+    const res = await getAllTeachers({ keyword: query, pageSize: 100 })
+    teacherOptions.value = sortTeachers(res || [])
   } catch (e) {
     teacherOptions.value = []
   } finally {
@@ -690,25 +784,60 @@ const removeTeacher = async (teacher) => {
 const teachingClasses = ref([])
 const loadingClasses = ref(false)
 const classFilter = ref('')
+const filterYear = ref('')
+const filterSemester = ref('')
 
 const filteredClasses = computed(() => {
-  if (!classFilter.value) return teachingClasses.value
-  return teachingClasses.value.filter(c =>
-    c.name.toLowerCase().includes(classFilter.value.toLowerCase())
-  )
+  let list = teachingClasses.value
+  if (filterYear.value) {
+    list = list.filter(c => String(c.academicYear || '') === String(filterYear.value))
+  }
+  if (filterSemester.value) {
+    list = list.filter(c => String(c.semester || '') === String(filterSemester.value))
+  }
+  if (classFilter.value) {
+    const kw = classFilter.value.toLowerCase()
+    list = list.filter(c => String(c.name || '').toLowerCase().includes(kw))
+  }
+  return list
+})
+
+const yearOptions = computed(() => {
+  const s = new Set()
+  for (const c of teachingClasses.value) {
+    const y = String(c.academicYear || '').trim()
+    if (y) s.add(y)
+  }
+  return Array.from(s).sort()
+})
+
+const semesterOptions = computed(() => {
+  const s = new Set()
+  for (const c of teachingClasses.value) {
+    const v = String(c.semester || '').trim()
+    if (v) s.add(v)
+  }
+  const arr = Array.from(s)
+  return arr.length ? arr : ['春','秋']
 })
 
 const loadTeachingClasses = async (courseId) => {
   loadingClasses.value = true
   try {
     const res = await getTeachingClasses(courseId)
-    teachingClasses.value = res.data || []
+    teachingClasses.value = (res || []).map(r => ({
+      ...r,
+      academicYear: r.academicYear ?? '',
+      semester: r.semester ?? ''
+    }))
   } catch (e) {
     teachingClasses.value = []
   } finally {
     loadingClasses.value = false
   }
 }
+
+onMounted(() => {})
 
 // 教学班对话框
 const classDialogVisible = ref(false)
@@ -717,18 +846,27 @@ const savingClass = ref(false)
 const classForm = reactive({
   id: null,
   name: '',
-  assignedTeacherId: null
+  assignedTeacherId: null,
+  academicYear: '',
+  semester: ''
 })
 
 const classRules = {
   name: [{ required: true, message: '请输入教学班名称', trigger: 'blur' }],
-  assignedTeacherId: [{ required: true, message: '请选择负责老师', trigger: 'change' }]
+  assignedTeacherId: [{ required: true, message: '请选择负责老师', trigger: 'change' }],
+  academicYear: [
+    { required: true, message: '请输入学年', trigger: 'blur' },
+    { pattern: /^20\d{2}$/, message: '格式示例：2025', trigger: 'blur' }
+  ],
+  semester: [{ required: true, message: '请选择学期', trigger: 'change' }]
 }
 
 const handleAddClass = () => {
   classForm.id = null
   classForm.name = ''
   classForm.assignedTeacherId = null
+  classForm.academicYear = ''
+  classForm.semester = ''
   classDialogVisible.value = true
 }
 
@@ -736,6 +874,8 @@ const handleEditClass = (row) => {
   classForm.id = row.id
   classForm.name = row.name
   classForm.assignedTeacherId = row.assignedTeacherId
+  classForm.academicYear = row.academicYear || ''
+  classForm.semester = row.semester || ''
   classDialogVisible.value = true
 }
 
@@ -793,6 +933,8 @@ const currentClass = ref(null)
 const classStudents = ref([])
 const loadingStudents = ref(false)
 const studentFilter = ref('')
+const selectedStudents = ref([])
+const removingBatch = ref(false)
 
 const filteredClassStudents = computed(() => {
   if (!studentFilter.value) return classStudents.value
@@ -803,11 +945,41 @@ const filteredClassStudents = computed(() => {
   )
 })
 
+const handleStudentSelection = (rows) => {
+  selectedStudents.value = rows || []
+}
+
+const removeSelectedStudents = async () => {
+  if (!currentClass.value || selectedStudents.value.length === 0) return
+  await ElMessageBox.confirm(
+    `确定要批量移除选中的 ${selectedStudents.value.length} 名学生吗？`,
+    '警告',
+    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+  )
+  removingBatch.value = true
+  try {
+    for (const s of selectedStudents.value) {
+      await removeStudentFromClass(currentClass.value.id, s.id)
+    }
+    showMessage('批量移除成功', 'success')
+    selectedStudents.value = []
+    loadClassStudents(currentClass.value.id)
+  } catch (e) {
+    console.error(e)
+  } finally {
+    removingBatch.value = false
+  }
+}
+
 // 组织机构树
 const orgTree = ref([])
 const orgTreeRef = ref(null)
 const selectedAdminClasses = ref([])
 const addingFromAdminClass = ref(false)
+const selectedAdminClassNames = computed(() => {
+  const nodes = orgTreeRef.value?.getCheckedNodes(true) || []
+  return nodes.filter(n => n.type === 'class').map(n => n.name)
+})
 
 // 单独添加学生
 const singleStudentId = ref(null)
@@ -831,18 +1003,27 @@ const loadClassStudents = async (classId) => {
   loadingStudents.value = true
   try {
     const res = await getTeachingClassStudents(classId)
-    classStudents.value = res.data || []
+    classStudents.value = res || []
   } catch (e) {
     classStudents.value = []
   } finally {
     loadingStudents.value = false
+    updateCurrentClassStudentCount()
+  }
+}
+
+const updateCurrentClassStudentCount = () => {
+  if (!currentClass.value) return
+  const idx = teachingClasses.value.findIndex(c => c.id === currentClass.value.id)
+  if (idx !== -1) {
+    teachingClasses.value[idx].studentCount = classStudents.value.length
   }
 }
 
 const loadOrgTree = async () => {
   try {
     const res = await getOrgTree()
-    orgTree.value = res.data || []
+    orgTree.value = res || []
   } catch (e) {
     orgTree.value = []
   }
@@ -853,20 +1034,16 @@ const filterOrgNode = (value, data) => {
   return data.name.includes(value)
 }
 
-const handleOrgCheck = (data, checked) => {
-  // 只选择班级类型的节点
-  if (data.type === 'class') {
-    if (checked) {
-      if (!selectedAdminClasses.value.includes(data.id)) {
-        selectedAdminClasses.value.push(data.id)
-      }
-    } else {
-      const idx = selectedAdminClasses.value.indexOf(data.id)
-      if (idx > -1) {
-        selectedAdminClasses.value.splice(idx, 1)
-      }
-    }
-  }
+const handleOrgCheck = (data, checkedInfo) => {
+  const nodes = checkedInfo?.checkedNodes || (orgTreeRef.value?.getCheckedNodes(true) || [])
+  selectedAdminClasses.value = nodes
+    .filter(n => n.type === 'class')
+    .map(n => n.id)
+}
+
+const clearSelectedClasses = () => {
+  selectedAdminClasses.value = []
+  orgTreeRef.value?.setCheckedKeys([])
 }
 
 const addStudentsFromAdminClasses = async () => {
@@ -893,7 +1070,7 @@ const searchStudentsForAdd = async (query) => {
   searchingStudents.value = true
   try {
     const res = await searchStudents({ keyword: query })
-    studentSearchResults.value = res.data || []
+    studentSearchResults.value = res || []
   } catch (e) {
     studentSearchResults.value = []
   } finally {

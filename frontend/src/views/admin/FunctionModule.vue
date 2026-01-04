@@ -205,8 +205,8 @@ const loadModules = async () => {
         status: filters.status
       }
     })
-    const list = resp.data?.list || []
-    const total = resp.data?.total || 0
+    const list = resp?.list || []
+    const total = resp?.total || 0
     modules.value = list
     pagination.total = total
   } catch (e) {
@@ -324,40 +324,32 @@ onMounted(() => {
 .page-container {
   padding: 20px;
 }
-
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e4e7ed;
+  margin-bottom: 16px;
 }
-
 .page-title {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
+  font-size: 20px;
+  font-weight: bold;
 }
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
-
 .filter-card {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
-
+.filter-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 .pagination-container {
-  margin-top: 20px;
+  margin-top: 16px;
   display: flex;
   justify-content: flex-end;
 }
-
 .dialog-footer {
   display: inline-flex;
-  gap: 10px;
+  gap: 8px;
 }
 </style>

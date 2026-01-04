@@ -30,11 +30,11 @@ INSERT IGNORE INTO biz_subject (name, code, description) VALUES
 
 -- 组织 5 条
 INSERT IGNORE INTO sys_organization(parent_id,name,code,type,sort_order,path,status,leader,phone,description) VALUES
-(NULL,'信息学院','ORG-INFO','dept',1,'/信息学院',1,'张主任','0571-0000001','学院'),
-(NULL,'计算机系','ORG-CS','dept',1,'/信息学院/计算机系',1,'李老师','0571-0000002','系'),
-(NULL,'软件工程系','ORG-SE','dept',2,'/信息学院/软件工程系',1,'王老师','0571-0000003','系'),
-(NULL,'机电学院','ORG-MECH','dept',2,'/机电学院',1,'赵主任','0571-0000004','学院'),
-(NULL,'自动化系','ORG-AUTO','dept',1,'/机电学院/自动化系',1,'钱老师','0571-0000005','系');
+(NULL,'信息学院','ORG-INFO','college',1,'/信息学院',1,'张主任','0571-0000001','学院'),
+(NULL,'计算机系','ORG-CS','department',1,'/信息学院/计算机系',1,'李老师','0571-0000002','系'),
+(NULL,'软件工程系','ORG-SE','department',2,'/信息学院/软件工程系',1,'王老师','0571-0000003','系'),
+(NULL,'机电学院','ORG-MECH','college',2,'/机电学院',1,'赵主任','0571-0000004','学院'),
+(NULL,'自动化系','ORG-AUTO','department',1,'/机电学院/自动化系',1,'钱老师','0571-0000005','系');
 
 -- 班级补齐，确保学生档案 class_id 有对应机构
 SET @org_cs_id = (SELECT id FROM sys_organization WHERE code='ORG-CS');
@@ -54,7 +54,7 @@ INSERT IGNORE INTO biz_class (class_name, class_code, grade, major) VALUES
 
 -- 初始化基础用户（仅当不存在时插入），供档案引用
 INSERT IGNORE INTO users(username,email,phone,password_hash,user_type,real_name,avatar) VALUES
- ('admin1','admin1@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','admin','管理员一',NULL),
+ ('admin1','admin1@example.com',NULL,'$2a$10$ybYHxhvWIkuftAE9W50GGOK4DpfTc1RaBkr5Cmxj.KY3FJWiQ..36','admin','管理员一',NULL),
  ('teacher1','teacher1@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','teacher','教师一',NULL),
  ('teacher2','teacher2@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','teacher','教师二',NULL),
  ('teacher3','teacher3@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','teacher','教师三',NULL),
@@ -65,6 +65,15 @@ INSERT IGNORE INTO users(username,email,phone,password_hash,user_type,real_name,
  ('student3','student3@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生三',NULL),
  ('student4','student4@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生四',NULL),
  ('test','test@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','测试生',NULL);
+INSERT IGNORE INTO users(username,email,phone,password_hash,user_type,real_name,avatar) VALUES
+ ('student5','student5@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生五',NULL),
+ ('student6','student6@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生六',NULL),
+ ('student7','student7@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生七',NULL),
+ ('student8','student8@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生八',NULL),
+ ('student9','student9@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生九',NULL),
+ ('student10','student10@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生十',NULL),
+ ('student11','student11@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生十一',NULL),
+ ('student12','student12@example.com',NULL,'$2a$10$zJpIYkPp7OLoOqMZ9o4m3uQV1YVQdGmJ8VxgQf3o3PzF8q6QJk7uS','student','学生十二',NULL);
 
 -- 角色 5 条
 INSERT IGNORE INTO sys_role(role_name,role_key,data_scope,status,remark) VALUES
@@ -109,7 +118,15 @@ INSERT IGNORE INTO biz_student(user_id,student_no,real_name,gender,class_id,majo
  ((SELECT id FROM users WHERE username='student1'),'S2023001','张三',1,101,'CS',2023,'群众'),
  ((SELECT id FROM users WHERE username='student2'),'S2023002','李四',1,101,'CS',2023,'团员'),
  ((SELECT id FROM users WHERE username='student3'),'S2023003','王五',1,102,'SE',2022,'群众'),
- ((SELECT id FROM users WHERE username='student4'),'S2023004','赵六',0,102,'SE',2022,'团员');
+ ((SELECT id FROM users WHERE username='student4'),'S2023004','赵六',0,102,'SE',2022,'团员'),
+ ((SELECT id FROM users WHERE username='student5'),'S2023005','孙七',1,100,'CS',2023,'群众'),
+ ((SELECT id FROM users WHERE username='student6'),'S2023006','周八',0,100,'CS',2023,'团员'),
+ ((SELECT id FROM users WHERE username='student7'),'S2023007','吴九',1,101,'CS',2023,'群众'),
+ ((SELECT id FROM users WHERE username='student8'),'S2023008','郑十',0,101,'CS',2023,'团员'),
+ ((SELECT id FROM users WHERE username='student9'),'S2023009','冯十一',1,102,'SE',2022,'群众'),
+ ((SELECT id FROM users WHERE username='student10'),'S2023010','褚十二',0,102,'SE',2022,'团员'),
+ ((SELECT id FROM users WHERE username='student11'),'S2023011','卫十三',1,100,'CS',2023,'群众'),
+ ((SELECT id FROM users WHERE username='student12'),'S2023012','蒋十四',0,101,'CS',2023,'团员');
 
 -- 题目（四门学科各5题，共20题）
 INSERT IGNORE INTO biz_question(type_id,content,options,answer,analysis,difficulty,subject,knowledge_points,file_id,creator_id,status,create_time)
@@ -300,6 +317,18 @@ INSERT IGNORE INTO sys_oper_log(title,business_type,method,request_method,oper_n
  ('获取题目列表',1,'QuestionBankController.list','GET','teacher1','/api/questions','127.0.0.1','本地','{}','{"code":200}',0,NULL,8),
  ('创建试卷',1,'PaperController.create','POST','teacher1','/api/papers','127.0.0.1','本地','{}','{"code":200}',0,NULL,15),
  ('发布考试',1,'ExamController.create','POST','teacher1','/api/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,16);
+INSERT IGNORE INTO sys_oper_log(title,business_type,method,request_method,oper_name,oper_url,oper_ip,oper_location,oper_param,json_result,status,error_msg,cost_time)
+ VALUES
+ ('查看考试列表',1,'StudentExamController.list','GET','student5','/api/student/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,9),
+ ('查看考试列表',1,'StudentExamController.list','GET','student6','/api/student/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,10),
+ ('查看考试列表',1,'StudentExamController.list','GET','student7','/api/student/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,11),
+ ('查看考试列表',1,'StudentExamController.list','GET','student8','/api/student/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,9),
+ ('查看考试列表',1,'StudentExamController.list','GET','student9','/api/student/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,12),
+ ('查看考试列表',1,'StudentExamController.list','GET','student10','/api/student/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,8),
+ ('查看考试列表',1,'StudentExamController.list','GET','student11','/api/student/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,7),
+ ('查看考试列表',1,'StudentExamController.list','GET','student12','/api/student/exams','127.0.0.1','本地','{}','{"code":200}',0,NULL,10),
+ ('查看成绩',1,'StudentExamController.result','GET','student5','/api/student/exams/1/result','127.0.0.1','本地','{}','{"code":200}',0,NULL,13),
+ ('回顾试卷',1,'StudentExamController.review','GET','student6','/api/student/exams/1/review','127.0.0.1','本地','{}','{"code":200}',0,NULL,14);
 
 INSERT IGNORE INTO biz_exam(name,paper_id,start_time,end_time,duration,status,creator_id)
  VALUES

@@ -53,9 +53,30 @@ export function getQuestions(params) {
   })
 }
 
+export function getExamQuestions(params) {
+  const query = { ...(params || {}) }
+  if (query.type && !query.typeCode) {
+    query.typeCode = normalizeTypeCode(query.type)
+    delete query.type
+  }
+  return request({
+    url: '/exam-questions',
+    method: 'get',
+    params: query
+  })
+}
+
 export function createQuestion(data) {
   return request({
     url: '/questions',
+    method: 'post',
+    data: normalizeQuestionPayload(data)
+  })
+}
+
+export function createExamQuestion(data) {
+  return request({
+    url: '/exam-questions',
     method: 'post',
     data: normalizeQuestionPayload(data)
   })
@@ -69,6 +90,14 @@ export function updateQuestion(id, data) {
   })
 }
 
+export function updateExamQuestion(id, data) {
+  return request({
+    url: `/exam-questions/${id}`,
+    method: 'put',
+    data: normalizeQuestionPayload(data)
+  })
+}
+
 export function deleteQuestion(id) {
   return request({
     url: `/questions/${id}`,
@@ -76,9 +105,25 @@ export function deleteQuestion(id) {
   })
 }
 
+export function deleteExamQuestion(id) {
+  return request({
+    url: `/exam-questions/${id}`,
+    method: 'delete'
+  })
+}
+
 export function importQuestions(data) {
   return request({
     url: '/questions/import',
+    method: 'post',
+    data,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+export function importExamQuestions(data) {
+  return request({
+    url: '/exam-questions/import',
     method: 'post',
     data,
     headers: { 'Content-Type': 'multipart/form-data' }

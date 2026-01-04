@@ -14,7 +14,7 @@ public class UpdateQuestionRequest {
   private String analysis;
   private Integer difficulty;
   private String subject;
-  private String knowledgePoints;
+  private Object knowledgePoints;
   private String fileId;
   private Integer status;
   private Boolean useFile;
@@ -35,8 +35,8 @@ public class UpdateQuestionRequest {
   public void setDifficulty(Integer difficulty) { this.difficulty = difficulty; }
   public String getSubject() { return subject; }
   public void setSubject(String subject) { this.subject = subject; }
-  public String getKnowledgePoints() { return knowledgePoints; }
-  public void setKnowledgePoints(String knowledgePoints) { this.knowledgePoints = knowledgePoints; }
+  public Object getKnowledgePoints() { return knowledgePoints; }
+  public void setKnowledgePoints(Object knowledgePoints) { this.knowledgePoints = knowledgePoints; }
   public String getFileId() { return fileId; }
   public void setFileId(String fileId) { this.fileId = fileId; }
   public Integer getStatus() { return status; }

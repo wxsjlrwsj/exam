@@ -79,7 +79,7 @@ const router = createRouter({
         {
           path: 'student/exam-list',
           name: 'StudentExamList',
-          component: () => import('../views/student/ExamListNew.vue'),
+          component: () => import('../views/student/ExamList.vue'),
           meta: { title: '查看考试', roles: ['student'], moduleCode: 'stu_exam' }
         },
         {
@@ -98,7 +98,7 @@ const router = createRouter({
           path: 'student/profile',
           name: 'StudentProfile',
           component: () => import('../views/student/UserProfile.vue'),
-          meta: { title: '个人空间', roles: ['student', 'teacher', 'admin'], moduleCode: 'stu_profile' }
+          meta: { title: '个人空间', roles: ['student'], moduleCode: 'stu_profile' }
         },
         // Teacher Routes
         {
@@ -114,6 +114,12 @@ const router = createRouter({
           meta: { title: '考题题库查看', roles: ['teacher'], moduleCode: 'tch_bank' }
         },
         {
+          path: 'teacher/course-management',
+          name: 'TeacherCourseManagement',
+          component: () => import('../views/teacher/CourseManagement.vue'),
+          meta: { title: '课程管理', roles: ['teacher'], moduleCode: 'tch_course' }
+        },
+        {
           path: 'teacher/exam-management',
           name: 'TeacherExamManagement',
           component: () => import('../views/teacher/ExamManagementNew.vue'),
@@ -124,18 +130,6 @@ const router = createRouter({
           name: 'TeacherScoreManagement',
           component: () => import('../views/teacher/ScoreManagement.vue'),
           meta: { title: '成绩管理', roles: ['teacher'], moduleCode: 'tch_score' }
-        },
-        {
-          path: 'teacher/question-audit',
-          name: 'TeacherQuestionAudit',
-          component: () => import('../views/teacher/QuestionAudit.vue'),
-          meta: { title: '题目上传申请审核', roles: ['teacher'], moduleCode: 'tch_audit' }
-        },
-        {
-          path: 'teacher/course-management',
-          name: 'TeacherCourseManagement',
-          component: () => import('../views/teacher/CourseManagement.vue'),
-          meta: { title: '教学班管理', roles: ['teacher'], moduleCode: 'tch_course' }
         },
         // Common Routes
         {

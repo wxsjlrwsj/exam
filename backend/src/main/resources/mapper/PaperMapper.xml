@@ -44,7 +44,7 @@
            t.type_code AS type_code, q.content, q.options, q.answer, q.analysis,
            q.subject, q.difficulty
     FROM biz_paper_question pq
-    LEFT JOIN biz_question q ON pq.question_id = q.id
+    LEFT JOIN biz_exam_question q ON pq.question_id = q.id
     LEFT JOIN biz_question_type t ON t.type_id = q.type_id
     WHERE pq.paper_id = #{paperId}
     ORDER BY pq.sort_order

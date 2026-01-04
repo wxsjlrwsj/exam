@@ -18,5 +18,6 @@ public interface OrganizationMapper {
   List<Organization> selectSubtree(@Param("pathPrefix") String pathPrefix);
 
   List<Map<String, Object>> listStudentMembersByClassIds(@Param("classIds") List<Long> classIds);
-  List<Map<String, Object>> listTeacherMembersByDeptIds(@Param("deptIds") List<Long> deptIds);
+  List<Map<String, Object>> listTeacherMembersByClassIds(@Param("classIds") List<Long> classIds);
+  List<Map<String, Object>> listTeacherMembersByCollegeIds(@Param("collegeIds") List<Long> collegeIds);
 }

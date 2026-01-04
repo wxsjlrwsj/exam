@@ -21,4 +21,19 @@ public interface UserMapper {
                               @Param("limit") int limit);
   Long countByUserTypeAndKeyword(@Param("userType") String userType,
                                  @Param("keyword") String keyword);
+  List<User> searchCandidatesExcludingOrgMembers(@Param("userType") String userType,
+                                                 @Param("keyword") String keyword,
+                                                 @Param("orgId") Long orgId,
+                                                 @Param("orgType") String orgType,
+                                                 @Param("offset") int offset,
+                                                 @Param("limit") int limit);
+  Long countCandidatesExcludingOrgMembers(@Param("userType") String userType,
+                                          @Param("keyword") String keyword,
+                                          @Param("orgId") Long orgId,
+                                          @Param("orgType") String orgType);
+
+  List<java.util.Map<String, Object>> searchStudents(@Param("keyword") String keyword,
+                                                     @Param("offset") int offset,
+                                                     @Param("limit") int limit);
+  Long countStudents(@Param("keyword") String keyword);
 }

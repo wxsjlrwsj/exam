@@ -246,6 +246,7 @@
         </el-button>
       </template>
     </el-dialog>
+    <FaceVerification v-model="faceDialogVisible" @verified="onFaceVerified" />
   </div>
 </template>
 
@@ -254,6 +255,7 @@ import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { Search, Reading } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
+import FaceVerification from '@/components/FaceVerification.vue'
 
 const router = useRouter()
 const showMessage = inject('showMessage')
@@ -275,7 +277,7 @@ const loadCourses = async () => {
   loadingCourses.value = true
   try {
     const res = await request.get('/student/courses')
-    courses.value = res.data || []
+    courses.value = Array.isArray(res?.list) ? res.list : (res || [])
   } catch (e) {
     courses.value = []
   } finally {
@@ -302,7 +304,7 @@ const loadExams = async (courseId) => {
   loadingExams.value = true
   try {
     const res = await request.get('/student/exams', { params: { courseId } })
-    examList.value = res.data || []
+    examList.value = Array.isArray(res?.list) ? res.list : (res || [])
   } catch (e) {
     examList.value = []
   } finally {
@@ -359,6 +361,8 @@ const normalizeStatus = (row) => {
 // ==================== 考试操作 ====================
 const infoDialogVisible = ref(false)
 const currentExamInfo = ref(null)
+const faceDialogVisible = ref(false)
+const selectedExam = ref(null)
 
 const handleRowClick = (row) => {
   if (normalizeStatus(row) === 'in_progress') handleTakeExam(row)
@@ -376,15 +380,24 @@ const handleViewResult = (row) => {
 }
 
 const handleTakeExam = (row) => {
-  router.push({
-    name: 'TakeExam',
-    params: { examId: row.id }
-  })
+  selectedExam.value = row
+  faceDialogVisible.value = true
 }
 
 const startExamAction = (exam) => {
   infoDialogVisible.value = false
   handleTakeExam(exam)
+}
+
+const onFaceVerified = (result) => {
+  if (result?.verified && selectedExam.value?.id) {
+    router.push({
+      name: 'TakeExam',
+      params: { examId: selectedExam.value.id }
+    })
+  } else {
+    if (showMessage) showMessage('人脸验证未通过，无法进入考试', 'error')
+  }
 }
 
 // ==================== 生命周期 ====================

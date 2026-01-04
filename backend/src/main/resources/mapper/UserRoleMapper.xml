@@ -32,7 +32,7 @@
     FROM sys_user_role ur
     JOIN users u ON u.id = ur.user_id
     LEFT JOIN biz_teacher t ON t.user_id = u.id
-    LEFT JOIN sys_organization od ON od.id = t.dept_id
+    LEFT JOIN sys_organization od ON od.id = t.college_id
     LEFT JOIN biz_student s ON s.user_id = u.id
     LEFT JOIN sys_organization oc ON oc.id = s.class_id
     WHERE ur.role_id = #{roleId}
@@ -68,7 +68,7 @@
            COALESCE(od.name, oc.name, '') AS orgName
     FROM users u
     LEFT JOIN biz_teacher t ON t.user_id = u.id
-    LEFT JOIN sys_organization od ON od.id = t.dept_id
+    LEFT JOIN sys_organization od ON od.id = t.college_id
     LEFT JOIN biz_student s ON s.user_id = u.id
     LEFT JOIN sys_organization oc ON oc.id = s.class_id
     WHERE u.id NOT IN (SELECT user_id FROM sys_user_role WHERE role_id = #{roleId})
@@ -92,7 +92,7 @@
     SELECT COUNT(1)
     FROM users u
     LEFT JOIN biz_teacher t ON t.user_id = u.id
-    LEFT JOIN sys_organization od ON od.id = t.dept_id
+    LEFT JOIN sys_organization od ON od.id = t.college_id
     LEFT JOIN biz_student s ON s.user_id = u.id
     LEFT JOIN sys_organization oc ON oc.id = s.class_id
     WHERE u.id NOT IN (SELECT user_id FROM sys_user_role WHERE role_id = #{roleId})
@@ -120,7 +120,7 @@
            '1' AS status
     FROM users u
     LEFT JOIN biz_teacher t ON t.user_id = u.id
-    LEFT JOIN sys_organization od ON od.id = t.dept_id
+    LEFT JOIN sys_organization od ON od.id = t.college_id
     LEFT JOIN biz_student s ON s.user_id = u.id
     LEFT JOIN sys_organization oc ON oc.id = s.class_id
     WHERE u.user_type = #{userType}

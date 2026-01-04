@@ -1,7 +1,7 @@
 package org.example.chaoxingsystem.teacher.paper;
 
 import org.example.chaoxingsystem.teacher.bank.Question;
-import org.example.chaoxingsystem.teacher.bank.QuestionMapper;
+import org.example.chaoxingsystem.teacher.bank.ExamQuestionMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +22,11 @@ import java.util.Set;
 @Service
 public class PaperService {
   private final PaperMapper paperMapper;
-  private final QuestionMapper questionMapper;
+  private final ExamQuestionMapper examQuestionMapper;
 
-  public PaperService(PaperMapper paperMapper, QuestionMapper questionMapper) {
+  public PaperService(PaperMapper paperMapper, ExamQuestionMapper examQuestionMapper) {
     this.paperMapper = paperMapper;
-    this.questionMapper = questionMapper;
+    this.examQuestionMapper = examQuestionMapper;
   }
 
   public long count(String subject) {
@@ -93,7 +93,7 @@ public class PaperService {
       if (countNeed <= 0) {
         continue;
       }
-      List<Question> pool = questionMapper.selectByTypeSubject(typeCode, subject);
+      List<Question> pool = examQuestionMapper.selectByTypeSubject(typeCode, subject);
       if (pool.size() < countNeed) {
         throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
@@ -476,4 +476,3 @@ public class PaperService {
     public QuestionItem(Long id, Integer score) { this.id = id; this.score = score; }
   }
 }
-

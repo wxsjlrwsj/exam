@@ -68,11 +68,10 @@
       u.id AS userId,
       u.username AS studentId,
       u.real_name AS name,
-      u.email AS email,
-      cs.join_time AS joinTime
-    FROM biz_class_student cs
-    JOIN sys_user u ON u.id = cs.user_id
-    WHERE cs.class_id = #{classId}
+      u.email AS email
+    FROM biz_student s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.class_id = #{classId}
     ORDER BY u.username
   </select>
 
@@ -96,4 +95,3 @@
   </delete>
 
 </mapper>
-

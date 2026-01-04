@@ -130,11 +130,11 @@ const queryParams = reactive({
 const getList = async () => {
    loading.value = true
    try {
-     const resp = await request.get(`/system/role/${roleId}/allocated-users`, {
+    const resp = await request.get(`/system/role/${roleId}/allocated-users`, {
        params: queryParams
      })
-     userList.value = resp.data?.list || []
-     total.value = resp.data?.total || 0
+     userList.value = resp?.list || []
+     total.value = resp?.total || 0
    } catch (e) {
      console.error(e)
      userList.value = []
@@ -149,7 +149,7 @@ const getRoleDetail = async () => {
     // Optional: Fetch role name if needed
     try {
         const resp = await request.get(`/system/role/${roleId}`)
-        roleName.value = resp.data?.roleName || roleId
+        roleName.value = resp?.roleName || roleId
     } catch (e) {
         // Ignore error
     }
@@ -185,7 +185,7 @@ const handleRemove = (row) => {
 const loadOrgTree = async () => {
     try {
         const resp = await request.get('/org/tree')
-        orgOptions.value = resp.data || []
+        orgOptions.value = resp || []
     } catch (e) {
         console.error(e)
     }
@@ -207,7 +207,7 @@ const loadUnassignedUsers = async () => {
                 realName: queryParams.realName
             }
         })
-        unassignedUserList.value = resp.data?.list || []
+        unassignedUserList.value = resp?.list || []
     } catch (e) {
         unassignedUserList.value = []
     }

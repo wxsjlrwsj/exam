@@ -36,7 +36,14 @@ security:
   cors:
     allowed-origins: http://localhost:5173,http://localhost:8080
 
-# AI辅助解题配置
+# 人脸识别（防作弊）配置
+baidu:
+  face:
+    api-key: ${BAIDU_FACE_API_KEY:}
+    secret-key: ${BAIDU_FACE_SECRET_KEY:}
+    threshold: ${BAIDU_FACE_THRESHOLD:80.0}
+
+# AI辅助解题配置（DeepSeek）
 ai:
   deepseek:
     api-key: ${AI_DEEPSEEK_API_KEY}

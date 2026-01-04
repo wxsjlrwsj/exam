@@ -1,24 +1,18 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es2020",
     "module": "esnext",
     "moduleResolution": "node",
-    "strict": false,
     "jsx": "preserve",
-    "importHelpers": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "sourceMap": true,
+    "checkJs": false,
     "baseUrl": ".",
-    "types": [
-      "element-plus/global"
-    ],
     "paths": {
       "@/*": ["src/*"]
     },
-    "lib": [
-      "esnext"
-    ]
+    "lib": ["esnext", "dom"],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "types": ["element-plus/global"]
   },
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }

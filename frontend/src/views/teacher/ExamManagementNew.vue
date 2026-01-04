@@ -256,7 +256,7 @@ const loadCourses = async () => {
   loadingCourses.value = true
   try {
     const res = await getCourses()
-    courses.value = res.data || []
+    courses.value = res || []
   } catch (e) {
     courses.value = []
   } finally {
@@ -285,7 +285,7 @@ const loadExams = async (courseId) => {
   loadingExams.value = true
   try {
     const res = await getExams({ courseId })
-    examList.value = res.data || []
+    examList.value = Array.isArray(res?.list) ? res.list : (res || [])
   } catch (e) {
     examList.value = []
   } finally {
@@ -342,7 +342,7 @@ const handleCreateExam = async () => {
 const loadCourseClasses = async (courseId) => {
   try {
     const res = await getTeachingClasses(courseId)
-    courseClasses.value = res.data || []
+    courseClasses.value = res || []
   } catch (e) {
     courseClasses.value = []
   }

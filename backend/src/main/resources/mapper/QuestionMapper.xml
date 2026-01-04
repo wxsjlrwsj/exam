@@ -35,7 +35,7 @@
       <if test="typeCode != null and typeCode != ''">AND t.type_code = #{typeCode}</if>
       <if test="keyword != null and keyword != ''">AND (q.content LIKE CONCAT('%', #{keyword}, '%'))</if>
       <if test="difficulty != null">AND q.difficulty = #{difficulty}</if>
-      <if test="subject != null and subject != ''">AND q.subject LIKE CONCAT('%', #{subject}, '%')</if>
+      <if test="subject != null and subject != ''">AND q.subject = #{subject}</if>
     </where>
   </select>
 
@@ -46,7 +46,7 @@
       <if test="typeCode != null and typeCode != ''">AND t.type_code = #{typeCode}</if>
       <if test="keyword != null and keyword != ''">AND (q.content LIKE CONCAT('%', #{keyword}, '%'))</if>
       <if test="difficulty != null">AND q.difficulty = #{difficulty}</if>
-      <if test="subject != null and subject != ''">AND q.subject LIKE CONCAT('%', #{subject}, '%')</if>
+      <if test="subject != null and subject != ''">AND q.subject = #{subject}</if>
     </where>
     ORDER BY q.create_time DESC, q.id DESC
     LIMIT #{limit} OFFSET #{offset}
