@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -150,8 +151,15 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('token')
-  const userType = localStorage.getItem('userType')
+  const userStore = useUserStore()
+  
+  // 检查Token是否过期
+  if (userStore.token) {
+    userStore.checkTokenExpire()
+  }
+  
+  const isAuthenticated = userStore.isLoggedIn
+  const userType = userStore.userRole || localStorage.getItem('userType')
   
   // 模拟从本地存储获取禁用的模块列表 (实际应从后端API获取配置)
   // 格式: "sys_org,stu_practice"
@@ -164,7 +172,7 @@ router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - 在线考试系统` : '在线考试系统'
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next({ name: 'Login' })
+    next({ name: 'Login', query: { redirect: to.fullPath } })
   } else if (to.meta.moduleCode && disabledModules.includes(to.meta.moduleCode)) {
     next({ name: 'DashboardHome' })
   } else if (to.meta.roles && (!userType || !to.meta.roles.includes(userType))) {

@@ -27,6 +27,9 @@
           />
         </el-form-item>
         <el-form-item>
+          <el-checkbox v-model="loginForm.rememberMe">记住我（7天免登录）</el-checkbox>
+        </el-form-item>
+        <el-form-item>
           <el-button type="primary" :loading="loading" @click="handleLogin" class="login-button">登录</el-button>
         </el-form-item>
         <div class="extra-actions">
@@ -47,15 +50,18 @@ import { useRouter, useRoute } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import ParticlesBackground from '../components/ParticlesBackground.vue'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
 const showMessage = inject('showMessage')
+const userStore = useUserStore()
 const loading = ref(false)
 
 const loginForm = reactive({
   username: '',
-  password: ''
+  password: '',
+  rememberMe: false
 })
 
 const loginRules = {
@@ -80,7 +86,7 @@ const handleLogin = async () => {
       })
       // request.js 拦截器返回 res.data (即后端的 data 字段)
       // 所以 resp 就是 { token: "...", userInfo: {...} }
-      const data = resp || {}  // 修复：resp 本身就是 data，不需要 resp.data
+      const data = resp || {}
       const token = data.token
       const userInfo = data.userInfo || {}
 
@@ -88,27 +94,47 @@ const handleLogin = async () => {
         throw new Error('登录响应不完整')
       }
 
-      localStorage.setItem('token', token)
-      localStorage.setItem('userType', userInfo.userType)
+      // 获取完整用户信息
+      let fullUserInfo = { ...userInfo }
       try {
         if (String(userInfo.userType).toLowerCase() === 'student') {
           const prof = await request.get('/student/profile')
-          const displayName = (prof && prof.name) ? prof.name : (userInfo.realName || userInfo.username || loginForm.username)
-          localStorage.setItem('username', displayName)
-          if (prof && prof.avatar) {
-            localStorage.setItem('userAvatar', prof.avatar)
+          fullUserInfo = {
+            ...userInfo,
+            name: (prof && prof.name) ? prof.name : (userInfo.realName || userInfo.username || loginForm.username),
+            avatar: prof?.avatar || '',
+            role: 'student'
           }
           window.dispatchEvent(new Event('user-info-update'))
         } else {
-          localStorage.setItem('username', userInfo.username || loginForm.username)
+          fullUserInfo = {
+            ...userInfo,
+            name: userInfo.username || loginForm.username,
+            role: userInfo.userType
+          }
         }
       } catch (e) {
-        localStorage.setItem('username', userInfo.username || loginForm.username)
+        fullUserInfo = {
+          ...userInfo,
+          name: userInfo.username || loginForm.username,
+          role: userInfo.userType
+        }
       }
+
+      // 使用Pinia store保存登录状态
+      userStore.login({
+        token,
+        userInfo: fullUserInfo,
+        rememberMe: loginForm.rememberMe
+      })
+
+      // 兼容旧代码：同时保存到localStorage
+      localStorage.setItem('userType', userInfo.userType)
+      localStorage.setItem('username', fullUserInfo.name)
 
       showMessage('登录成功，欢迎回来！', 'success')
 
-      // 清理上次用户的禁用模块缓存，避免路由守卫误拦截
+      // 清理缓存
       localStorage.removeItem('disabledModules')
       const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
       if (redirect) {
@@ -126,7 +152,23 @@ const handleLogin = async () => {
         if (loginForm.username.includes('admin')) userType = 'admin'
         else if (loginForm.username.includes('teacher')) userType = 'teacher'
 
-        localStorage.setItem('token', 'mock-token-' + Date.now())
+        const mockToken = 'mock-token-' + Date.now()
+        const mockUserInfo = {
+          id: Date.now(),
+          name: loginForm.username,
+          username: loginForm.username,
+          role: userType,
+          userType: userType
+        }
+
+        // 使用Pinia store保存
+        userStore.login({
+          token: mockToken,
+          userInfo: mockUserInfo,
+          rememberMe: loginForm.rememberMe
+        })
+
+        // 兼容旧代码
         localStorage.setItem('userType', userType)
         localStorage.setItem('username', loginForm.username)
 

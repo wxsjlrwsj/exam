@@ -1,8 +1,7 @@
 import axios from 'axios'
-// 注意：若项目用了Element Plus，需引入ElMessage
 import { ElMessage } from 'element-plus'
-// 若用了路由，需引入router（根据项目实际情况，没有则注释）
 import router from '@/router'
+import { useUserStore } from '@/stores/user'
 
 // Create an axios instance
 const service = axios.create({
@@ -13,9 +12,10 @@ const service = axios.create({
 // Request interceptor（请求拦截器：携带Token）
 service.interceptors.request.use(
     config => {
-        const token = localStorage.getItem('token') // 从本地存储取Token
-        if (token) {
-            config.headers['Authorization'] = `Bearer ${token}` // 按后端要求的格式携带
+        // 从Pinia store获取token
+        const userStore = useUserStore()
+        if (userStore.token) {
+            config.headers['Authorization'] = `Bearer ${userStore.token}`
         }
         return config
     },
@@ -43,7 +43,8 @@ service.interceptors.response.use(
         console.log('err' + error)
         // 401：未登录/Token失效，跳登录页
         if (error.response?.status === 401) {
-            localStorage.removeItem('token')
+            const userStore = useUserStore()
+            userStore.logout() // 使用store的logout方法
             router.push('/login')
         }
         // 全局错误提示
