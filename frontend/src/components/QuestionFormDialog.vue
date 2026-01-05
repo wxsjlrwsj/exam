@@ -138,16 +138,73 @@ const rules = {
   difficulty: [{ required: true, message: '请选择难度', trigger: 'change' }]
 }
 
+const defaultOptions = () => ([
+  { key: 'A', value: '' },
+  { key: 'B', value: '' },
+  { key: 'C', value: '' },
+  { key: 'D', value: '' }
+])
+
+const normalizeInitialData = (raw) => {
+  const data = raw ? JSON.parse(JSON.stringify(raw)) : {}
+
+  if (typeof data.options === 'string') {
+    try {
+      const parsed = JSON.parse(data.options)
+      data.options = Array.isArray(parsed) ? parsed : defaultOptions()
+    } catch {
+      data.options = defaultOptions()
+    }
+  } else if (Array.isArray(data.options)) {
+    data.options = data.options.map((o) => {
+      if (!o || typeof o !== 'object') return { key: '', value: o == null ? '' : String(o) }
+      return { key: o.key == null ? '' : String(o.key), value: o.value == null ? '' : String(o.value) }
+    })
+  } else {
+    data.options = defaultOptions()
+  }
+
+  if (data.answer != null && typeof data.answer === 'object') {
+    data.answer = Array.isArray(data.answer) ? data.answer.map(String).join(',') : JSON.stringify(data.answer)
+  } else if (typeof data.answer === 'string') {
+    const t = data.answer.trim()
+    if (
+      (t.startsWith('[') && t.endsWith(']')) ||
+      (t.startsWith('{') && t.endsWith('}')) ||
+      (t.startsWith('"') && t.endsWith('"'))
+    ) {
+      try {
+        const parsed = JSON.parse(t)
+        if (Array.isArray(parsed)) data.answer = parsed.map(String).join(',')
+        else if (parsed == null) data.answer = ''
+        else if (typeof parsed === 'object') data.answer = JSON.stringify(parsed)
+        else data.answer = String(parsed)
+      } catch {
+        data.answer = t
+      }
+    } else {
+      data.answer = t
+    }
+  } else {
+    data.answer = data.answer == null ? '' : String(data.answer)
+  }
+
+  if (typeof data.knowledgePoints === 'string') {
+    data.knowledgePoints = data.knowledgePoints.split(',').map(s => s.trim()).filter(Boolean)
+  }
+  if (!Array.isArray(data.knowledgePoints)) data.knowledgePoints = []
+
+  return data
+}
+
 // Watch for visible change to reset or fill form
 watch(() => props.visible, (val) => {
-  if (val) {
-    if (props.mode === 'edit' && props.initialData && Object.keys(props.initialData).length > 0) {
-      // Deep copy to avoid reference issues
-      Object.assign(form, JSON.parse(JSON.stringify(props.initialData)))
-    } else {
-      // Reset
-      resetForm()
-    }
+  if (!val) return
+  if (props.mode === 'edit' && props.initialData && Object.keys(props.initialData).length > 0) {
+    resetForm()
+    Object.assign(form, normalizeInitialData(props.initialData))
+  } else {
+    resetForm()
   }
 })
 
@@ -158,7 +215,7 @@ const resetForm = () => {
   form.type = 'single_choice'
   form.difficulty = 3
   form.content = ''
-  form.options = [{ key: 'A', value: '' }, { key: 'B', value: '' }, { key: 'C', value: '' }, { key: 'D', value: '' }]
+  form.options = defaultOptions()
   form.answer = ''
   form.analysis = ''
   form.knowledgePoints = []

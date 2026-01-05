@@ -38,24 +38,26 @@
     SELECT COUNT(1)
     FROM biz_question_audit a
     LEFT JOIN users su ON su.id = a.submitter_id
+    LEFT JOIN biz_student bs ON bs.user_id = su.id
     <where>
       <if test="status != null">AND a.status = #{status}</if>
       <if test="subjectId != null">AND a.subject_id = #{subjectId}</if>
-      <if test="submitterName != null and submitterName != ''">AND su.real_name LIKE CONCAT('%', #{submitterName}, '%')</if>
+      <if test="submitterName != null and submitterName != ''">AND COALESCE(bs.real_name, su.real_name) LIKE CONCAT('%', #{submitterName}, '%')</if>
       <if test="beginTime != null and beginTime != ''">AND a.submit_time &gt;= #{beginTime}</if>
       <if test="endTime != null and endTime != ''">AND a.submit_time &lt;= #{endTime}</if>
     </where>
   </select>
 
   <select id="selectPage" resultMap="ListRowMap">
-    SELECT a.id, a.submitter_id, su.real_name AS submitter_name, a.submit_time, a.type_id, qt.type_code, a.difficulty, a.subject_id, a.status, a.content
+    SELECT a.id, a.submitter_id, COALESCE(bs.real_name, su.real_name) AS submitter_name, a.submit_time, a.type_id, qt.type_code, a.difficulty, a.subject_id, a.status, a.content
     FROM biz_question_audit a
     LEFT JOIN users su ON su.id = a.submitter_id
+    LEFT JOIN biz_student bs ON bs.user_id = su.id
     LEFT JOIN biz_question_type qt ON qt.type_id = a.type_id
     <where>
       <if test="status != null">AND a.status = #{status}</if>
       <if test="subjectId != null">AND a.subject_id = #{subjectId}</if>
-      <if test="submitterName != null and submitterName != ''">AND su.real_name LIKE CONCAT('%', #{submitterName}, '%')</if>
+      <if test="submitterName != null and submitterName != ''">AND COALESCE(bs.real_name, su.real_name) LIKE CONCAT('%', #{submitterName}, '%')</if>
       <if test="beginTime != null and beginTime != ''">AND a.submit_time &gt;= #{beginTime}</if>
       <if test="endTime != null and endTime != ''">AND a.submit_time &lt;= #{endTime}</if>
     </where>
@@ -64,20 +66,22 @@
   </select>
 
   <select id="selectDetail" resultMap="DetailMap">
-    SELECT a.*, qt.type_code, su.real_name AS submitter_name, au.real_name AS auditor_name, s.name AS subject_name
+    SELECT a.*, qt.type_code, COALESCE(bs.real_name, su.real_name) AS submitter_name, au.real_name AS auditor_name, s.name AS subject_name
     FROM biz_question_audit a
     LEFT JOIN biz_question_type qt ON qt.type_id = a.type_id
     LEFT JOIN users su ON su.id = a.submitter_id
+    LEFT JOIN biz_student bs ON bs.user_id = su.id
     LEFT JOIN users au ON au.id = a.auditor_id
     LEFT JOIN biz_subject s ON s.id = a.subject_id
     WHERE a.id = #{id}
   </select>
 
   <select id="selectPendingDetailsForProcess" resultMap="DetailMap">
-    SELECT a.*, qt.type_code, su.real_name AS submitter_name, s.name AS subject_name
+    SELECT a.*, qt.type_code, COALESCE(bs.real_name, su.real_name) AS submitter_name, s.name AS subject_name
     FROM biz_question_audit a
     LEFT JOIN biz_question_type qt ON qt.type_id = a.type_id
     LEFT JOIN users su ON su.id = a.submitter_id
+    LEFT JOIN biz_student bs ON bs.user_id = su.id
     LEFT JOIN biz_subject s ON s.id = a.subject_id
     WHERE a.status = 0 AND a.id IN
     <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
@@ -89,6 +93,15 @@
     WHERE status = 0 AND id IN
     <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
   </update>
+
+  <select id="selectForApproveInsert" resultType="org.example.chaoxingsystem.teacher.audit.QuestionAudit">
+    SELECT id, submitter_id, type_id, content, answer, difficulty, subject_id
+    FROM biz_question_audit
+    WHERE status = 1
+      AND question_id IS NULL
+      AND id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+  </select>
 
   <update id="updateQuestionId">
     UPDATE biz_question_audit

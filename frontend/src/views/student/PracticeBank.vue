@@ -141,8 +141,16 @@
     <!-- Upload Question Dialog -->
     <el-dialog v-model="uploadDialogVisible" title="上传题目 (需审核)" width="600px">
       <el-form :model="uploadForm" ref="uploadFormRef" :rules="uploadRules" label-width="80px">
-        <el-form-item label="学科" prop="subject">
-          <el-input v-model="uploadForm.subject" placeholder="例如: Java" />
+        <el-form-item label="课程" prop="subject">
+          <el-select
+            v-model="uploadForm.subject"
+            placeholder="请选择课程"
+            style="width: 100%"
+            filterable
+            :loading="uploadSubjectsLoading"
+          >
+            <el-option v-for="s in uploadSubjectOptions" :key="s.id || s.name" :label="s.name" :value="s.name" />
+          </el-select>
         </el-form-item>
         <el-form-item label="题型" prop="type">
           <el-select v-model="uploadForm.type" placeholder="请选择题型" @change="handleTypeChange" style="width: 100%">
@@ -210,7 +218,7 @@ import { ref, reactive, onMounted, inject } from 'vue'
 import { Upload, Plus, View, Delete, Check, ChatDotRound } from '@element-plus/icons-vue'
 import AiAssistant from '@/components/AiAssistant.vue'
 import { ElMessage } from 'element-plus'
-import { getPracticeQuestions, submitPracticeQuestion, getCollections, addQuestionToCollection } from '@/api/student'
+import { getPracticeQuestions, submitPracticeQuestion, getCollections, addQuestionToCollection, getMyPracticeSubjects } from '@/api/student'
 import { filterValidQuestions } from '@/utils/dataValidator'
 import { useAiAssistantStore } from '@/stores/aiAssistant'
 
@@ -233,6 +241,8 @@ const aiAssistantRef = ref(null)
 
 // Upload State
 const uploadDialogVisible = ref(false)
+const uploadSubjectsLoading = ref(false)
+const uploadSubjectOptions = ref([])
 const uploadFormRef = ref(null)
 const uploadForm = reactive({
   subject: '',
@@ -267,7 +277,7 @@ const filterForm = reactive({
 })
 
 const uploadRules = {
-  subject: [{ required: true, message: '请输入学科', trigger: 'blur' }],
+  subject: [{ required: true, message: '请选择课程', trigger: 'change' }],
   content: [{ required: true, message: '请输入题目内容', trigger: 'blur' }],
   answer: [{ required: true, message: '请输入或选择答案', trigger: 'change' }]
 }
@@ -439,8 +449,24 @@ const openAiAssistant = () => {
 }
 
 // Upload Logic
-const handleUpload = () => {
+const loadUploadSubjects = async () => {
+  uploadSubjectsLoading.value = true
+  try {
+    const list = await getMyPracticeSubjects()
+    uploadSubjectOptions.value = Array.isArray(list) ? list : []
+    if (!uploadForm.subject && uploadSubjectOptions.value.length > 0) {
+      uploadForm.subject = uploadSubjectOptions.value[0].name
+    }
+  } catch (e) {
+    uploadSubjectOptions.value = []
+  } finally {
+    uploadSubjectsLoading.value = false
+  }
+}
+
+const handleUpload = async () => {
   uploadDialogVisible.value = true
+  await loadUploadSubjects()
 }
 
 const handleTypeChange = () => {

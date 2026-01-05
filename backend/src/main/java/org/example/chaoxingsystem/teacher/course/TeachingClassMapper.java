@@ -6,6 +6,7 @@ import java.util.Map;
 
 public interface TeachingClassMapper {
   List<Map<String, Object>> selectByCourse(@Param("courseId") Long courseId);
+  List<Map<String, Object>> selectSubjectsByStudent(@Param("userId") Long userId);
   TeachingClass selectById(@Param("id") Long id);
   int insert(TeachingClass tc);
   int updateById(TeachingClass tc);

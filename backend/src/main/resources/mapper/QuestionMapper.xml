@@ -24,10 +24,12 @@
       q.*,
       CASE
         WHEN u.user_type = 'admin' THEN COALESCE(tu.real_name, u.real_name)
+        WHEN u.user_type = 'student' THEN COALESCE(bs.real_name, u.real_name)
         ELSE u.real_name
       END AS uploader
     FROM biz_question q
     LEFT JOIN users u ON u.id = q.creator_id
+    LEFT JOIN biz_student bs ON bs.user_id = u.id
     LEFT JOIN biz_subject s ON s.name COLLATE utf8mb4_unicode_ci = q.subject COLLATE utf8mb4_unicode_ci
     LEFT JOIN (
       SELECT subject_id, MIN(teacher_id) AS teacher_id
@@ -93,12 +95,47 @@
   </delete>
 
   <select id="selectById" resultMap="QuestionMap">
-    SELECT * FROM biz_question WHERE id = #{id}
+    SELECT
+      q.*,
+      CASE
+        WHEN u.user_type = 'admin' THEN COALESCE(tu.real_name, u.real_name)
+        WHEN u.user_type = 'student' THEN COALESCE(bs.real_name, u.real_name)
+        ELSE u.real_name
+      END AS uploader
+    FROM biz_question q
+    LEFT JOIN users u ON u.id = q.creator_id
+    LEFT JOIN biz_student bs ON bs.user_id = u.id
+    LEFT JOIN biz_subject s ON s.name COLLATE utf8mb4_unicode_ci = q.subject COLLATE utf8mb4_unicode_ci
+    LEFT JOIN (
+      SELECT subject_id, MIN(teacher_id) AS teacher_id
+      FROM biz_teacher_subject_map
+      GROUP BY subject_id
+    ) tsm ON tsm.subject_id = s.id
+    LEFT JOIN biz_teacher bt ON bt.id = tsm.teacher_id
+    LEFT JOIN users tu ON tu.id = bt.user_id
+    WHERE q.id = #{id}
   </select>
 
   <select id="selectByTypeSubjectDifficultyLimit" resultMap="QuestionMap">
-    SELECT q.* FROM biz_question q
+    SELECT
+      q.*,
+      CASE
+        WHEN u.user_type = 'admin' THEN COALESCE(tu.real_name, u.real_name)
+        WHEN u.user_type = 'student' THEN COALESCE(bs.real_name, u.real_name)
+        ELSE u.real_name
+      END AS uploader
+    FROM biz_question q
     LEFT JOIN biz_question_type t ON t.type_id = q.type_id
+    LEFT JOIN users u ON u.id = q.creator_id
+    LEFT JOIN biz_student bs ON bs.user_id = u.id
+    LEFT JOIN biz_subject s ON s.name COLLATE utf8mb4_unicode_ci = q.subject COLLATE utf8mb4_unicode_ci
+    LEFT JOIN (
+      SELECT subject_id, MIN(teacher_id) AS teacher_id
+      FROM biz_teacher_subject_map
+      GROUP BY subject_id
+    ) tsm ON tsm.subject_id = s.id
+    LEFT JOIN biz_teacher bt ON bt.id = tsm.teacher_id
+    LEFT JOIN users tu ON tu.id = bt.user_id
     <where>
       <if test="typeCode != null and typeCode != ''">AND t.type_code = #{typeCode}</if>
       <if test="subject != null and subject != ''">AND q.subject = #{subject}</if>
@@ -110,8 +147,25 @@
   </select>
 
   <select id="selectByTypeSubject" resultMap="QuestionMap">
-    SELECT q.* FROM biz_question q
+    SELECT
+      q.*,
+      CASE
+        WHEN u.user_type = 'admin' THEN COALESCE(tu.real_name, u.real_name)
+        WHEN u.user_type = 'student' THEN COALESCE(bs.real_name, u.real_name)
+        ELSE u.real_name
+      END AS uploader
+    FROM biz_question q
     LEFT JOIN biz_question_type t ON t.type_id = q.type_id
+    LEFT JOIN users u ON u.id = q.creator_id
+    LEFT JOIN biz_student bs ON bs.user_id = u.id
+    LEFT JOIN biz_subject s ON s.name COLLATE utf8mb4_unicode_ci = q.subject COLLATE utf8mb4_unicode_ci
+    LEFT JOIN (
+      SELECT subject_id, MIN(teacher_id) AS teacher_id
+      FROM biz_teacher_subject_map
+      GROUP BY subject_id
+    ) tsm ON tsm.subject_id = s.id
+    LEFT JOIN biz_teacher bt ON bt.id = tsm.teacher_id
+    LEFT JOIN users tu ON tu.id = bt.user_id
     <where>
       <if test="typeCode != null and typeCode != ''">AND t.type_code = #{typeCode}</if>
       <if test="subject != null and subject != ''">AND q.subject = #{subject}</if>

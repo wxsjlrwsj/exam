@@ -5,6 +5,7 @@ import org.example.chaoxingsystem.teacher.audit.QuestionAudit;
 import org.example.chaoxingsystem.teacher.audit.QuestionAuditMapper;
 import org.example.chaoxingsystem.teacher.bank.QuestionType;
 import org.example.chaoxingsystem.teacher.bank.QuestionTypeMapper;
+import org.example.chaoxingsystem.teacher.course.TeachingClassMapper;
 import org.example.chaoxingsystem.common.Subject;
 import org.example.chaoxingsystem.common.SubjectService;
 import org.example.chaoxingsystem.user.UserService;
@@ -14,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,14 +26,36 @@ public class StudentQuestionController {
   private final QuestionAuditMapper auditMapper;
   private final QuestionTypeMapper typeMapper;
   private final SubjectService subjectService;
+  private final TeachingClassMapper teachingClassMapper;
   private final UserService userService;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public StudentQuestionController(QuestionAuditMapper auditMapper, QuestionTypeMapper typeMapper, SubjectService subjectService, UserService userService) {
+  public StudentQuestionController(QuestionAuditMapper auditMapper, QuestionTypeMapper typeMapper, SubjectService subjectService, TeachingClassMapper teachingClassMapper, UserService userService) {
     this.auditMapper = auditMapper;
     this.typeMapper = typeMapper;
     this.subjectService = subjectService;
+    this.teachingClassMapper = teachingClassMapper;
     this.userService = userService;
+  }
+
+  @GetMapping("/subjects")
+  @PreAuthorize("hasRole('STUDENT')")
+  public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listMySubjects(Authentication auth) {
+    var me = userService.getByUsername(auth.getName());
+    List<Map<String, Object>> list = teachingClassMapper.selectSubjectsByStudent(me.getId());
+    if (list == null || list.isEmpty()) {
+      List<Subject> all = subjectService.listAll();
+      List<Map<String, Object>> fallback = new ArrayList<>();
+      for (Subject s : all) {
+        HashMap<String, Object> row = new HashMap<>();
+        row.put("id", s.getId());
+        row.put("name", s.getName());
+        row.put("code", s.getCode());
+        fallback.add(row);
+      }
+      list = fallback;
+    }
+    return ResponseEntity.ok(ApiResponse.success("获取成功", list));
   }
 
   @PostMapping("/submit")

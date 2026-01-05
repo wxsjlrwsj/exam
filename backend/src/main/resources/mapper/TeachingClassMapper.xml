@@ -76,6 +76,18 @@
     ORDER BY u.real_name ASC, u.id ASC
   </select>
 
+  <select id="selectSubjectsByStudent" resultType="map">
+    SELECT DISTINCT
+      s.id AS id,
+      s.name AS name,
+      s.code AS code
+    FROM biz_teaching_class_student tcs
+    JOIN biz_teaching_class tc ON tc.id = tcs.class_id
+    JOIN biz_subject s ON s.id = tc.subject_id
+    WHERE tcs.user_id = #{userId}
+    ORDER BY s.name ASC, s.id ASC
+  </select>
+
   <insert id="insertClassStudent">
     INSERT IGNORE INTO biz_teaching_class_student (class_id, user_id)
     VALUES (#{classId}, #{userId})

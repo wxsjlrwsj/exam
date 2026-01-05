@@ -63,6 +63,13 @@ export function submitPracticeQuestion(data) {
   })
 }
 
+export function getMyPracticeSubjects() {
+  return request({
+    url: '/student/questions/subjects',
+    method: 'get'
+  })
+}
+
 /**
  * 获取个性化题库
  * @param {Object} params - 查询参数
