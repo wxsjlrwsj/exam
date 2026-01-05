@@ -164,11 +164,16 @@ CREATE TABLE IF NOT EXISTS biz_question (
 -- 题目审核表
 CREATE TABLE IF NOT EXISTS biz_question_audit (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  question_id BIGINT NOT NULL,
+  question_id BIGINT,
   submitter_id BIGINT NOT NULL,
-  submit_time DATETIME NOT NULL,
-  audit_status TINYINT NOT NULL DEFAULT 0,
-  audit_opinion TEXT,
+  submit_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  type_id TINYINT NOT NULL,
+  content TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  difficulty TINYINT,
+  subject_id BIGINT,
+  status TINYINT NOT NULL DEFAULT 0,
+  audit_comment TEXT,
   auditor_id BIGINT,
   audit_time DATETIME
 );

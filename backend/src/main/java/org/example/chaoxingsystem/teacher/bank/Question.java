@@ -15,6 +15,7 @@ public class Question {
   private String knowledgePoints;
   private String fileId;
   private Long creatorId;
+  private String uploader;
   private Instant createTime;
   private Integer status;
 
@@ -40,9 +41,10 @@ public class Question {
   public void setFileId(String fileId) { this.fileId = fileId; }
   public Long getCreatorId() { return creatorId; }
   public void setCreatorId(Long creatorId) { this.creatorId = creatorId; }
+  public String getUploader() { return uploader; }
+  public void setUploader(String uploader) { this.uploader = uploader; }
   public Instant getCreateTime() { return createTime; }
   public void setCreateTime(Instant createTime) { this.createTime = createTime; }
   public Integer getStatus() { return status; }
   public void setStatus(Integer status) { this.status = status; }
 }
-

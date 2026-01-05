@@ -59,6 +59,9 @@ public class StudentQuestionController {
 
     Map<String, Object> contentJson = new HashMap<>();
     contentJson.put("stem", content);
+    if (subject != null && !subject.isEmpty()) {
+      contentJson.put("subject", subject);
+    }
     if (optionsObj instanceof List<?>) {
       contentJson.put("options", optionsObj);
     }
@@ -66,7 +69,7 @@ public class StudentQuestionController {
       contentJson.put("analysis", analysis);
     }
     String contentText = objectMapper.writeValueAsString(contentJson);
-    String answerText = String.valueOf(answerObj);
+    String answerText = objectMapper.writeValueAsString(answerObj);
 
     Long subjectId = null;
     if (subject != null && !subject.trim().isEmpty()) {

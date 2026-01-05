@@ -26,5 +26,9 @@ public interface QuestionAuditMapper {
 
   int processBatch(@Param("ids") List<Long> ids, @Param("status") Integer status, @Param("comment") String comment, @Param("auditorId") Long auditorId);
 
+  List<QuestionAuditDetail> selectPendingDetailsForProcess(@Param("ids") List<Long> ids);
+
+  int updateQuestionId(@Param("id") Long id, @Param("questionId") Long questionId);
+
   int insert(QuestionAudit qa);
 }

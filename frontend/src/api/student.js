@@ -55,6 +55,14 @@ export function getPracticeQuestions(params) {
   })
 }
 
+export function submitPracticeQuestion(data) {
+  return request({
+    url: '/student/questions/submit',
+    method: 'post',
+    data
+  })
+}
+
 /**
  * 获取个性化题库
  * @param {Object} params - 查询参数
@@ -273,5 +281,4 @@ export function changePassword(data) {
     data
   })
 }
-
 

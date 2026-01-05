@@ -18,7 +18,6 @@ services:
       - ./backend/db_patches/20251231_add_biz_teacher_subject.sql:/docker-entrypoint-initdb.d/05-teacher-subject-patch.sql:ro
       - ./backend/db_patches/20251231_replace_course_with_subject.sql:/docker-entrypoint-initdb.d/06-subject-class-patch.sql:ro
       - ./backend/db_patches/20251231_add_face_photo_to_biz_student.sql:/docker-entrypoint-initdb.d/07-face-photo-patch.sql:ro
-      - ./backend/db_patches/20251231_add_face_photo_to_biz_student.sql:/docker-entrypoint-initdb.d/07-face-photo-patch.sql:ro
       - ./backend/db_patches/20251231_hide_tch_audit_for_admin.sql:/docker-entrypoint-initdb.d/08-hide-tch-audit.sql:ro
       - ./backend/db_patches/20251231_separate_exam_practice_questions.sql:/docker-entrypoint-initdb.d/09-exam-bank-separation.sql:ro
       - ./backend/db_patches/20251231_seed_exam_questions.sql:/docker-entrypoint-initdb.d/10-exam-bank-seed.sql:ro
@@ -28,6 +27,7 @@ services:
       - ./backend/db_patches/20260103_seed_teachers_4_5.sql:/docker-entrypoint-initdb.d/14-seed-teacher4-5.sql:ro
       - ./backend/db_patches/20260103_add_academic_year_semester_to_teaching_class.sql:/docker-entrypoint-initdb.d/15-teaching-class-year-semester.sql:ro
       - ./backend/db_patches/20260103_migrate_class_student_to_biz_student.sql:/docker-entrypoint-initdb.d/16-migrate-class-student.sql:ro
+      - ./backend/db_patches/20260105_fix_question_audit_schema.sql:/docker-entrypoint-initdb.d/17-fix-question-audit-schema.sql:ro
 
     command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
     healthcheck:

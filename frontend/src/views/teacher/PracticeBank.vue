@@ -93,7 +93,7 @@
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column prop="typeCode" label="题型" width="120">
             <template #default="scope">
-              {{ getQuestionTypeLabel(scope.row.typeCode || scope.row.type) }}
+              {{ getQuestionTypeLabel(scope.row.type || scope.row.typeCode) }}
             </template>
           </el-table-column>
           <el-table-column prop="content" label="题目内容" show-overflow-tooltip />
@@ -165,7 +165,7 @@
 import { ref, reactive, onMounted, inject, computed } from 'vue'
 import { Plus, Document, Menu } from '@element-plus/icons-vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
-import { getQuestions, createQuestion, updateQuestion, deleteQuestion, auditQuestion, getSubjects, getAuditQuestions } from '@/api/teacher'
+import { getQuestions, createQuestion, updateQuestion, deleteQuestion, auditQuestion, getSubjects, getAuditQuestions, getAuditQuestionDetail } from '@/api/teacher'
 import { filterValidQuestions } from '@/utils/dataValidator'
 
 const showMessage = inject('showMessage')
@@ -198,6 +198,15 @@ const questionTypes = [
   { label: '简答题', value: 'short_answer' },
   { label: '编程题', value: 'programming' }
 ]
+
+const TYPE_CODE_MAP = {
+  SINGLE: 'single_choice',
+  MULTI: 'multiple_choice',
+  TRUE_FALSE: 'true_false',
+  FILL: 'fill_blank',
+  SHORT: 'short_answer',
+  PROGRAM: 'programming'
+}
 
 const filterForm = reactive({
   type: '',
@@ -269,7 +278,24 @@ const loadQuestionList = async () => {
               subjectId: activeSubjectId.value
           }
           const res = await getAuditQuestions(params)
-          auditList.value = res.list || []
+          auditList.value = (res.list || []).map((row) => {
+            const r = { ...row }
+            if (!r.type && r.typeCode && TYPE_CODE_MAP[r.typeCode]) {
+              r.type = TYPE_CODE_MAP[r.typeCode]
+            }
+            if (typeof r.content === 'string' && r.content.trim().startsWith('{')) {
+              try {
+                const parsed = JSON.parse(r.content)
+                if (parsed && typeof parsed === 'object') {
+                  r.content = parsed.stem || r.content
+                  r.options = parsed.options || []
+                  r.analysis = parsed.analysis || ''
+                  r.subject = parsed.subject || ''
+                }
+              } catch (e) {}
+            }
+            return r
+          })
           total.value = res.total || 0
           auditCount.value = res.total || 0
       }
@@ -345,6 +371,36 @@ const handleQuestionSubmit = async (formData) => {
 }
 
 const handlePreview = (row) => {
+  if (activeTab.value === 'audit') {
+    loading.value = true
+    getAuditQuestionDetail(row.id)
+      .then((detail) => {
+        const merged = { ...row, ...(detail || {}) }
+        if (!merged.type && merged.typeCode && TYPE_CODE_MAP[merged.typeCode]) {
+          merged.type = TYPE_CODE_MAP[merged.typeCode]
+        }
+        if (typeof merged.content === 'string' && merged.content.trim().startsWith('{')) {
+          try {
+            const parsed = JSON.parse(merged.content)
+            if (parsed && typeof parsed === 'object') {
+              merged.content = parsed.stem || merged.content
+              merged.options = parsed.options || merged.options || []
+              merged.analysis = parsed.analysis || merged.analysis || ''
+              merged.subject = parsed.subject || merged.subject || merged.subjectName || ''
+            }
+          } catch (e) {}
+        }
+        currentQuestion.value = merged
+        previewVisible.value = true
+      })
+      .catch(() => {
+        showMessage('加载详情失败', 'error')
+      })
+      .finally(() => {
+        loading.value = false
+      })
+    return
+  }
   currentQuestion.value = row
   previewVisible.value = true
 }

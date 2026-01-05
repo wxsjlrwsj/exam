@@ -210,7 +210,7 @@ import { ref, reactive, onMounted, inject } from 'vue'
 import { Upload, Plus, View, Delete, Check, ChatDotRound } from '@element-plus/icons-vue'
 import AiAssistant from '@/components/AiAssistant.vue'
 import { ElMessage } from 'element-plus'
-import { getPracticeQuestions, getCollections, addQuestionToCollection } from '@/api/student'
+import { getPracticeQuestions, submitPracticeQuestion, getCollections, addQuestionToCollection } from '@/api/student'
 import { filterValidQuestions } from '@/utils/dataValidator'
 import { useAiAssistantStore } from '@/stores/aiAssistant'
 
@@ -466,12 +466,27 @@ const submitUpload = () => {
          if (uploadForm.type === 'multiple_choice') {
             uploadForm.answer = uploadForm.answerArr.sort().join(',')
          }
-         showMessage('提交成功，等待老师审核', 'success')
-         uploadDialogVisible.value = false
-         uploadForm.content = ''
-         uploadForm.analysis = ''
-         uploadForm.answer = ''
-         uploadForm.answerArr = []
+         const payload = {
+           subject: uploadForm.subject,
+           type: uploadForm.type,
+           difficulty: uploadForm.difficulty,
+           content: uploadForm.content,
+           options: ['single_choice', 'multiple_choice'].includes(uploadForm.type) ? uploadForm.options : [],
+           answer: uploadForm.type === 'multiple_choice' ? uploadForm.answer.split(',') : uploadForm.answer,
+           analysis: uploadForm.analysis
+         }
+         submitPracticeQuestion(payload)
+           .then(() => {
+             showMessage('提交成功，等待老师审核', 'success')
+             uploadDialogVisible.value = false
+             uploadForm.content = ''
+             uploadForm.analysis = ''
+             uploadForm.answer = ''
+             uploadForm.answerArr = []
+           })
+           .catch(() => {
+             showMessage('提交失败', 'error')
+           })
       }
    })
 }

@@ -13,6 +13,7 @@ public class QuestionAuditDetail {
   private String answer;
   private Integer difficulty;
   private Long subjectId;
+  private String subjectName;
   private Integer status;
   private String auditComment;
   private Long auditorId;
@@ -39,6 +40,8 @@ public class QuestionAuditDetail {
   public void setDifficulty(Integer difficulty) { this.difficulty = difficulty; }
   public Long getSubjectId() { return subjectId; }
   public void setSubjectId(Long subjectId) { this.subjectId = subjectId; }
+  public String getSubjectName() { return subjectName; }
+  public void setSubjectName(String subjectName) { this.subjectName = subjectName; }
   public Integer getStatus() { return status; }
   public void setStatus(Integer status) { this.status = status; }
   public String getAuditComment() { return auditComment; }

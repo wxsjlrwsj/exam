@@ -240,11 +240,16 @@ DROP TABLE IF EXISTS `biz_question_audit`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `biz_question_audit` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `question_id` bigint NOT NULL,
+  `question_id` bigint DEFAULT NULL,
   `submitter_id` bigint NOT NULL,
-  `submit_time` datetime NOT NULL,
-  `audit_status` tinyint NOT NULL DEFAULT '0',
-  `audit_opinion` text COLLATE utf8mb4_unicode_ci,
+  `submit_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `type_id` tinyint NOT NULL,
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `answer` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `difficulty` tinyint DEFAULT NULL,
+  `subject_id` bigint DEFAULT NULL,
+  `status` tinyint NOT NULL DEFAULT '0',
+  `audit_comment` text COLLATE utf8mb4_unicode_ci,
   `auditor_id` bigint DEFAULT NULL,
   `audit_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)

@@ -152,6 +152,13 @@ export function getAuditQuestions(params) {
   })
 }
 
+export function getAuditQuestionDetail(id) {
+  return request({
+    url: `/audit/question/${id}`,
+    method: 'get'
+  })
+}
+
 // Paper Management
 export function getPapers(params) {
   return request({
