@@ -204,13 +204,19 @@ const sendMessage = async () => {
   scrollToBottom()
 
   try {
+    // 获取token（优先从sessionStorage，其次从localStorage）
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token')
+    if (!token) {
+      throw new Error('未登录或登录已过期')
+    }
+    
     // 使用流式API
     const response = await fetch('/api/student/ai/chat/stream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         question: aiStore.currentQuestion || '无具体题目',
@@ -259,10 +265,15 @@ const sendMessage = async () => {
     console.error('AI请求失败:', error)
     // 使用非流式API作为备用
     try {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token')
       const res = await axios.post('/api/student/ai/chat', {
         question: aiStore.currentQuestion || '无具体题目',
         message: message,
         history: buildHistoryJson()
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
       const lastMsg = aiStore.messages[aiStore.messages.length - 1]
       const fallbackText = res.data?.data?.reply || ''

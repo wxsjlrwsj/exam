@@ -48,5 +48,5 @@ baidu:
 ai:
   deepseek:
     api-key: ${AI_DEEPSEEK_API_KEY:dummy-key}
-    base-url: ${AI_DEEPSEEK_BASE_URL:https://api.deepseek.com}
+    api-url: ${AI_DEEPSEEK_API_URL:https://api.deepseek.com/chat/completions}
     model: ${AI_DEEPSEEK_MODEL:deepseek-chat}

@@ -2,6 +2,7 @@ package org.example.chaoxingsystem.student;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -24,6 +25,7 @@ public class AiAssistantController {
      * @return SSE流式响应
      */
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("hasRole('STUDENT')")
     public SseEmitter chatStream(@RequestBody Map<String, String> request) {
         String question = request.get("question");
         String message = request.get("message");
@@ -38,6 +40,7 @@ public class AiAssistantController {
      * @return AI回复
      */
     @PostMapping("/chat")
+    @PreAuthorize("hasRole('STUDENT')")
     public org.springframework.http.ResponseEntity<org.example.chaoxingsystem.user.dto.ApiResponse<java.util.Map<String, String>>> chat(@RequestBody Map<String, String> request) {
         String question = request.get("question");
         String message = request.get("message");
