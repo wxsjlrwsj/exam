@@ -121,6 +121,24 @@ const router = createRouter({
           meta: { title: '课程管理', roles: ['teacher'], moduleCode: 'tch_course' }
         },
         {
+          path: 'teacher/paper-management',
+          name: 'TeacherPaperManagement',
+          component: () => import('../views/paper/PaperManagement.vue'),
+          meta: { title: '试卷管理', roles: ['teacher'], moduleCode: 'tch_paper' }
+        },
+        {
+          path: 'teacher/paper-compose',
+          name: 'TeacherPaperCompose',
+          component: () => import('../views/paper/PaperCompose.vue'),
+          meta: { title: '手动组卷', roles: ['teacher'], moduleCode: 'tch_paper' }
+        },
+        {
+          path: 'teacher/paper-auto',
+          name: 'TeacherPaperAuto',
+          component: () => import('../views/paper/PaperAutoGenerate.vue'),
+          meta: { title: '智能组卷', roles: ['teacher'], moduleCode: 'tch_paper' }
+        },
+        {
           path: 'teacher/exam-management',
           name: 'TeacherExamManagement',
           component: () => import('../views/teacher/ExamManagementNew.vue'),

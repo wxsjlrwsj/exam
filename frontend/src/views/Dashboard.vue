@@ -130,6 +130,15 @@
               <el-icon v-if="isModuleDisabled('tch_course')" class="disabled-icon"><CircleClose /></el-icon>
             </el-menu-item>
             <el-menu-item 
+              index="/dashboard/teacher/paper-management"
+              :class="{ 'is-disabled-module': isModuleDisabled('tch_paper') }"
+              @click="handleMenuClick($event, 'tch_paper')"
+            >
+              <el-icon><Files /></el-icon>
+              <span>试卷管理</span>
+              <el-icon v-if="isModuleDisabled('tch_paper')" class="disabled-icon"><CircleClose /></el-icon>
+            </el-menu-item>
+            <el-menu-item 
               index="/dashboard/teacher/exam-management"
               :class="{ 'is-disabled-module': isModuleDisabled('tch_exam') }"
               @click="handleMenuClick($event, 'tch_exam')"

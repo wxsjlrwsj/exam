@@ -79,7 +79,10 @@ public class PaperController {
     Integer totalScore = body.get("totalScore") instanceof Number ? ((Number) body.get("totalScore")).intValue() : null;
     @SuppressWarnings("unchecked")
     Map<String, Integer> typeDistribution = (Map<String, Integer>) body.get("typeDistribution");
-    Long id = service.autoGenerate(me.getId(), subject, difficulty, totalScore, typeDistribution);
+    @SuppressWarnings("unchecked")
+    Map<String, Map<String, Integer>> difficultyDistribution =
+      (Map<String, Map<String, Integer>>) body.get("difficultyDistribution");
+    Long id = service.autoGenerate(me.getId(), subject, difficulty, totalScore, typeDistribution, difficultyDistribution);
     HashMap<String, Object> data = new HashMap<>();
     data.put("id", id);
     return ResponseEntity.ok(ApiResponse.success("智能组卷成功", data));

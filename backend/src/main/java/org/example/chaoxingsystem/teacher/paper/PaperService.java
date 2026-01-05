@@ -66,15 +66,70 @@ public class PaperService {
   }
 
   @Transactional
-  public Long autoGenerate(Long creatorId, String subject, Integer difficulty, Integer totalScore, Map<String, Integer> typeDistribution) {
+  public Long autoGenerate(
+    Long creatorId,
+    String subject,
+    Integer difficulty,
+    Integer totalScore,
+    Map<String, Integer> typeDistribution,
+    Map<String, Map<String, Integer>> difficultyDistribution
+  ) {
     if (subject == null || subject.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "subject is required");
     }
     if (totalScore == null || totalScore <= 0) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "totalScore must be greater than 0");
     }
-    if (typeDistribution == null || typeDistribution.isEmpty()) {
+    boolean hasDifficultyDistribution = difficultyDistribution != null && !difficultyDistribution.isEmpty();
+    if (!hasDifficultyDistribution && (typeDistribution == null || typeDistribution.isEmpty())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "typeDistribution is required");
+    }
+
+    if (hasDifficultyDistribution) {
+      Map<Integer, Map<String, Integer>> normalizedByDifficulty = normalizeDifficultyDistribution(difficultyDistribution);
+      int totalQuestions = normalizedByDifficulty.values().stream()
+        .flatMap(m -> m.values().stream())
+        .mapToInt(Integer::intValue)
+        .sum();
+      if (totalQuestions <= 0) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "question count must be greater than 0");
+      }
+      if (totalScore < totalQuestions) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "totalScore is too small for question count");
+      }
+
+      List<Question> selected = new ArrayList<>();
+      for (Map.Entry<Integer, Map<String, Integer>> entry : normalizedByDifficulty.entrySet()) {
+        int targetDifficulty = entry.getKey();
+        Map<String, Integer> perType = normalizeTypeDistribution(entry.getValue());
+        for (Map.Entry<String, Integer> typeEntry : perType.entrySet()) {
+          String typeCode = typeEntry.getKey();
+          int countNeed = typeEntry.getValue();
+          if (countNeed <= 0) {
+            continue;
+          }
+          List<Question> pool = examQuestionMapper.selectByTypeSubject(typeCode, subject);
+          List<Question> filtered = pool.stream()
+            .filter(q -> matchDifficulty(q.getDifficulty(), targetDifficulty))
+            .toList();
+          if (filtered.size() < countNeed) {
+            throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              String.format("not enough questions for type %s difficulty %s: need %d, have %d",
+                typeCode, difficultyLabel(targetDifficulty), countNeed, filtered.size())
+            );
+          }
+          selected.addAll(pickQuestions(filtered, countNeed, targetDifficulty));
+        }
+      }
+
+      if (selected.isEmpty()) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "not enough questions to generate a paper");
+      }
+
+      List<QuestionItem> items = assignScores(selected, totalScore);
+      String name = subject + " Auto Paper";
+      return create(creatorId, name, subject, items, null);
     }
 
     Map<String, Integer> normalized = normalizeTypeDistribution(typeDistribution);
@@ -126,6 +181,43 @@ public class PaperService {
       normalized.merge(typeCode, count, Integer::sum);
     }
     return normalized;
+  }
+
+  private Map<Integer, Map<String, Integer>> normalizeDifficultyDistribution(
+    Map<String, Map<String, Integer>> difficultyDistribution
+  ) {
+    Map<Integer, Map<String, Integer>> normalized = new LinkedHashMap<>();
+    for (Map.Entry<String, Map<String, Integer>> entry : difficultyDistribution.entrySet()) {
+      Integer difficulty = normalizeDifficultyKey(entry.getKey());
+      if (difficulty == null) {
+        continue;
+      }
+      Map<String, Integer> perType = entry.getValue();
+      if (perType == null || perType.isEmpty()) {
+        continue;
+      }
+      normalized.put(difficulty, perType);
+    }
+    return normalized;
+  }
+
+  private Integer normalizeDifficultyKey(String key) {
+    if (key == null) return null;
+    String raw = key.trim().toLowerCase();
+    if (raw.isEmpty()) return null;
+    try {
+      int value = Integer.parseInt(raw);
+      if (value <= 2) return 1;
+      if (value == 3) return 3;
+      return 5;
+    } catch (NumberFormatException ignored) {
+    }
+    return switch (raw) {
+      case "easy", "simple", "low", "easy_level", "simple_level", "简单" -> 1;
+      case "medium", "mid", "normal", "中等" -> 3;
+      case "hard", "difficult", "high", "困难" -> 5;
+      default -> null;
+    };
   }
 
   private String normalizeTypeCode(String typeCode) {
@@ -187,6 +279,25 @@ public class PaperService {
       return 5;
     }
     return value;
+  }
+
+  private boolean matchDifficulty(Integer difficulty, int targetDifficulty) {
+    int value = normalizeDifficulty(difficulty);
+    int target = normalizeDifficulty(targetDifficulty);
+    if (target <= 1) {
+      return value <= 2;
+    }
+    if (target == 3) {
+      return value == 3;
+    }
+    return value >= 4;
+  }
+
+  private String difficultyLabel(int difficulty) {
+    int target = normalizeDifficulty(difficulty);
+    if (target <= 1) return "easy";
+    if (target == 3) return "medium";
+    return "hard";
   }
 
   private List<Question> pickWithDiversity(List<Question> ordered, int countNeed) {

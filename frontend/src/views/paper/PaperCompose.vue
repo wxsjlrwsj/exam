@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="paper-compose-container">
     <div class="page-header">
       <h2 class="page-title">手动组卷</h2>
@@ -56,10 +56,10 @@
         </el-table-column>
         <el-table-column label="分数" width="150" align="center">
           <template #default="scope">
-            <el-input-number 
-              v-model="scope.row.score" 
-              :min="1" 
-              :max="100" 
+            <el-input-number
+              v-model="scope.row.score"
+              :min="1"
+              :max="100"
               size="small"
               @change="calculateTotalScore"
             />
@@ -77,7 +77,6 @@
       </div>
     </el-card>
 
-    <!-- Question Selector Dialog -->
     <el-dialog v-model="showQuestionSelector" title="选择题目" width="80%" :close-on-click-modal="false">
       <el-form :inline="true" :model="filterForm" class="filter-form">
         <el-form-item label="题型">
@@ -87,6 +86,7 @@
             <el-option label="判断题" value="true_false" />
             <el-option label="填空题" value="fill_blank" />
             <el-option label="简答题" value="short_answer" />
+            <el-option label="编程题" value="programming" />
           </el-select>
         </el-form-item>
         <el-form-item label="科目">
@@ -101,11 +101,11 @@
         </el-form-item>
       </el-form>
 
-      <el-table 
+      <el-table
         ref="questionTable"
         v-loading="questionLoading"
-        :data="questionList" 
-        border 
+        :data="questionList"
+        border
         style="width: 100%"
         @selection-change="handleSelectionChange"
       >
@@ -146,12 +146,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, inject } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, inject, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { Plus } from '@element-plus/icons-vue'
-import { getQuestions, createPaper } from '@/api/teacher'
+import { getExamQuestions, createPaper, getPaperDetail, updatePaper } from '@/api/teacher'
 
 const router = useRouter()
+const route = useRoute()
 const showMessage = inject('showMessage')
 
 const saving = ref(false)
@@ -163,6 +164,7 @@ const questionPageSize = ref(10)
 const questionTotal = ref(0)
 const selectedQuestions = ref([])
 const tempSelectedQuestions = ref([])
+const editingPaperId = ref(null)
 
 const paperForm = reactive({
   name: '',
@@ -181,7 +183,14 @@ const questionTypeMap = {
   2: '多选题',
   3: '判断题',
   4: '填空题',
-  5: '简答题'
+  5: '简答题',
+  6: '编程题',
+  SINGLE: '单选题',
+  MULTI: '多选题',
+  TRUE_FALSE: '判断题',
+  FILL: '填空题',
+  SHORT: '简答题',
+  PROGRAM: '编程题'
 }
 
 const getQuestionTypeLabel = (typeId) => {
@@ -192,19 +201,19 @@ const totalScore = computed(() => {
   return selectedQuestions.value.reduce((sum, q) => sum + (q.score || 0), 0)
 })
 
-const calculateTotalScore = () => {
-  // Trigger computed property update
-}
+const calculateTotalScore = () => {}
 
 const loadQuestions = async () => {
   questionLoading.value = true
   try {
     const params = {
       page: questionPage.value,
-      size: questionPageSize.value,
-      ...filterForm
+      size: questionPageSize.value
     }
-    const res = await getQuestions(params)
+    if (filterForm.typeCode) params.typeCode = filterForm.typeCode
+    if (filterForm.subject) params.subject = filterForm.subject
+    if (filterForm.keyword) params.keyword = filterForm.keyword
+    const res = await getExamQuestions(params)
     if (res && res.list) {
       questionList.value = res.list
       questionTotal.value = res.total || 0
@@ -232,14 +241,14 @@ const confirmAddQuestions = () => {
   const newQuestions = tempSelectedQuestions.value.filter(q => {
     return !selectedQuestions.value.some(sq => sq.id === q.id)
   })
-  
+
   newQuestions.forEach(q => {
     selectedQuestions.value.push({
       ...q,
       score: 5
     })
   })
-  
+
   showQuestionSelector.value = false
   showMessage(`成功添加 ${newQuestions.length} 道题目`, 'success')
 }
@@ -273,9 +282,14 @@ const handleSave = async () => {
         score: q.score
       }))
     }
-    await createPaper(data)
-    showMessage('试卷创建成功', 'success')
-    router.push('/dashboard/paper-management')
+    if (editingPaperId.value) {
+      await updatePaper(editingPaperId.value, data)
+      showMessage('试卷更新成功', 'success')
+    } else {
+      await createPaper(data)
+      showMessage('试卷创建成功', 'success')
+    }
+    router.push('/dashboard/teacher/paper-management')
   } catch (error) {
     console.error('保存失败:', error)
     showMessage(error.response?.data?.message || '保存失败', 'error')
@@ -287,6 +301,41 @@ const handleSave = async () => {
 const handleCancel = () => {
   router.back()
 }
+
+watch(showQuestionSelector, (visible) => {
+  if (visible) {
+    loadQuestions()
+  }
+})
+
+const loadPaperDetail = async (paperId) => {
+  try {
+    const res = await getPaperDetail(paperId)
+    if (!res) return
+    paperForm.name = res.name || ''
+    paperForm.subject = res.subject || ''
+    paperForm.passScore = res.passScore ?? 60
+    const questions = Array.isArray(res.questions) ? res.questions : []
+    selectedQuestions.value = questions.map(q => ({
+      id: q.questionId || q.id,
+      content: q.content,
+      subject: q.subject,
+      difficulty: q.difficulty,
+      typeId: q.typeId || q.type_id || q.type_code,
+      score: q.score || 5
+    }))
+  } catch (error) {
+    showMessage('加载试卷详情失败', 'error')
+  }
+}
+
+onMounted(() => {
+  const paperId = route.query.paperId
+  if (paperId) {
+    editingPaperId.value = Number(paperId)
+    loadPaperDetail(editingPaperId.value)
+  }
+})
 </script>
 
 <style scoped>
@@ -333,5 +382,18 @@ const handleCancel = () => {
 
 .filter-form {
   margin-bottom: 20px;
+}
+
+.paper-compose-container :deep(.el-table__cell) {
+  overflow: visible;
+}
+
+.paper-compose-container :deep(.el-rate) {
+  display: inline-flex;
+  align-items: center;
+}
+
+.paper-compose-container :deep(.el-rate__icon) {
+  font-size: 14px;
 }
 </style>

@@ -1,6 +1,7 @@
 FROM maven:3.9.8-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
+RUN mvn -q -DskipTests dependency:go-offline --no-transfer-progress
 COPY src ./src
 RUN mvn -q -DskipTests clean package --no-transfer-progress
 

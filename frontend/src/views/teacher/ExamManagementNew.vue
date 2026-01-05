@@ -53,6 +53,9 @@
               <div class="course-title">
                 <span>{{ currentCourse.name }} - 考试管理</span>
               </div>
+              <el-button @click="router.push('/dashboard/teacher/paper-management')">
+                试卷管理
+              </el-button>
               <el-button type="primary" @click="handleCreateExam">
                 <el-icon><Plus /></el-icon> 创建考试
               </el-button>
