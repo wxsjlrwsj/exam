@@ -7,6 +7,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: chaoxing
+      TZ: Asia/Shanghai
     volumes:
       - ./mysql-data:/var/lib/mysql
       - ./backend/complete-init.sql:/docker-entrypoint-initdb.d/00-complete-init.sql:ro
@@ -30,6 +31,9 @@ services:
       - ./backend/db_patches/20260105_fix_question_audit_schema.sql:/docker-entrypoint-initdb.d/17-fix-question-audit-schema.sql:ro
       - ./backend/db_patches/20260106_create_biz_teacher_subject.sql:/docker-entrypoint-initdb.d/18-create-teacher-subject.sql:ro
       - ./backend/db_patches/20260106_delete_finished_exams.sql:/docker-entrypoint-initdb.d/19-delete-finished-exams.sql:ro
+      - ./backend/db_patches/20260106_delete_exam_7.sql:/docker-entrypoint-initdb.d/20-delete-exam7.sql:ro
+      - ./backend/db_patches/20260106_delete_used_papers.sql:/docker-entrypoint-initdb.d/21-delete-used-papers.sql:ro
+      - ./backend/db_patches/20260106_fix_exam_student_assignment.sql:/docker-entrypoint-initdb.d/22-fix-exam-student-assignment.sql:ro
 
     command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
     healthcheck:

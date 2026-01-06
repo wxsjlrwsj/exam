@@ -36,9 +36,12 @@ public class StudentExamController {
     @RequestParam(value = "size", defaultValue = "10") int size
   ) {
     Integer st = null;
-    if ("upcoming".equalsIgnoreCase(status)) st = 0;
-    if ("ongoing".equalsIgnoreCase(status)) st = 1;
-    if ("finished".equalsIgnoreCase(status)) st = 2;
+    if (status != null) {
+      String s = status.toLowerCase();
+      if ("upcoming".equals(s) || "not_started".equals(s)) st = 0;
+      else if ("ongoing".equals(s) || "in_progress".equals(s)) st = 1;
+      else if ("finished".equals(s) || "completed".equals(s)) st = 2;
+    }
     int p = Math.max(page, 1);
     int s = Math.max(size, 1);
     var me = userService.getByUsername(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName());

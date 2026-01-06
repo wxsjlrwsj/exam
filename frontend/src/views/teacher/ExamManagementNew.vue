@@ -237,7 +237,7 @@ import { Plus, Search, Reading } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { getCourses, getTeachingClasses } from '@/api/course'
-import { getExams, createExam, deleteExam, getPapers } from '@/api/teacher'
+import { getExams, createExam, deleteExam, getPapers, getExamDetail, getExamStudents } from '@/api/teacher'
 
 const router = useRouter()
 const showMessage = inject('showMessage')
@@ -381,8 +381,23 @@ const submitExam = async () => {
 }
 
 // ==================== 考试操作 ====================
-const handleViewDetail = (row) => {
-  showMessage(`查看考试详情: ${row.name}`, 'info')
+const handleViewDetail = async (row) => {
+  try {
+    const detail = await getExamDetail(row.id)
+    if (detail) {
+      router.push({
+        name: 'TeacherScoreManagement',
+        query: {
+          activeTab: 'score',
+          examId: row.id
+        }
+      })
+    } else {
+      showMessage('未获取到考试详情', 'warning')
+    }
+  } catch (e) {
+    showMessage('查看考试详情失败', 'error')
+  }
 }
 
 const handleDeleteExam = (row) => {
@@ -441,13 +456,18 @@ const handleManageStudents = async (row) => {
   studentManageVisible.value = true
   loadingStudents.value = true
   
-  // 模拟加载考生数据
   try {
-    // TODO: 调用API获取考生列表
-    examStudents.value = []
-    showMessage('考生数据加载中...', 'info')
+    const res = await getExamStudents(row.id, { size: 1000 })
+    const list = Array.isArray(res?.list) ? res.list : (res || [])
+    examStudents.value = list.map(item => ({
+      studentNo: item.studentNo,
+      name: item.name,
+      className: item.className,
+      submitted: !!item.submitTime
+    }))
   } catch (e) {
     examStudents.value = []
+    showMessage('加载考生失败', 'error')
   } finally {
     loadingStudents.value = false
   }

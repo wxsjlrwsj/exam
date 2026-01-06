@@ -251,6 +251,15 @@ export function getExamDetail(id) {
   })
 }
 
+// Exam Students
+export function getExamStudents(examId, params) {
+  return request({
+    url: `/exams/${examId}/students`,
+    method: 'get',
+    params
+  })
+}
+
 // Score Management
 export function getScoreList(params) {
   return request({

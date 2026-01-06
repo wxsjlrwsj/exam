@@ -174,7 +174,14 @@
       e.start_time AS startTime,
       e.end_time AS endTime,
       e.duration AS duration,
-      e.status AS status,
+      <![CDATA[
+      CASE
+        WHEN NOW() < e.start_time THEN 'not_started'
+        WHEN e.end_time IS NOT NULL AND NOW() > e.end_time THEN 'completed'
+        WHEN e.end_time IS NULL AND e.duration IS NOT NULL AND NOW() > TIMESTAMPADD(MINUTE, e.duration, e.start_time) THEN 'completed'
+        ELSE 'in_progress'
+      END
+      ]]> AS status,
       e.creator_id AS creatorId,
       e.create_time AS createTime,
       p.subject AS subject,
@@ -193,7 +200,33 @@
     LEFT JOIN biz_exam_record er ON er.exam_id = e.id AND er.student_id = es.user_id
     <where>
       es.user_id = #{studentId}
-      <if test="status != null">AND e.status = #{status}</if>
+      <if test="status != null">
+        <choose>
+          <when test="status == 0">
+            <![CDATA[
+            AND NOW() < e.start_time
+            ]]>
+          </when>
+          <when test="status == 1">
+            <![CDATA[
+            AND e.start_time <= NOW()
+            AND (
+              (e.end_time IS NOT NULL AND e.end_time >= NOW())
+              OR (e.end_time IS NULL AND e.duration IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duration, e.start_time) >= NOW())
+              OR (e.end_time IS NULL AND e.duration IS NULL AND e.start_time <= NOW())
+            )
+            ]]>
+          </when>
+          <otherwise>
+            <![CDATA[
+            AND (
+              (e.end_time IS NOT NULL AND e.end_time < NOW())
+              OR (e.end_time IS NULL AND e.duration IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duration, e.start_time) < NOW())
+            )
+            ]]>
+          </otherwise>
+        </choose>
+      </if>
       <if test="subject != null and subject != ''">AND p.subject = #{subject}</if>
       <if test="semester != null and semester != ''">
         <![CDATA[
@@ -217,7 +250,33 @@
     LEFT JOIN biz_paper p ON p.id = e.paper_id
     <where>
       es.user_id = #{studentId}
-      <if test="status != null">AND e.status = #{status}</if>
+      <if test="status != null">
+        <choose>
+          <when test="status == 0">
+            <![CDATA[
+            AND NOW() < e.start_time
+            ]]>
+          </when>
+          <when test="status == 1">
+            <![CDATA[
+            AND e.start_time <= NOW()
+            AND (
+              (e.end_time IS NOT NULL AND e.end_time >= NOW())
+              OR (e.end_time IS NULL AND e.duration IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duration, e.start_time) >= NOW())
+              OR (e.end_time IS NULL AND e.duration IS NULL AND e.start_time <= NOW())
+            )
+            ]]>
+          </when>
+          <otherwise>
+            <![CDATA[
+            AND (
+              (e.end_time IS NOT NULL AND e.end_time < NOW())
+              OR (e.end_time IS NULL AND e.duration IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duration, e.start_time) < NOW())
+            )
+            ]]>
+          </otherwise>
+        </choose>
+      </if>
       <if test="subject != null and subject != ''">AND p.subject = #{subject}</if>
       <if test="semester != null and semester != ''">
         <![CDATA[
