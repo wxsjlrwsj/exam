@@ -34,6 +34,7 @@ services:
       - ./backend/db_patches/20260106_delete_exam_7.sql:/docker-entrypoint-initdb.d/20-delete-exam7.sql:ro
       - ./backend/db_patches/20260106_delete_used_papers.sql:/docker-entrypoint-initdb.d/21-delete-used-papers.sql:ro
       - ./backend/db_patches/20260106_fix_exam_student_assignment.sql:/docker-entrypoint-initdb.d/22-fix-exam-student-assignment.sql:ro
+      - ./backend/db_patches/20260106_add_exam_camera_snapshot.sql:/docker-entrypoint-initdb.d/23-exam-camera-snapshot.sql:ro
 
     command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
     healthcheck:

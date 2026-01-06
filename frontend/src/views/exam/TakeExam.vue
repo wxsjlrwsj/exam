@@ -63,11 +63,13 @@
       <el-button type="primary" @click="submit">提交试卷</el-button>
       <el-button @click="goBack">返回</el-button>
     </div>
+    <video ref="videoRef" autoplay playsinline style="display:none"></video>
+    <canvas ref="canvasRef" style="display:none"></canvas>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, inject } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
 
@@ -81,6 +83,10 @@ const questions = ref([])
 const answers = reactive({})
 const timer = ref(0)
 let h = null
+const videoRef = ref(null)
+const canvasRef = ref(null)
+let stream = null
+let snapshotTimer = null
 
 const parseOptions = (str) => {
   if (!str) return []
@@ -120,10 +126,45 @@ const loadPaper = async () => {
     timer.value = 0
     if (h) clearInterval(h)
     h = setInterval(() => { timer.value++ }, 1000)
+    await startCameraAndUpload()
   } catch (e) {
     questions.value = []
   } finally {
     loading.value = false
+  }
+}
+
+const startCameraAndUpload = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+    await nextTick()
+    if (videoRef.value) videoRef.value.srcObject = stream
+    if (snapshotTimer) clearInterval(snapshotTimer)
+    const examId = route.params.examId
+    snapshotTimer = setInterval(async () => {
+      try {
+        if (!canvasRef.value || !videoRef.value) return
+        const canvas = canvasRef.value
+        const video = videoRef.value
+        canvas.width = video.videoWidth || 640
+        canvas.height = video.videoHeight || 480
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(video, 0, 0)
+        const base64 = canvas.toDataURL('image/jpeg', 0.5)
+        await request.post(`/student/exams/${examId}/camera-snapshot`, { image: base64, contentType: 'image/jpeg' })
+      } catch {}
+    }, 5000)
+  } catch {}
+}
+
+const stopCamera = () => {
+  if (snapshotTimer) {
+    clearInterval(snapshotTimer)
+    snapshotTimer = null
+  }
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop())
+    stream = null
   }
 }
 
@@ -139,7 +180,7 @@ const goBack = () => {
 }
 
 onMounted(() => { loadPaper() })
-onUnmounted(() => { if (h) clearInterval(h) })
+onUnmounted(() => { if (h) clearInterval(h); stopCamera() })
 </script>
 
 <style scoped>

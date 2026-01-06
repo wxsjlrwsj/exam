@@ -315,7 +315,7 @@
             <el-button icon="ArrowLeft" @click="monitorVisible = false" circle style="margin-right: 15px;" />
             <div>
                <h3>{{ currentMonitoredExam.name }} <el-tag type="success" effect="dark">进行中</el-tag></h3>
-               <p>应考: {{ monitorStats.total }} | 实考: {{ monitorStats.online }} | 已提交: {{ monitorStats.submitted }} | 异常: {{ monitorStats.abnormal }}</p>
+               <p>应考: {{ monitorStats.total }} | 实考: {{ monitorStats.actual !== undefined ? monitorStats.actual : (monitorStats.online + monitorStats.submitted) }} | 已提交: {{ monitorStats.submitted }} | 异常: {{ monitorStats.abnormal }}</p>
             </div>
           </div>
           <div class="monitor-actions">
@@ -338,14 +338,19 @@
                 <el-col :span="6" v-for="student in filteredMonitorStudents" :key="student.id" style="margin-bottom: 20px;">
                     <el-card :class="['student-card', { 'abnormal-card': student.switchCount > 3, 'submitted-card': student.status === 'submitted' }]">
                     <div class="student-camera-placeholder">
-                        <el-icon v-if="student.status === 'online'" class="camera-icon"><VideoCamera /></el-icon>
-                        <div v-else class="camera-offline">
-                            {{ student.status === 'submitted' ? '已交卷' : '离线' }}
-                        </div>
+                        <template v-if="student.cameraSnapshot">
+                          <img :src="student.cameraSnapshot" style="width:100%;height:80px;object-fit:cover;border-radius:4px" />
+                        </template>
+                        <template v-else>
+                          <el-icon v-if="student.status === 'online'" class="camera-icon"><VideoCamera /></el-icon>
+                          <div v-else class="camera-offline">
+                              {{ student.status === 'submitted' ? '已交卷' : '离线' }}
+                          </div>
+                        </template>
                     </div>
                     <div class="student-info">
                         <div class="student-detail">
-                        <div class="name">{{ student.name }} <span class="id">({{ student.id }})</span></div>
+                        <div class="name">{{ student.name }}</div>
                         </div>
                         <div class="status-tag">
                         <el-tag size="small" :type="getStudentStatusType(student.status)">{{ getStudentStatusText(student.status) }}</el-tag>

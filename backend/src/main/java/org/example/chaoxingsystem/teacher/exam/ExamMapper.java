@@ -26,6 +26,7 @@ public interface ExamMapper {
                     @Param("message") String message, @Param("type") String type, 
                     @Param("teacherId") Long teacherId);
   int forceSubmitExamRecord(@Param("examId") Long examId, @Param("studentId") Long studentId);
+  int createCameraSnapshotTableIfNotExists();
   
   long countByStudent(@Param("studentId") Long studentId, @Param("status") Integer status);
   java.util.List<Exam> selectPageByStudent(@Param("studentId") Long studentId, @Param("status") Integer status, @Param("offset") int offset, @Param("limit") int limit);

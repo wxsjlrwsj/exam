@@ -168,6 +168,19 @@ CREATE TABLE `biz_exam_student` (
   KEY `idx_user` (`user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='考试学生关联表';
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `biz_exam_camera_snapshot`;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `biz_exam_camera_snapshot` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `exam_id` bigint NOT NULL,
+  `student_id` bigint NOT NULL,
+  `image_data` longblob NOT NULL,
+  `content_type` varchar(50) NOT NULL,
+  `capture_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_exam_student_time` (`exam_id`,`student_id`,`capture_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考试监控摄像头快照';
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `biz_monitor_warning`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;

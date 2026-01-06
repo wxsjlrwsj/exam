@@ -183,12 +183,34 @@ public class ExamService {
   }
 
   public Map<String, Object> getMonitorData(Long examId) {
+    try {
+      mapper.createCameraSnapshotTableIfNotExists();
+    } catch (Exception ignore) {}
     Exam exam = mapper.selectById(examId);
     if (exam == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Exam not found");
     }
 
     List<Map<String, Object>> students = mapper.selectMonitorStudents(examId);
+
+    for (Map<String, Object> s : students) {
+      Object studentNoObj = s.get("studentNo");
+      if (s.get("name") != null) {
+        String baseName = String.valueOf(s.get("name"));
+        String no = studentNoObj != null ? String.valueOf(studentNoObj) : null;
+        if (no != null && !no.isBlank()) {
+          s.put("name", baseName + "(" + no + ")");
+        }
+      }
+      Object blob = s.get("lastSnapshotData");
+      String ct = s.get("lastSnapshotContentType") != null ? String.valueOf(s.get("lastSnapshotContentType")) : "image/jpeg";
+      if (blob instanceof byte[] b && b.length > 0) {
+        String b64 = java.util.Base64.getEncoder().encodeToString(b);
+        s.put("cameraSnapshot", "data:" + ct + ";base64," + b64);
+      } else {
+        s.put("cameraSnapshot", null);
+      }
+    }
 
     long total = students.size();
     long online = students.stream().filter(s -> "online".equals(s.get("status"))).count();
@@ -197,6 +219,7 @@ public class ExamService {
       Object switchCount = s.get("switchCount");
       return switchCount instanceof Number && ((Number) switchCount).intValue() > 3;
     }).count();
+    long actual = online + submitted;
 
     Map<String, Object> data = new HashMap<>();
     data.put("examId", examId);
@@ -205,6 +228,7 @@ public class ExamService {
     data.put("online", online);
     data.put("submitted", submitted);
     data.put("abnormal", abnormal);
+    data.put("actual", actual);
     data.put("students", students);
 
     return data;

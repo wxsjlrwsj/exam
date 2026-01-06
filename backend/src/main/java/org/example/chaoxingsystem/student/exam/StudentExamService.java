@@ -55,6 +55,12 @@ public class StudentExamService {
     if (now.isBefore(st) || now.isAfter(et)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "不在考试时间范围内");
     var p = paperMapper.selectById(e.getPaperId());
     List<Map<String, Object>> qs = paperMapper.selectPaperQuestionViews(e.getPaperId());
+    var record = scoreMapper.selectRecord(examId, studentId);
+    if (record == null) {
+      studentExamMapper.insertStartRecord(examId, studentId);
+    } else if (record.getStatus() == null || record.getStatus() == 0) {
+      studentExamMapper.markStarted(record.getId());
+    }
     List<Map<String, Object>> outQs = new java.util.ArrayList<>();
     for (Map<String, Object> m : qs) {
       Long qid = null;
@@ -225,8 +231,69 @@ public class StudentExamService {
 
   @Transactional
   public void recordMonitorEvent(Long examId, Long studentId, String eventType, String eventData) {
-    // Simple implementation: just log to database
-    // In real app, this could trigger alerts or automatic actions
+    Exam e = examMapper.selectById(examId);
+    if (e == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "考试不存在");
+    long assigned = examMapper.existsStudentAssignment(examId, studentId);
+    if (assigned <= 0L) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "无权限");
+    String et = eventType != null ? eventType : "";
+    if ("switch_tab".equalsIgnoreCase(et) || "blur".equalsIgnoreCase(et) || "visibility_hidden".equalsIgnoreCase(et)) {
+      studentExamMapper.incrementSwitchCount(examId, studentId);
+      studentExamMapper.insertMonitorEvent(examId, studentId, et, eventData, "medium");
+      return;
+    }
+    if ("active".equalsIgnoreCase(et) || "heartbeat".equalsIgnoreCase(et)) {
+      studentExamMapper.updateLastActiveTime(examId, studentId);
+      studentExamMapper.insertMonitorEvent(examId, studentId, et, eventData, "low");
+      return;
+    }
+    if ("progress".equalsIgnoreCase(et)) {
+      Integer progress = null;
+      try { progress = eventData != null ? Integer.valueOf(eventData) : null; } catch (Exception ignored) {}
+      if (progress != null) {
+        if (progress < 0) progress = 0;
+        if (progress > 100) progress = 100;
+        studentExamMapper.updateProgress(examId, studentId, progress);
+      } else {
+        studentExamMapper.updateLastActiveTime(examId, studentId);
+      }
+      studentExamMapper.insertMonitorEvent(examId, studentId, et, eventData, "low");
+      return;
+    }
+    studentExamMapper.updateLastActiveTime(examId, studentId);
+    studentExamMapper.insertMonitorEvent(examId, studentId, et, eventData, "low");
+  }
+
+  @Transactional
+  public Map<String, Object> saveCameraSnapshot(Long examId, Long studentId, String base64Image, String contentType) {
+    Exam e = examMapper.selectById(examId);
+    if (e == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "考试不存在");
+    long assigned = examMapper.existsStudentAssignment(examId, studentId);
+    if (assigned <= 0L) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "无权限");
+    if (base64Image == null || base64Image.isBlank()) {
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "图片为空");
+    }
+    String payload = base64Image;
+    int comma = payload.indexOf(',');
+    if (payload.startsWith("data:") && comma > 0) {
+      payload = payload.substring(comma + 1);
+    }
+    byte[] bytes;
+    try {
+      bytes = java.util.Base64.getDecoder().decode(payload);
+    } catch (Exception ex) {
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "图片格式错误");
+    }
+    if (contentType == null || contentType.isBlank()) contentType = "image/jpeg";
+    try {
+      studentExamMapper.createCameraSnapshotTableIfNotExists();
+    } catch (Exception ignore) {}
+    studentExamMapper.insertCameraSnapshot(examId, studentId, bytes, contentType);
+    try {
+      studentExamMapper.updateLastActiveTime(examId, studentId);
+    } catch (Exception ignore) {}
+    Map<String, Object> data = new java.util.HashMap<>();
+    data.put("captureTime", java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+    return data;
   }
 
   public Map<String, Object> getResult(Long examId, Long studentId) {

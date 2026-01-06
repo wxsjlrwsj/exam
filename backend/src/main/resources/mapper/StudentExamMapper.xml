@@ -20,4 +20,59 @@
     VALUES (#{recordId}, #{questionId}, CAST(#{studentAnswer} AS JSON))
   </insert>
 
+  <insert id="insertCameraSnapshot">
+    INSERT INTO biz_exam_camera_snapshot (exam_id, student_id, image_data, content_type, capture_time)
+    VALUES (#{examId}, #{studentId}, #{imageData}, #{contentType}, CURRENT_TIMESTAMP)
+  </insert>
+  
+  <update id="createCameraSnapshotTableIfNotExists">
+    CREATE TABLE IF NOT EXISTS biz_exam_camera_snapshot (
+      id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      exam_id BIGINT NOT NULL,
+      student_id BIGINT NOT NULL,
+      image_data LONGBLOB NOT NULL,
+      content_type VARCHAR(50) NOT NULL,
+      capture_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_exam_student_time (exam_id, student_id, capture_time)
+    )
+  </update>
+
+  <insert id="insertStartRecord">
+    INSERT INTO biz_exam_record (exam_id, student_id, status, start_time, submit_time, last_active_time)
+    VALUES (#{examId}, #{studentId}, 1, CURRENT_TIMESTAMP, NULL, CURRENT_TIMESTAMP)
+  </insert>
+
+  <update id="markStarted">
+    UPDATE biz_exam_record
+    SET status = 1,
+        start_time = COALESCE(start_time, CURRENT_TIMESTAMP),
+        last_active_time = CURRENT_TIMESTAMP
+    WHERE id = #{recordId}
+  </update>
+
+  <update id="incrementSwitchCount">
+    UPDATE biz_exam_record
+    SET switch_count = COALESCE(switch_count, 0) + 1,
+        last_active_time = CURRENT_TIMESTAMP
+    WHERE exam_id = #{examId} AND student_id = #{studentId}
+  </update>
+
+  <update id="updateLastActiveTime">
+    UPDATE biz_exam_record
+    SET last_active_time = CURRENT_TIMESTAMP
+    WHERE exam_id = #{examId} AND student_id = #{studentId}
+  </update>
+
+  <update id="updateProgress">
+    UPDATE biz_exam_record
+    SET progress = #{progress},
+        last_active_time = CURRENT_TIMESTAMP
+    WHERE exam_id = #{examId} AND student_id = #{studentId}
+  </update>
+
+  <insert id="insertMonitorEvent">
+    INSERT INTO biz_exam_monitor_event (exam_id, student_id, event_type, event_data, severity, event_time)
+    VALUES (#{examId}, #{studentId}, #{eventType}, #{eventData}, #{severity}, CURRENT_TIMESTAMP)
+  </insert>
+
 </mapper>

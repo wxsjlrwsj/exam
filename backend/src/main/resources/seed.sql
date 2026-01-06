@@ -381,3 +381,14 @@ INSERT IGNORE INTO biz_exam_record(exam_id,student_id,score,status,start_time,su
  SELECT e.id, u.id, NULL, 1, '2025-07-01 09:05:00','2025-07-01 21:55:00'
  FROM biz_exam e JOIN users u ON u.username='student4'
  WHERE e.name='计算机网络安全强化测验';
+
+-- 摄像头快照表
+CREATE TABLE IF NOT EXISTS biz_exam_camera_snapshot (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  exam_id BIGINT NOT NULL,
+  student_id BIGINT NOT NULL,
+  image_data LONGBLOB NOT NULL,
+  content_type VARCHAR(100) DEFAULT 'image/jpeg',
+  capture_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_exam_student_time (exam_id, student_id, capture_time)
+);

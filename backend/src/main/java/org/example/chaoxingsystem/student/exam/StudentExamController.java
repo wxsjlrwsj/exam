@@ -97,4 +97,18 @@ public class StudentExamController {
     return ResponseEntity.ok(ApiResponse.success("上报成功", null));
   }
 
+  @PostMapping("/{examId}/camera-snapshot")
+  @PreAuthorize("hasRole('STUDENT')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> uploadCameraSnapshot(
+    Authentication auth,
+    @PathVariable("examId") Long examId,
+    @RequestBody Map<String, Object> body
+  ) {
+    var me = userService.getByUsername(auth.getName());
+    String image = (String) body.get("image");
+    String contentType = (String) body.getOrDefault("contentType", "image/jpeg");
+    Map<String, Object> data = studentExamService.saveCameraSnapshot(examId, me.getId(), image, contentType);
+    return ResponseEntity.ok(ApiResponse.success("上传成功", data));
+  }
+
 }
