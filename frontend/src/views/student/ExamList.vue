@@ -502,7 +502,7 @@
 import { ref, reactive, onMounted, onUnmounted, inject, watch } from 'vue'
 import { VideoCamera, VideoPlay, User, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getExams, getExamPaper, submitExam } from '@/api/student'
+import { getExams, getExamPaper, submitExam, getUserProfile } from '@/api/student'
 import { filterValidExams } from '@/utils/dataValidator'
 import FaceVerification from '@/components/FaceVerification.vue'
 
@@ -521,8 +521,8 @@ const filterForm = reactive({
   status: ''
 })
 
-const studentName = '张三'
-const studentId = '2021001001'
+const studentName = ref('')
+const studentId = ref('')
 
 // --- Mock Data (已禁用，改用后端API数据) ---
 // const mockExams = [
@@ -1052,7 +1052,12 @@ const onFaceVerified = (result) => {
     }
 }
 
-onMounted(() => {
+onMounted(async () => {
+    try {
+        const profile = await getUserProfile()
+        studentName.value = profile?.name || ''
+        studentId.value = profile?.studentNo || profile?.username || ''
+    } catch {}
     loadExamList()
 })
 

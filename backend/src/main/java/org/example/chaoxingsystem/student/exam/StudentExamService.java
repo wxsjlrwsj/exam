@@ -229,6 +229,14 @@ public class StudentExamService {
     return result;
   }
 
+  public java.util.List<java.util.Map<String, Object>> getWarnings(Long examId, Long studentId, String since) {
+    Exam e = examMapper.selectById(examId);
+    if (e == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "考试不存在");
+    long assigned = examMapper.existsStudentAssignment(examId, studentId);
+    if (assigned <= 0L) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "无权限");
+    return examMapper.selectWarnings(examId, studentId, since);
+  }
+
   @Transactional
   public void recordMonitorEvent(Long examId, Long studentId, String eventType, String eventData) {
     Exam e = examMapper.selectById(examId);

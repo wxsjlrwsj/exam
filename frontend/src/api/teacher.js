@@ -323,3 +323,11 @@ export function forceSubmit(examId, data) {
     data
   })
 }
+
+export function sendBroadcast(examId, data) {
+  return request({
+    url: `/monitor/${examId}/broadcast`,
+    method: 'post',
+    data
+  })
+}

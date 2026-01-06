@@ -204,6 +204,20 @@ public class ExamController {
     return ResponseEntity.ok(ApiResponse.success("Warning sent", data));
   }
 
+  @PostMapping("/monitor/{examId}/broadcast")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> broadcast(
+    Authentication auth,
+    @PathVariable("examId") Long examId,
+    @RequestBody Map<String, Object> body
+  ) {
+    var me = userService.getByUsername(auth.getName());
+    String message = (String) body.get("message");
+    String type = (String) body.get("type");
+    Map<String, Object> data = service.broadcast(examId, me.getId(), message, type);
+    return ResponseEntity.ok(ApiResponse.success("Broadcast sent", data));
+  }
+
   @PostMapping("/monitor/{examId}/force-submit")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> forceSubmit(

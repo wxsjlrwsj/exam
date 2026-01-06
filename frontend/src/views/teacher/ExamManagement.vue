@@ -315,7 +315,7 @@
             <el-button icon="ArrowLeft" @click="monitorVisible = false" circle style="margin-right: 15px;" />
             <div>
                <h3>{{ currentMonitoredExam.name }} <el-tag type="success" effect="dark">进行中</el-tag></h3>
-               <p>应考: {{ monitorStats.total }} | 实考: {{ monitorStats.actual !== undefined ? monitorStats.actual : (monitorStats.online + monitorStats.submitted) }} | 已提交: {{ monitorStats.submitted }} | 异常: {{ monitorStats.abnormal }}</p>
+               <p>应考: {{ monitorStats.total }} | 考试中: {{ monitorStats.actual !== undefined ? monitorStats.actual : (monitorStats.online + monitorStats.submitted) }} | 已提交: {{ monitorStats.submitted }} | 异常: {{ monitorStats.abnormal }}</p>
             </div>
           </div>
           <div class="monitor-actions">
@@ -396,7 +396,7 @@ import { ref, reactive, onMounted, inject, onUnmounted, computed, nextTick } fro
 import { Plus, Edit, MagicStick, VideoCamera, ArrowLeft, Delete } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { getExams, createExam, deleteExam, getPapers, createPaper, autoGeneratePaper, deletePaper, getMonitorData, sendWarning, forceSubmit, getQuestions, getPaperDetail, updatePaper, getClasses } from '@/api/teacher'
+import { getExams, createExam, deleteExam, getPapers, createPaper, autoGeneratePaper, deletePaper, getMonitorData, sendWarning, forceSubmit, getQuestions, getPaperDetail, updatePaper, getClasses, sendBroadcast } from '@/api/teacher'
 import { filterValidExams, filterValidPapers, filterValidQuestions } from '@/utils/dataValidator'
 
 const router = useRouter()
@@ -882,7 +882,7 @@ const handleBatchDeleteStudent = () => {
 const monitorVisible = ref(false)
 const currentMonitoredExam = ref(null)
 const monitorStudents = ref([])
-const monitorStats = reactive({ total: 0, online: 0, submitted: 0, abnormal: 0 })
+const monitorStats = reactive({ total: 0, online: 0, submitted: 0, abnormal: 0, actual: 0 })
 const monitorFilter = ref('all')
 const monitorLogs = ref([])
 let monitorTimer = null
@@ -907,8 +907,14 @@ const handleBroadcast = () => {
     cancelButtonText: '取消',
   })
     .then(({ value }) => {
-      addMonitorLog(`老师发送广播: ${value}`, 'info')
-      showMessage('广播发送成功', 'success')
+      sendBroadcast(currentMonitoredExam.value.id, { message: value, type: 'broadcast' })
+        .then(() => {
+          addMonitorLog(`老师发送广播: ${value}`, 'info')
+          showMessage('广播发送成功', 'success')
+        })
+        .catch(() => {
+          showMessage('广播发送失败', 'error')
+        })
     })
     .catch(() => {})
 }
@@ -931,6 +937,7 @@ const initMonitorData = async () => {
       monitorStats.online = res.online || 0
       monitorStats.submitted = res.submitted || 0
       monitorStats.abnormal = res.abnormal || 0
+      monitorStats.actual = (res.actual !== undefined ? res.actual : ((res.online || 0) + (res.submitted || 0)))
   } catch (error) {
       console.error(error)
       monitorStudents.value = []

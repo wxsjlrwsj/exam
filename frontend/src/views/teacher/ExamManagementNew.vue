@@ -236,7 +236,7 @@
             <el-button :icon="ArrowLeft" @click="monitorVisible = false" circle style="margin-right: 15px;" />
             <div>
                <h3 style="margin:0;">{{ currentMonitoredExam.name }} <el-tag type="success" effect="dark">进行中</el-tag></h3>
-               <p style="margin:4px 0 0;">应考: {{ monitorStats.total }} | 实考: {{ monitorStats.online }} | 已提交: {{ monitorStats.submitted }} | 异常: {{ monitorStats.abnormal }}</p>
+               <p style="margin:4px 0 0;">应考: {{ monitorStats.total }} | 考试中: {{ monitorStats.actual !== undefined ? monitorStats.actual : (monitorStats.online + monitorStats.submitted) }} | 已提交: {{ monitorStats.submitted }} | 异常: {{ monitorStats.abnormal }}</p>
             </div>
           </div>
           <div class="monitor-actions">
@@ -271,7 +271,7 @@
                     </div>
                     <div class="student-info">
                         <div class="student-detail">
-                        <div class="name">{{ student.name }} <span class="id">({{ student.id }})</span></div>
+                        <div class="name">{{ student.name }}</div>
                         </div>
                         <div class="status-tag">
                         <el-tag size="small" :type="getStudentStatusType(student.status)">{{ getStudentStatusText(student.status) }}</el-tag>
@@ -524,7 +524,7 @@ const handleViewResults = (row) => {
 const monitorVisible = ref(false)
 const currentMonitoredExam = ref(null)
 const monitorStudents = ref([])
-const monitorStats = reactive({ total: 0, online: 0, submitted: 0, abnormal: 0 })
+const monitorStats = reactive({ total: 0, online: 0, submitted: 0, abnormal: 0, actual: 0 })
 const monitorFilter = ref('all')
 const monitorLogs = ref([])
 let monitorTimer = null
@@ -560,6 +560,7 @@ const initMonitorData = async () => {
     monitorStats.online = res.online || 0
     monitorStats.submitted = res.submitted || 0
     monitorStats.abnormal = res.abnormal || 0
+    monitorStats.actual = (res.actual !== undefined ? res.actual : ((res.online || 0) + (res.submitted || 0)))
   } catch (e) {
     monitorStudents.value = []
   }

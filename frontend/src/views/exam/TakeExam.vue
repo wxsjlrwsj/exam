@@ -87,6 +87,9 @@ const videoRef = ref(null)
 const canvasRef = ref(null)
 let stream = null
 let snapshotTimer = null
+let warningTimer = null
+const displayedWarningIds = new Set()
+let lastWarningTime = null
 
 const parseOptions = (str) => {
   if (!str) return []
@@ -162,10 +165,40 @@ const stopCamera = () => {
     clearInterval(snapshotTimer)
     snapshotTimer = null
   }
+  if (warningTimer) {
+    clearInterval(warningTimer)
+    warningTimer = null
+  }
   if (stream) {
     stream.getTracks().forEach(t => t.stop())
     stream = null
   }
+}
+
+const startWarningPolling = () => {
+  const examId = route.params.examId
+  if (warningTimer) clearInterval(warningTimer)
+  warningTimer = setInterval(async () => {
+    try {
+      const params = {}
+      if (lastWarningTime) params.since = lastWarningTime
+      const res = await request.get(`/student/exams/${examId}/warnings`, { params })
+      const list = res?.list || []
+      if (list.length > 0) {
+        list.reverse().forEach(w => {
+          if (!displayedWarningIds.has(w.id)) {
+            displayedWarningIds.add(w.id)
+            const msg = w.type === 'force_submit' ? '教师已强制收卷，请停止作答' : `老师广播: ${w.message}`
+            showMessage && showMessage(msg, w.type === 'force_submit' ? 'warning' : 'info')
+          }
+        })
+        const latest = list[0]
+        if (latest && latest.sendTime) {
+          lastWarningTime = latest.sendTime
+        }
+      }
+    } catch {}
+  }, 3000)
 }
 
 const submit = async () => {
@@ -179,7 +212,7 @@ const goBack = () => {
   router.back()
 }
 
-onMounted(() => { loadPaper() })
+onMounted(() => { loadPaper(); startWarningPolling() })
 onUnmounted(() => { if (h) clearInterval(h); stopCamera() })
 </script>
 

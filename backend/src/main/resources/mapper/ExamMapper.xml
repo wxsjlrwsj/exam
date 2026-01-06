@@ -167,7 +167,7 @@
     UPDATE biz_exam_record
     SET status = 1, submit_time = NOW()
     WHERE exam_id = #{examId} AND student_id = #{studentId}
-    AND status = 0
+    AND submit_time IS NULL
   </update>
   
   <update id="createCameraSnapshotTableIfNotExists">
@@ -329,6 +329,25 @@
 
   <select id="existsStudentAssignment" resultType="long">
     SELECT COUNT(1) FROM biz_exam_student WHERE exam_id = #{examId} AND user_id = #{studentId}
+  </select>
+  
+  <select id="selectWarnings" resultType="java.util.Map">
+    SELECT 
+      id,
+      exam_id AS examId,
+      student_id AS studentId,
+      message,
+      type,
+      teacher_id AS teacherId,
+      send_time AS sendTime
+    FROM biz_monitor_warning
+    WHERE exam_id = #{examId}
+      AND student_id = #{studentId}
+    <if test="since != null and since != ''">
+      AND send_time > #{since}
+    </if>
+    ORDER BY id DESC
+    LIMIT 50
   </select>
 
 </mapper>

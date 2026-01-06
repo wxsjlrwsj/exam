@@ -157,7 +157,18 @@ public class ExamService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Exam has assigned students");
     }
 
+    Long paperId = exam.getPaperId();
     mapper.deleteById(id);
+    if (paperId != null) {
+      long remain = paperMapper.countExamsByPaperId(paperId);
+      if (remain == 0) {
+        Paper paper = paperMapper.selectById(paperId);
+        if (paper != null) {
+          paper.setStatus(0);
+          paperMapper.updateById(paper);
+        }
+      }
+    }
   }
 
   @Transactional
@@ -245,6 +256,27 @@ public class ExamService {
   }
 
   @Transactional
+  public Map<String, Object> broadcast(Long examId, Long teacherId, String message, String type) {
+    Exam exam = mapper.selectById(examId);
+    if (exam == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Exam not found");
+    }
+    List<Map<String, Object>> students = mapper.selectMonitorStudents(examId);
+    int count = 0;
+    for (Map<String, Object> s : students) {
+      Object idObj = s.get("id");
+      if (idObj instanceof Number) {
+        Long sid = ((Number) idObj).longValue();
+        try { mapper.insertWarning(examId, sid, message, type, teacherId); count++; } catch (Exception ignored) {}
+      }
+    }
+    Map<String, Object> data = new HashMap<>();
+    data.put("sentCount", count);
+    data.put("sentTime", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+    return data;
+  }
+
+  @Transactional
   public Map<String, Object> forceSubmit(Long examId, List<Number> studentIds, String reason) {
     int successCount = 0;
     int failedCount = 0;
@@ -262,6 +294,7 @@ public class ExamService {
 
         if (affected > 0) {
           successCount++;
+          try { mapper.insertWarning(examId, studentId, "已被教师强制收卷", "force_submit", null); } catch (Exception ignored) {}
         } else {
           failedCount++;
         }

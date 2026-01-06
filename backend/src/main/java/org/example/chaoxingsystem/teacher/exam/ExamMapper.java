@@ -45,4 +45,11 @@ public interface ExamMapper {
     @Param("subject") String subject,
     @Param("semester") String semester
   );
+  
+  // 监考警告查询
+  java.util.List<java.util.Map<String, Object>> selectWarnings(
+    @Param("examId") Long examId,
+    @Param("studentId") Long studentId,
+    @Param("since") String since
+  );
 }

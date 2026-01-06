@@ -87,6 +87,20 @@ public class StudentExamController {
     return ResponseEntity.ok(ApiResponse.success("获取成功", review));
   }
 
+  @GetMapping("/{examId}/warnings")
+  @PreAuthorize("hasRole('STUDENT')")
+  public ResponseEntity<ApiResponse<HashMap<String, Object>>> getWarnings(
+    Authentication auth,
+    @PathVariable("examId") Long examId,
+    @RequestParam(value = "since", required = false) String since
+  ) {
+    var me = userService.getByUsername(auth.getName());
+    List<Map<String, Object>> list = studentExamService.getWarnings(examId, me.getId(), since);
+    HashMap<String, Object> data = new HashMap<>();
+    data.put("list", list);
+    return ResponseEntity.ok(ApiResponse.success("获取成功", data));
+  }
+
   @PostMapping("/{examId}/monitor-event")
   @PreAuthorize("hasRole('STUDENT')")
   public ResponseEntity<ApiResponse<Void>> reportMonitorEvent(Authentication auth, @PathVariable("examId") Long examId, @RequestBody Map<String, Object> body) {
