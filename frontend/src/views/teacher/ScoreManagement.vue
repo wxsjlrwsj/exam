@@ -69,7 +69,7 @@
                       <span>试卷内容</span>
                       <div>
                         <span>学生：{{ currentGradingStudent.name }}</span>
-                        <el-tag type="info" style="margin-left: 10px">{{ currentGradingStudent.id }}</el-tag>
+                        <el-tag type="info" style="margin-left: 10px">{{ currentGradingStudent.studentNo }}</el-tag>
                       </div>
                     </div>
                   </template>
@@ -147,7 +147,7 @@
                       highlight-current-row
                     >
                       <el-table-column prop="name" label="姓名" width="100" />
-                      <el-table-column prop="id" label="学号" width="120" />
+                      <el-table-column prop="studentNo" label="学号" width="120" />
                       <el-table-column prop="status" label="状态" width="100">
                         <template #default="scope">
                           <el-tag :type="scope.row.status === 'graded' ? 'success' : 'info'">
@@ -174,7 +174,7 @@
                 </div>
               </template>
               <el-table :data="allStudents" border style="width: 100%">
-                <el-table-column prop="studentId" label="学号" width="120" />
+                <el-table-column prop="studentNo" label="学号" width="120" />
                 <el-table-column prop="name" label="姓名" width="100" />
                 <el-table-column prop="className" label="班级" width="120" />
                 <el-table-column prop="score" label="总分" width="100">
@@ -211,7 +211,7 @@
             <div class="filter-header">
                <span class="filter-title">筛选查询</span>
                <div class="filter-actions">
-                  <el-button type="primary" plain @click="importScores">
+                  <el-button type="primary" plain @click="handleImportScores">
                     <el-icon><Upload /></el-icon> 批量导入
                   </el-button>
                   <el-button type="success" plain @click="exportResults">
@@ -462,7 +462,7 @@
     >
       <div class="detail-drawer-content" v-if="detailStudent">
         <div class="detail-header">
-           <h3>{{ detailStudent.name }} - {{ detailStudent.studentId }}</h3>
+           <h3>{{ detailStudent.name }} - {{ detailStudent.studentNo }}</h3>
            <div class="detail-score">
              总分：<span class="score-value">{{ detailStudent.score }}</span>
            </div>
@@ -497,7 +497,7 @@
 import { ref, reactive, onMounted, computed, inject } from 'vue'
 import { ArrowLeft, Edit, Upload, Check, Download, Search, Document } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getScoreList, getExamStats, adjustScore, getStudentPaperDetail, submitGrading, getExamDetail, getExams } from '@/api/teacher'
+import { getScoreList, getExamStats, adjustScore, getStudentPaperDetail, submitGrading, getExamDetail, getExams, batchPublishScores, exportScores, importScores } from '@/api/teacher'
 
 const router = useRouter()
 const route = useRoute()
@@ -723,7 +723,7 @@ const filteredScoreList = computed(() => {
         if (cls) list = list.filter(s => s.className === cls.name)
     }
     if (scoreFilterForm.keyword) {
-        list = list.filter(s => s.name.includes(scoreFilterForm.keyword) || s.studentId.includes(scoreFilterForm.keyword))
+        list = list.filter(s => s.name?.includes(scoreFilterForm.keyword) || s.studentNo?.includes(scoreFilterForm.keyword))
     }
     return list
 })
@@ -756,15 +756,73 @@ const handleSelectionChange = (val) => {
 }
 
 const batchPublish = (publish) => {
-    showMessage(`批量${publish ? '发布' : '撤回'}功能待后端接口`, 'info')
+    if (selectedStudents.value.length === 0) {
+        showMessage('请先选择需要操作的学生', 'warning')
+        return
+    }
+    const ids = selectedStudents.value.map(s => s.scoreId).filter(Boolean)
+    if (ids.length === 0) {
+        showMessage('选择的数据缺少成绩ID，无法操作', 'error')
+        return
+    }
+    batchPublishScores(ids, publish)
+      .then(res => {
+          const affected = res?.affected ?? ids.length
+          showMessage(`已${publish ? '发布' : '撤回'} ${affected} 条成绩`, 'success')
+          loadData()
+      })
+      .catch(() => {
+          showMessage('批量操作失败', 'error')
+      })
 }
 
-const importScores = () => {
-    showMessage('导入功能待后端接口', 'info')
+const handleImportScores = () => {
+    const examId = scoreFilterForm.examId || currentExam.value.id
+    if (!examId) {
+        showMessage('请先选择考试', 'warning')
+        return
+    }
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.xlsx,.xls,.csv'
+    input.onchange = async () => {
+        const file = input.files && input.files[0]
+        if (!file) return
+        try {
+            const res = await importScores(examId, file)
+            const imported = res?.imported ?? 0
+            showMessage(`导入成功，记录数：${imported}`, 'success')
+            loadData()
+        } catch (e) {
+            console.error(e)
+            showMessage('导入失败', 'error')
+        }
+    }
+    input.click()
 }
 
 const exportResults = () => {
-    showMessage('导出功能待后端接口', 'info')
+    const examId = scoreFilterForm.examId || currentExam.value.id
+    if (!examId) {
+        showMessage('请先选择考试', 'warning')
+        return
+    }
+    exportScores(examId, 'excel')
+      .then((blobData) => {
+        const blob = new Blob([blobData], { type: 'application/octet-stream' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `scores_${examId}.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      })
+      .catch((e) => {
+        console.error(e)
+        showMessage('导出失败', 'error')
+      })
 }
 
 const viewDetail = (row) => {

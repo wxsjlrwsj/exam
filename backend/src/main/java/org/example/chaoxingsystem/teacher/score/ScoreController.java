@@ -53,6 +53,21 @@ public class ScoreController {
     return ResponseEntity.ok(ApiResponse.success("提交成功", null));
   }
 
+  @PutMapping("/scores/{examId}/student/{studentId}")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> adjustByExamStudent(
+    @PathVariable("examId") Long examId,
+    @PathVariable("studentId") Long studentId,
+    @RequestBody Map<String, Object> body
+  ) {
+    Integer newScore = null;
+    if (body.get("newScore") instanceof Number n1) newScore = n1.intValue();
+    else if (body.get("score") instanceof Number n2) newScore = n2.intValue();
+    String reason = (String) body.get("reason");
+    Map<String, Object> data = service.adjustScoreByExamStudent(examId, studentId, newScore, reason);
+    return ResponseEntity.ok(ApiResponse.success("调整成功", data));
+  }
+
   @GetMapping("/scores/stats")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> stats(@RequestParam("examId") Long examId) {

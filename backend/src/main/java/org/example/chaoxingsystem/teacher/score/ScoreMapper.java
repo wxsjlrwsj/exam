@@ -18,4 +18,6 @@ public interface ScoreMapper {
   int insertScoreAdjustment(@Param("scoreId") Long scoreId, @Param("originalScore") Integer originalScore, 
                            @Param("newScore") Integer newScore, @Param("reason") String reason);
   int batchUpdateStatus(@Param("scoreIds") List<Long> scoreIds, @Param("status") Integer status);
+  
+  List<Double> selectScoreValuesByExamId(@Param("examId") Long examId);
 }

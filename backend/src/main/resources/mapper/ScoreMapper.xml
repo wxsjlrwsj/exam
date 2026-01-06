@@ -24,6 +24,77 @@
     <result property="comment" column="comment"/>
   </resultMap>
 
+  <!-- ===== 列表与统计 ===== -->
+  <select id="count" resultType="long">
+    SELECT COUNT(1)
+    FROM biz_exam_record er
+    LEFT JOIN users u ON u.id = er.student_id
+    LEFT JOIN biz_student bs ON bs.user_id = er.student_id
+    LEFT JOIN biz_class bc ON bc.id = bs.class_id
+    <where>
+      <if test="examId != null">AND er.exam_id = #{examId}</if>
+      <if test="classId != null">AND bs.class_id = #{classId}</if>
+      <if test="keyword != null and keyword != ''">
+        AND (
+          u.username LIKE CONCAT('%', #{keyword}, '%')
+          OR bs.student_no LIKE CONCAT('%', #{keyword}, '%')
+          OR COALESCE(bs.real_name, u.real_name, u.username) LIKE CONCAT('%', #{keyword}, '%')
+        )
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPage" resultType="java.util.Map">
+    SELECT
+      er.id AS scoreId,
+      u.id AS studentId,
+      bs.student_no AS studentNo,
+      COALESCE(bs.real_name, u.real_name) AS name,
+      bs.class_id AS classId,
+      bc.class_name AS className,
+      er.score AS score,
+      CASE WHEN er.status &gt;= 2 AND er.score IS NOT NULL THEN 'graded' ELSE 'ungraded' END AS status,
+      er.submit_time AS submitTime,
+      er.submit_time AS gradingTime
+    FROM biz_exam_record er
+    LEFT JOIN users u ON u.id = er.student_id
+    LEFT JOIN biz_student bs ON bs.user_id = er.student_id
+    LEFT JOIN biz_class bc ON bc.id = bs.class_id
+    <where>
+      <if test="examId != null">AND er.exam_id = #{examId}</if>
+      <if test="classId != null">AND bs.class_id = #{classId}</if>
+      <if test="keyword != null and keyword != ''">
+        AND (
+          bs.student_no LIKE CONCAT('%', #{keyword}, '%')
+          OR COALESCE(bs.real_name, u.real_name) LIKE CONCAT('%', #{keyword}, '%')
+        )
+      </if>
+    </where>
+    ORDER BY COALESCE(er.submit_time, '1970-01-01 00:00:00') DESC, u.id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="selectStats" resultType="java.util.Map">
+    SELECT
+      COUNT(1) AS total,
+      AVG(er.score) AS avgScore,
+      MAX(er.score) AS maxScore,
+      MIN(er.score) AS minScore,
+      SUM(CASE WHEN er.score IS NOT NULL AND er.score &gt;= e.pass_score THEN 1 ELSE 0 END) AS passCount
+    FROM biz_exam_record er
+    JOIN biz_exam e ON e.id = er.exam_id
+    <where>
+      er.exam_id = #{examId}
+    </where>
+  </select>
+
+  <select id="selectScoreValuesByExamId" resultType="java.lang.Double">
+    SELECT er.score
+    FROM biz_exam_record er
+    WHERE er.exam_id = #{examId}
+      AND er.score IS NOT NULL
+  </select>
+
   <select id="selectRecord" resultMap="RecordMap">
     SELECT * FROM biz_exam_record
     WHERE exam_id = #{examId} AND student_id = #{studentId}
@@ -68,5 +139,23 @@
     WHERE id = #{recordId}
   </update>
 
-</mapper>
+  <!-- ===== 成绩调整与发布 ===== -->
+  <select id="selectRecordById" resultMap="RecordMap">
+    SELECT * FROM biz_exam_record WHERE id = #{id}
+  </select>
 
+  <insert id="insertScoreAdjustment" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_score_adjustment (score_id, original_score, new_score, reason, adjuster_id)
+    VALUES (#{scoreId}, #{originalScore}, #{newScore}, #{reason}, NULL)
+  </insert>
+
+  <update id="batchUpdateStatus">
+    UPDATE biz_exam_record
+    SET status = #{status}
+    WHERE id IN
+    <foreach collection="scoreIds" item="id" open="(" separator="," close=")">
+      #{id}
+    </foreach>
+  </update>
+
+</mapper>

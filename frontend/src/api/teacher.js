@@ -278,10 +278,13 @@ export function getExamStats(examId) {
 }
 
 export function adjustScore(id, data) {
+  const hasStudent = data && (data.studentId !== undefined && data.studentId !== null)
+  const payload = hasStudent ? { score: data.score, reason: data.reason } : data
+  const url = hasStudent ? `/scores/${id}/student/${data.studentId}` : `/scores/${id}`
   return request({
-    url: `/scores/${id}`,
+    url,
     method: 'put',
-    data
+    data: payload
   })
 }
 
@@ -297,6 +300,35 @@ export function submitGrading(examId, studentId, data) {
     url: `/scores/${examId}/student/${studentId}`,
     method: 'post',
     data
+  })
+}
+
+export function batchPublishScores(scoreIds, published) {
+  return request({
+    url: '/scores/batch-publish',
+    method: 'post',
+    data: { scoreIds, published }
+  })
+}
+
+export function exportScores(examId, format = 'excel') {
+  return request({
+    url: '/scores/export',
+    method: 'get',
+    params: { examId, format },
+    responseType: 'blob'
+  })
+}
+
+export function importScores(examId, file) {
+  const formData = new FormData()
+  formData.append('examId', examId)
+  formData.append('file', file)
+  return request({
+    url: '/scores/import',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
 

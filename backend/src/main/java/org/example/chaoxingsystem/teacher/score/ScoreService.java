@@ -11,8 +11,17 @@ import java.util.Map;
 @Service
 public class ScoreService {
   private final ScoreMapper mapper;
+  private final org.example.chaoxingsystem.teacher.exam.ExamMapper examMapper;
+  private final org.example.chaoxingsystem.teacher.paper.PaperMapper paperMapper;
+  private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
-  public ScoreService(ScoreMapper mapper) { this.mapper = mapper; }
+  public ScoreService(ScoreMapper mapper,
+                      org.example.chaoxingsystem.teacher.exam.ExamMapper examMapper,
+                      org.example.chaoxingsystem.teacher.paper.PaperMapper paperMapper) {
+    this.mapper = mapper;
+    this.examMapper = examMapper;
+    this.paperMapper = paperMapper;
+  }
 
   public long count(Long examId, Long classId, String keyword) { return mapper.count(examId, classId, keyword); }
 
@@ -25,9 +34,50 @@ public class ScoreService {
     ExamRecord r = mapper.selectRecord(examId, studentId);
     if (r == null) return Map.of();
     List<ExamAnswer> answers = mapper.selectAnswersByRecordId(r.getId());
+    java.util.Map<Long, ExamAnswer> ansMap = new java.util.HashMap<>();
+    for (var a : answers) { ansMap.put(a.getQuestionId(), a); }
+    var exam = examMapper.selectById(examId);
+    if (exam == null) return Map.of();
+    List<java.util.Map<String, Object>> qs = paperMapper.selectPaperQuestionViews(exam.getPaperId());
+    List<Map<String, Object>> outQs = new java.util.ArrayList<>();
+    for (Map<String, Object> m : qs) {
+      Long qid = null;
+      try { qid = m.get("id") != null ? Long.valueOf(String.valueOf(m.get("id"))) : null; } catch (Exception ignored) {}
+      String typeCode = m.get("type_code") != null ? String.valueOf(m.get("type_code")) : null;
+      String type = normalizeType(typeCode);
+      String content = m.get("content") != null ? String.valueOf(m.get("content")) : null;
+      Integer qScore = null;
+      Object sObj = m.get("score");
+      if (sObj instanceof Number) qScore = ((Number) sObj).intValue();
+      Object correctObj = null;
+      try { if (m.get("answer") != null) correctObj = objectMapper.readValue(String.valueOf(m.get("answer")), Object.class); } catch (Exception ignored) {}
+      Object optionsObj = null;
+      try { if (m.get("options") != null) optionsObj = objectMapper.readValue(String.valueOf(m.get("options")), Object.class); } catch (Exception ignored) {}
+      Object studentAns = null;
+      Integer givenScore = null;
+      String comment = null;
+      var a = qid != null ? ansMap.get(qid) : null;
+      if (a != null) {
+        try { studentAns = a.getStudentAnswer() != null ? objectMapper.readValue(a.getStudentAnswer(), Object.class) : null; } catch (Exception ignored) {}
+        givenScore = a.getScore();
+        comment = a.getComment();
+      }
+      Map<String, Object> row = new HashMap<>();
+      row.put("id", qid);
+      row.put("type", type);
+      row.put("content", content);
+      row.put("options", optionsObj);
+      row.put("score", qScore);
+      row.put("correctAnswer", correctObj);
+      row.put("studentAnswer", studentAns);
+      row.put("givenScore", givenScore);
+      row.put("comment", comment);
+      row.put("autoGraded", "single_choice".equals(type) || "multiple_choice".equals(type) || "true_false".equals(type));
+      outQs.add(row);
+    }
     Map<String, Object> data = new HashMap<>();
     data.put("record", r);
-    data.put("answers", answers);
+    data.put("questions", outQs);
     return data;
   }
 
@@ -35,7 +85,15 @@ public class ScoreService {
   public void grade(Long examId, Long studentId, Integer totalScore, List<Map<String, Object>> questions) {
     ExamRecord r = mapper.selectRecord(examId, studentId);
     if (r == null) return;
-    mapper.updateRecordScore(r.getId(), totalScore, 2);
+    int calcTotal = 0;
+    if (questions != null) {
+      for (Map<String, Object> q : questions) {
+        Integer s = q.get("givenScore") instanceof Number ? ((Number) q.get("givenScore")).intValue() : null;
+        if (s != null) calcTotal += s;
+      }
+    }
+    Integer finalTotal = totalScore != null ? totalScore : calcTotal;
+    mapper.updateRecordScore(r.getId(), finalTotal, 2);
     for (Map<String, Object> q : questions) {
       Long qid = q.get("id") instanceof Number ? ((Number) q.get("id")).longValue() : null;
       Integer score = q.get("givenScore") instanceof Number ? ((Number) q.get("givenScore")).intValue() : null;
@@ -46,15 +104,34 @@ public class ScoreService {
 
   public Map<String, Object> stats(Long examId) {
     Map<String, Object> m = mapper.selectStats(examId);
-    if (m == null) return Map.of();
-    Number total = (Number) m.get("total");
-    Number passCount = (Number) m.get("passCount");
+    if (m == null) m = new HashMap<>();
+    Number total = (Number) m.getOrDefault("total", 0);
+    Number passCount = (Number) m.getOrDefault("passCount", 0);
     double rate = 0.0;
     if (total != null && total.intValue() > 0 && passCount != null) {
-      rate = ((double) passCount.intValue()) / ((double) total.intValue());
+      rate = ((double) passCount.intValue()) / ((double) total.intValue()) * 100.0;
+    }
+    List<Double> scores = mapper.selectScoreValuesByExamId(examId);
+    int[] distCount = new int[]{0, 0, 0, 0, 0}; // 0-59, 60-69, 70-79, 80-89, 90-100
+    for (Double s : scores) {
+      double val = s != null ? s : 0.0;
+      if (val >= 90.0) distCount[4]++; else if (val >= 80.0) distCount[3]++; else if (val >= 70.0) distCount[2]++; else if (val >= 60.0) distCount[1]++; else distCount[0]++;
+    }
+    int totalScored = scores.size();
+    double[] distPercent = new double[]{0, 0, 0, 0, 0};
+    if (totalScored > 0) {
+      for (int i = 0; i < 5; i++) distPercent[i] = Math.round((distCount[i] * 100.0 / totalScored) * 100.0) / 100.0;
     }
     Map<String, Object> data = new HashMap<>(m);
+    data.put("totalCount", total != null ? total.intValue() : 0);
     data.put("passRate", rate);
+    data.put("dist", distPercent);
+    data.put("distCount", distCount);
+    data.putIfAbsent("avgScore", m.get("avgScore"));
+    data.putIfAbsent("maxScore", m.get("maxScore"));
+    data.putIfAbsent("minScore", m.get("minScore"));
+    data.put("classStats", java.util.Collections.emptyList());
+    data.put("knowledgePoints", java.util.Collections.emptyList());
     return data;
   }
 
@@ -97,7 +174,7 @@ public class ScoreService {
     // 实际应用中应使用Apache POI或其他Excel库生成真实的Excel文件
     String content = "学号,姓名,班级,成绩\n";
     List<Map<String, Object>> scores = mapper.selectPage(examId, null, null, 0, 1000);
-    
+
     for (Map<String, Object> score : scores) {
       content += String.format("%s,%s,%s,%s\n",
         score.get("studentId"),
@@ -106,7 +183,41 @@ public class ScoreService {
         score.get("score")
       );
     }
-    
+
     return content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+  }
+
+  private String normalizeType(String code) {
+    if (code == null) return null;
+    return switch (code) {
+      case "SINGLE", "single_choice" -> "single_choice";
+      case "MULTI", "multiple_choice" -> "multiple_choice";
+      case "TRUE_FALSE", "true_false" -> "true_false";
+      case "FILL", "fill_blank" -> "fill_blank";
+      case "SHORT", "short_answer" -> "short_answer";
+      case "PROGRAM", "programming" -> "programming";
+      default -> code;
+    };
+  }
+
+  @Transactional
+  public Map<String, Object> adjustScoreByExamStudent(Long examId, Long studentId, Integer newScore, String reason) {
+    ExamRecord r = mapper.selectRecord(examId, studentId);
+    if (r == null) {
+      throw new org.springframework.web.server.ResponseStatusException(
+        org.springframework.http.HttpStatus.NOT_FOUND, "成绩记录不存在"
+      );
+    }
+    Integer originalScore = r.getScore();
+    mapper.insertScoreAdjustment(r.getId(), originalScore, newScore, reason);
+    mapper.updateRecordScore(r.getId(), newScore, r.getStatus());
+    Map<String, Object> data = new HashMap<>();
+    data.put("scoreId", r.getId());
+    data.put("originalScore", originalScore);
+    data.put("newScore", newScore);
+    data.put("adjustTime", java.time.LocalDateTime.now().format(
+      java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    ));
+    return data;
   }
 }
