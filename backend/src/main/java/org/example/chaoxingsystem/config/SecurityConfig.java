@@ -37,6 +37,7 @@ public class SecurityConfig {
       .requestMatchers(HttpMethod.POST, "/api/logout").permitAll()
       .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
       .requestMatchers(HttpMethod.POST, "/api/auth/send-code", "/api/auth/verify-code", "/api/auth/test-password", "/api/auth/hash").permitAll()
+      .requestMatchers("/api/student/ai/**").permitAll()
       .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
       .anyRequest().authenticated()
     );

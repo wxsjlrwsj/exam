@@ -239,17 +239,33 @@ public class AiAssistantService {
             int contentStart = json.indexOf("\"content\":\"");
             if (contentStart == -1) return null;
             contentStart += 11;
-            int contentEnd = json.indexOf("\"", contentStart);
-            if (contentEnd == -1) return null;
-            String content = json.substring(contentStart, contentEnd);
-            // 处理转义字符
-            return content
-                    .replace("\\n", "\n")
-                    .replace("\\r", "\r")
-                    .replace("\\t", "\t")
-                    .replace("\\\"", "\"")
-                    .replace("\\\\", "\\");
+            
+            // 更精确处理转义字符
+            StringBuilder content = new StringBuilder();
+            boolean escaped = false;
+            for (int i = contentStart; i < json.length(); i++) {
+                char c = json.charAt(i);
+                if (escaped) {
+                    switch (c) {
+                        case 'n': content.append('\n'); break;
+                        case 'r': content.append('\r'); break;
+                        case 't': content.append('\t'); break;
+                        case '"': content.append('"'); break;
+                        case '\\': content.append('\\'); break;
+                        default: content.append(c);
+                    }
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    break;
+                } else {
+                    content.append(c);
+                }
+            }
+            return content.toString();
         } catch (Exception e) {
+            log.error("解析流式响应失败", e);
             return null;
         }
     }

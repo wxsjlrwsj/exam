@@ -2,7 +2,6 @@ package org.example.chaoxingsystem.student;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -25,7 +24,6 @@ public class AiAssistantController {
      * @return SSE流式响应
      */
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @PreAuthorize("hasRole('STUDENT')")
     public SseEmitter chatStream(@RequestBody Map<String, String> request) {
         String question = request.get("question");
         String message = request.get("message");
@@ -40,18 +38,12 @@ public class AiAssistantController {
      * @return AI回复
      */
     @PostMapping("/chat")
-    @PreAuthorize("hasRole('STUDENT')")
-    public org.springframework.http.ResponseEntity<org.example.chaoxingsystem.user.dto.ApiResponse<java.util.Map<String, String>>> chat(@RequestBody Map<String, String> request) {
+    public Map<String, Object> chat(@RequestBody Map<String, String> request) {
         String question = request.get("question");
         String message = request.get("message");
         String history = request.get("history");
-        try {
-            String reply = aiAssistantService.chat(question, message, history);
-            return org.springframework.http.ResponseEntity.ok(org.example.chaoxingsystem.user.dto.ApiResponse.success("成功", java.util.Map.of("reply", reply)));
-        } catch (Exception e) {
-            return org.springframework.http.ResponseEntity
-                    .status(503)
-                    .body(org.example.chaoxingsystem.user.dto.ApiResponse.error(503, "AI服务暂不可用"));
-        }
+        
+        String reply = aiAssistantService.chat(question, message, history);
+        return Map.of("code", 200, "data", Map.of("reply", reply));
     }
 }

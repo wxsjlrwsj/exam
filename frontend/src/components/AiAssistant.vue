@@ -117,10 +117,12 @@ import { ref, nextTick, watch, computed } from 'vue'
 import { ChatDotRound, Close, Delete, User, Promotion } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAiAssistantStore } from '@/stores/aiAssistant'
+import { useUserStore } from '@/stores/user'
 import axios from 'axios'
 
 // 使用Pinia store
 const aiStore = useAiAssistantStore()
+const userStore = useUserStore()
 
 const inputMessage = ref('')
 const messagesContainer = ref(null)
@@ -144,12 +146,16 @@ const closeChat = () => {
 // 清空历史
 const clearHistory = () => {
   aiStore.clearMessages()
+  lastAutoSentUserTimestamp.value = ''
 }
 
 // 截断文本
 const truncateText = (text, maxLength) => {
   if (!text) return ''
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+  const s = typeof text === 'string'
+    ? text
+    : (typeof text === 'object' && text !== null ? (text.content || text.question || JSON.stringify(text)) : String(text))
+  return s.length > maxLength ? s.substring(0, maxLength) + '...' : s
 }
 
 // 获取当前时间
@@ -175,9 +181,17 @@ const renderMarkdown = (text) => {
 }
 
 // 构建历史消息JSON
-const buildHistoryJson = () => {
+const buildHistoryJson = (excludeLatestUserContent) => {
   if (aiStore.conversationHistory.length === 0) return ''
-  return aiStore.conversationHistory.map(msg => {
+  let history = aiStore.conversationHistory
+  if (excludeLatestUserContent && history.length > 0) {
+    const last = history[history.length - 1]
+    if (last?.role === 'user' && last?.content === excludeLatestUserContent) {
+      history = history.slice(0, -1)
+    }
+  }
+  if (history.length === 0) return ''
+  return history.map(msg => {
     const role = msg.role === 'user' ? 'user' : 'assistant'
     const content = msg.content.replace(/"/g, '\\"').replace(/\n/g, '\\n')
     return `{"role":"${role}","content":"${content}"}`
@@ -190,107 +204,182 @@ const sendQuickMessage = (text) => {
   sendMessage()
 }
 
-// 发送消息
-const sendMessage = async () => {
-  const message = inputMessage.value.trim()
+// 打字机效果：逐字符显示文本
+const typewriterEffect = async (text, messageIndex) => {
+  const lastMsg = aiStore.messages[messageIndex]
+  if (!lastMsg) return
+
+  for (let i = 0; i < text.length; i++) {
+    lastMsg.content += text[i]
+    if (i % 5 === 0) {
+      await nextTick()
+      scrollToBottom()
+    }
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  await nextTick()
+  scrollToBottom()
+}
+
+const lastAutoSentUserTimestamp = ref('')
+
+const sendMessageWithText = async (messageText, alreadyAddedUserMessage = false) => {
+  const message = (messageText || '').trim()
   if (!message || aiStore.isLoading) return
 
-  // 添加用户消息到store
-  aiStore.addMessage('user', message)
-  inputMessage.value = ''
+  if (!alreadyAddedUserMessage) {
+    aiStore.addMessage('user', message)
+  }
   aiStore.setLoading(true)
 
   await nextTick()
   scrollToBottom()
 
+  const refreshToken = async () => {
+    try {
+      const r = await axios.post('/api/auth/refresh', null, { withCredentials: true })
+      const tk = r.data?.data?.token || ''
+      if (tk) {
+        userStore.updateToken(tk)
+        return `Bearer ${tk}`
+      }
+      return ''
+    } catch {
+      return ''
+    }
+  }
+
+  const ensureAuth = async () => {
+    const tk = userStore.token || localStorage.getItem('token') || sessionStorage.getItem('token') || ''
+    if (tk) return `Bearer ${tk}`
+    return await refreshToken()
+  }
+
+  let authorizationHeader = await ensureAuth()
+  if (!authorizationHeader) {
+    aiStore.addMessage('assistant', '未登录或登录已过期，请重新登录')
+    ElMessage.error('未登录或登录已过期，请重新登录')
+    aiStore.setLoading(false)
+    await nextTick()
+    scrollToBottom()
+    return
+  }
+
+  const questionText = (() => {
+    const q = aiStore.currentQuestion
+    if (!q) return '无具体题目'
+    if (typeof q === 'string') return q
+    if (typeof q === 'object') {
+      if (typeof q.content === 'string' && q.content.trim()) return q.content
+      try {
+        if (typeof aiStore.formatQuestionContext === 'function') {
+          return aiStore.formatQuestionContext(q)
+        }
+      } catch {}
+      return JSON.stringify(q)
+    }
+    return String(q)
+  })()
+
   try {
-    // 获取token（优先从sessionStorage，其次从localStorage）
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token')
-    if (!token) {
-      throw new Error('未登录或登录已过期')
-    }
-    
-    // 使用流式API
-    const response = await fetch('/api/student/ai/chat/stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        question: aiStore.currentQuestion || '无具体题目',
-        message: message,
-        history: buildHistoryJson()
+    let response = null
+    for (let i = 0; i < 2; i++) {
+      response = await fetch('/api/student/ai/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+          'Authorization': authorizationHeader
+        },
+        body: JSON.stringify({
+          question: questionText,
+          message: message,
+          history: buildHistoryJson(message)
+        })
       })
-    })
 
-    if (!response.ok) {
-      throw new Error('请求失败')
+      if (response.ok) break
+
+      if ((response.status === 401 || response.status === 403) && i === 0) {
+        authorizationHeader = await refreshToken()
+        if (!authorizationHeader) break
+        continue
+      }
+
+      let detail = ''
+      try { detail = await response.text() } catch {}
+      throw new Error(`请求失败: ${response.status}${detail ? `, ${detail}` : ''}`)
     }
 
-    // 添加AI消息占位
-    aiStore.addMessage('assistant', '')
+    if (!response || !response.ok) {
+      throw new Error(`请求失败: ${response ? response.status : 'UNKNOWN'}`)
+    }
 
-    // 读取流式响应
+    aiStore.addMessage('assistant', '')
+    const messageIndex = aiStore.messages.length - 1
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
-    let streamEnded = false
+    let buffer = ''
+    let hasContent = false
 
     while (true) {
       const { done, value } = await reader.read()
-      if (done || streamEnded) break
+      if (done) break
 
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n')
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
 
       for (const line of lines) {
         if (line.startsWith('data:')) {
           const data = line.substring(5).trim()
           if (data === '[DONE]') {
-            streamEnded = true
             break
           }
-          // 追加内容到最后一条消息
-          const lastMsg = aiStore.messages[aiStore.messages.length - 1]
-          if (lastMsg) {
-            lastMsg.content += data
+          if (data) {
+            hasContent = true
+            await typewriterEffect(data, messageIndex)
           }
-          await nextTick()
-          scrollToBottom()
         }
       }
     }
+    if (!hasContent) {
+      aiStore.messages[messageIndex].content = '抱歉，AI没有返回任何内容，请重试。'
+    }
   } catch (error) {
     console.error('AI请求失败:', error)
-    // 使用非流式API作为备用
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token')
-      const res = await axios.post('/api/student/ai/chat', {
-        question: aiStore.currentQuestion || '无具体题目',
-        message: message,
-        history: buildHistoryJson()
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      const lastMsg = aiStore.messages[aiStore.messages.length - 1]
-      const fallbackText = res.data?.data?.reply || ''
-      // 若已产生部分流式内容，则不再追加“抱歉”类文本，避免重复
-      if (!lastMsg || !lastMsg.content || lastMsg.content.trim().length === 0) {
-        aiStore.addMessage('assistant', fallbackText || '抱歉，AI服务暂时不可用')
-      } else {
-        // 如果已有内容且后端返回明确的补充文本，则谨慎追加
-        if (fallbackText && fallbackText !== '抱歉，AI服务暂时不可用，请稍后重试。') {
-          lastMsg.content += '\n' + fallbackText
+      ElMessage.warning('流式连接失败，切换到普通模式...')
+      let res = null
+      for (let i = 0; i < 2; i++) {
+        try {
+          res = await axios.post('/api/student/ai/chat', {
+            question: questionText,
+            message: message,
+            history: buildHistoryJson(message)
+          }, {
+            headers: { Authorization: authorizationHeader }
+          })
+          break
+        } catch (e) {
+          const status = e?.response?.status
+          if ((status === 401 || status === 403) && i === 0) {
+            authorizationHeader = await refreshToken()
+            if (!authorizationHeader) throw e
+            continue
+          }
+          throw e
         }
       }
-    } catch (e) {
-      const lastMsg = aiStore.messages[aiStore.messages.length - 1]
-      if (!lastMsg || !lastMsg.content || lastMsg.content.trim().length === 0) {
-        aiStore.addMessage('assistant', '抱歉，AI服务暂时不可用，请稍后重试。')
-      }
+      const reply = res?.data?.data?.reply || '抱歉，AI服务暂时不可用'
+      aiStore.addMessage('assistant', '')
+      const messageIndex = aiStore.messages.length - 1
+      await typewriterEffect(reply, messageIndex)
+    } catch {
+      const status = error?.response?.status || error?.status || error?.message || ''
+      const hint = String(status).includes('403') ? '\n\n当前返回 403：一般是登录态/令牌问题（建议退出重新登录）。' : ''
+      aiStore.addMessage('assistant', `抱歉，AI服务暂时不可用，请稍后重试。${hint}\n\n可能的原因：\n1. 网络连接问题\n2. AI服务繁忙\n3. API密钥配置错误`)
+      ElMessage.error('AI服务连接失败')
     }
   } finally {
     aiStore.setLoading(false)
@@ -298,6 +387,26 @@ const sendMessage = async () => {
     scrollToBottom()
   }
 }
+
+const sendMessage = async () => {
+  const message = inputMessage.value.trim()
+  if (!message || aiStore.isLoading) return
+  inputMessage.value = ''
+  await sendMessageWithText(message, false)
+}
+
+watch(isOpen, async (open) => {
+  if (!open) return
+  await nextTick()
+  if (aiStore.isLoading) return
+  const list = aiStore.messages
+  if (!list || list.length === 0) return
+  const last = list[list.length - 1]
+  if (!last || last.role !== 'user') return
+  if (lastAutoSentUserTimestamp.value && lastAutoSentUserTimestamp.value === last.timestamp) return
+  lastAutoSentUserTimestamp.value = last.timestamp
+  await sendMessageWithText(last.content, true)
+})
 
 // 滚动到底部
 const scrollToBottom = () => {

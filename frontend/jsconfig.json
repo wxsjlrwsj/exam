@@ -11,8 +11,7 @@
     },
     "lib": ["esnext", "dom"],
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "types": ["element-plus/global"]
+    "esModuleInterop": true
   },
   "exclude": ["node_modules", "dist"]
 }
