@@ -190,8 +190,27 @@ const sendQuickMessage = (text) => {
   sendMessage()
 }
 
-// 发送消息
-const sendMessage = async () => {
+// 打字机效果：逐字符显示文本
+const typewriterEffect = async (text, messageIndex) => {
+  const lastMsg = aiStore.messages[messageIndex]
+  if (!lastMsg) return
+
+  for (let i = 0; i < text.length; i++) {
+    lastMsg.content += text[i]
+    // 每5个字符滚动一次，减少性能开销
+    if (i % 5 === 0) {
+      await nextTick()
+      scrollToBottom()
+    }
+    // 添加微小延迟，模拟打字效果
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  await nextTick()
+  scrollToBottom()
+}
+
+// 发送消息（带重试机制）
+const sendMessage = async (retryCount = 0) => {
   const message = inputMessage.value.trim()
   if (!message || aiStore.isLoading) return
 
@@ -219,22 +238,26 @@ const sendMessage = async () => {
     })
 
     if (!response.ok) {
-      throw new Error('请求失败')
+      throw new Error(`请求失败: ${response.status}`)
     }
 
     // 添加AI消息占位
     aiStore.addMessage('assistant', '')
+    const messageIndex = aiStore.messages.length - 1
 
     // 读取流式响应
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
+    let buffer = ''
+    let hasContent = false
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n')
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || '' // 保留最后不完整的行
 
       for (const line of lines) {
         if (line.startsWith('data:')) {
@@ -242,28 +265,45 @@ const sendMessage = async () => {
           if (data === '[DONE]') {
             break
           }
-          // 追加内容到最后一条消息
-          const lastMsg = aiStore.messages[aiStore.messages.length - 1]
-          if (lastMsg) {
-            lastMsg.content += data
+          if (data) {
+            hasContent = true
+            // 使用打字机效果显示内容
+            await typewriterEffect(data, messageIndex)
           }
-          await nextTick()
-          scrollToBottom()
         }
       }
     }
+
+    // 如果没有收到任何内容，显示错误
+    if (!hasContent) {
+      aiStore.messages[messageIndex].content = '抱歉，AI没有返回任何内容，请重试。'
+    }
   } catch (error) {
     console.error('AI请求失败:', error)
+    
+    // 自动重试一次
+    if (retryCount < 1) {
+      console.log('正在重试...')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      return sendMessage(retryCount + 1)
+    }
+    
     // 使用非流式API作为备用
     try {
+      ElMessage.warning('流式连接失败，切换到普通模式...')
       const res = await axios.post('/api/student/ai/chat', {
         question: aiStore.currentQuestion || '无具体题目',
         message: message,
         history: buildHistoryJson()
       })
-      aiStore.addMessage('assistant', res.data.data?.reply || '抱歉，AI服务暂时不可用')
+      const reply = res.data.data?.reply || '抱歉，AI服务暂时不可用'
+      aiStore.addMessage('assistant', '')
+      const messageIndex = aiStore.messages.length - 1
+      await typewriterEffect(reply, messageIndex)
     } catch (e) {
-      aiStore.addMessage('assistant', '抱歉，AI服务暂时不可用，请稍后重试。')
+      console.error('备用API也失败:', e)
+      aiStore.addMessage('assistant', '抱歉，AI服务暂时不可用，请稍后重试。\n\n可能的原因：\n1. 网络连接问题\n2. AI服务繁忙\n3. API密钥配置错误')
+      ElMessage.error('AI服务连接失败')
     }
   } finally {
     aiStore.setLoading(false)

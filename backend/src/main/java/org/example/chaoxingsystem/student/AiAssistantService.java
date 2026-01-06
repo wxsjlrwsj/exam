@@ -87,7 +87,7 @@ public class AiAssistantService {
                         String line;
                         while ((line = reader.readLine()) != null) {
                             if (line.startsWith("data: ")) {
-                                String data = line.substring(6);
+                                String data = line.substring(6).trim();
                                 if ("[DONE]".equals(data)) {
                                     emitter.send(SseEmitter.event().data("[DONE]"));
                                     break;
@@ -95,6 +95,7 @@ public class AiAssistantService {
                                 // 解析JSON获取content
                                 String content = extractContent(data);
                                 if (content != null && !content.isEmpty()) {
+                                    // 直接发送内容块，让前端处理打字机效果
                                     emitter.send(SseEmitter.event().data(content));
                                 }
                             }
@@ -103,6 +104,17 @@ public class AiAssistantService {
                 } else {
                     String errorMsg = "API调用失败: " + responseCode;
                     log.error(errorMsg);
+                    try (BufferedReader errorReader = new BufferedReader(
+                            new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                        StringBuilder errorResponse = new StringBuilder();
+                        String line;
+                        while ((line = errorReader.readLine()) != null) {
+                            errorResponse.append(line);
+                        }
+                        log.error("API错误响应: {}", errorResponse);
+                    } catch (Exception e) {
+                        log.error("读取错误响应失败", e);
+                    }
                     emitter.send(SseEmitter.event().data("抱歉，AI服务暂时不可用，请稍后重试。"));
                 }
                 emitter.complete();
@@ -222,6 +234,7 @@ public class AiAssistantService {
 
     /**
      * 从流式响应中提取content
+     * 优化：更精确的JSON解析，支持更复杂的转义字符
      */
     private String extractContent(String json) {
         try {
@@ -229,17 +242,34 @@ public class AiAssistantService {
             int contentStart = json.indexOf("\"content\":\"");
             if (contentStart == -1) return null;
             contentStart += 11;
-            int contentEnd = json.indexOf("\"", contentStart);
-            if (contentEnd == -1) return null;
-            String content = json.substring(contentStart, contentEnd);
-            // 处理转义字符
-            return content
-                    .replace("\\n", "\n")
-                    .replace("\\r", "\r")
-                    .replace("\\t", "\t")
-                    .replace("\\\"", "\"")
-                    .replace("\\\\", "\\");
+            
+            // 找到对应的结束引号（考虑转义）
+            StringBuilder content = new StringBuilder();
+            boolean escaped = false;
+            for (int i = contentStart; i < json.length(); i++) {
+                char c = json.charAt(i);
+                if (escaped) {
+                    // 处理转义字符
+                    switch (c) {
+                        case 'n': content.append('\n'); break;
+                        case 'r': content.append('\r'); break;
+                        case 't': content.append('\t'); break;
+                        case '"': content.append('"'); break;
+                        case '\\': content.append('\\'); break;
+                        default: content.append(c);
+                    }
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    break;
+                } else {
+                    content.append(c);
+                }
+            }
+            return content.toString();
         } catch (Exception e) {
+            log.error("解析流式响应失败", e);
             return null;
         }
     }
