@@ -38,6 +38,15 @@ public class PaperService {
     return paperMapper.selectPage(subject, offset, size);
   }
 
+  public long countBySubjects(List<String> subjects) {
+    return paperMapper.countBySubjects(subjects);
+  }
+
+  public List<Paper> pageBySubjects(List<String> subjects, int page, int size) {
+    int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
+    return paperMapper.selectPageBySubjects(subjects, offset, size);
+  }
+
   @Transactional
   public Long create(Long creatorId, String name, String subject, List<QuestionItem> items, Integer passScore) {
     if (items == null || items.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "试题不能为空");

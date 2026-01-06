@@ -34,6 +34,15 @@ public class ExamService {
     return mapper.selectPage(status, offset, size);
   }
 
+  public long countByPaperSubject(String subject) {
+    return mapper.countByPaperSubject(subject);
+  }
+
+  public List<Exam> pageByPaperSubject(String subject, int page, int size) {
+    int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
+    return mapper.selectPageByPaperSubject(subject, offset, size);
+  }
+
   public long countByStudent(Long studentId, Integer status) { return mapper.countByStudent(studentId, status); }
 
   public List<Exam> pageByStudent(Long studentId, Integer status, int page, int size) {

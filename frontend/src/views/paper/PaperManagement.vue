@@ -1,51 +1,108 @@
-﻿<template>
+<template>
   <div class="paper-management-container">
     <div class="page-header">
       <h2 class="page-title">试卷管理</h2>
-      <div>
-        <el-button type="primary" @click="handleCreatePaper('manual')">
-          <el-icon><Edit /></el-icon>手动组卷
-        </el-button>
-        <el-button type="success" @click="handleCreatePaper('auto')">
-          <el-icon><MagicStick /></el-icon>智能组卷
-        </el-button>
-      </div>
     </div>
 
-    <el-table v-loading="loading" :data="paperList" border style="width: 100%">
-      <el-table-column prop="name" label="试卷名称" min-width="180" />
-      <el-table-column prop="questionCount" label="题目数量" width="100" />
-      <el-table-column prop="totalScore" label="总分" width="80" />
-      <el-table-column prop="createTime" label="创建时间" width="180" />
-      <el-table-column prop="creatorId" label="创建人" width="120" />
-      <el-table-column prop="status" label="状态" width="100">
-        <template #default="scope">
-          <el-tag :type="getPaperStatusType(scope.row.status)">
-            {{ getPaperStatusText(scope.row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="260" fixed="right">
-        <template #default="scope">
-          <el-button link type="primary" @click="handlePreview(scope.row)">预览</el-button>
-          <el-button link type="primary" @click="handleEdit(scope.row)" v-if="scope.row.status !== 'used'">编辑</el-button>
-          <el-button link type="success" @click="handleCreateExam(scope.row)">发布考试</el-button>
-          <el-button link type="danger" @click="handleDelete(scope.row)" v-if="scope.row.status !== 'used'">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-row :gutter="20" class="main-content">
+      <el-col :span="8">
+        <el-card class="course-list-card">
+          <template #header>
+            <div class="card-header">
+              <span>选择课程</span>
+            </div>
+          </template>
 
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
-        :page-sizes="[10, 20, 30, 50]"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
-    </div>
+          <el-input
+            v-model="courseFilter"
+            placeholder="搜索课程..."
+            prefix-icon="Search"
+            clearable
+            style="margin-bottom: 15px"
+          />
+
+          <div class="course-list" v-loading="loadingCourses">
+            <div
+              v-for="course in filteredCourses"
+              :key="course.id"
+              class="course-item"
+              :class="{ active: currentCourse?.id === course.id }"
+              @click="selectCourse(course)"
+            >
+              <div class="course-info">
+                <div class="course-name">
+                  <el-icon><Reading /></el-icon>
+                  {{ course.name }}
+                </div>
+                <div class="course-meta">
+                  <el-tag type="info" size="small">{{ course.paperCount || 0 }} 套试卷</el-tag>
+                </div>
+              </div>
+            </div>
+            <el-empty v-if="filteredCourses.length === 0" description="暂无课程" />
+          </div>
+        </el-card>
+      </el-col>
+
+      <el-col :span="16">
+        <el-card class="detail-card" v-if="currentCourse">
+          <template #header>
+            <div class="card-header">
+              <div class="course-title">
+                <span>{{ currentCourse.name }} - 试卷管理</span>
+              </div>
+              <div>
+                <el-button type="primary" @click="handleCreatePaper('manual')">
+                  <el-icon><Edit /></el-icon>手动组卷
+                </el-button>
+                <el-button type="success" @click="handleCreatePaper('auto')">
+                  <el-icon><MagicStick /></el-icon>智能组卷
+                </el-button>
+              </div>
+            </div>
+          </template>
+
+          <el-table v-loading="loading" :data="paperList" border style="width: 100%">
+            <el-table-column prop="name" label="试卷名称" min-width="180" />
+            <el-table-column prop="questionCount" label="题目数量" width="100" />
+            <el-table-column prop="totalScore" label="总分" width="80" />
+            <el-table-column prop="createTime" label="创建时间" width="180" />
+            <el-table-column prop="creatorId" label="创建人" width="120" />
+            <el-table-column prop="status" label="状态" width="100">
+              <template #default="scope">
+                <el-tag :type="getPaperStatusType(scope.row.status)">
+                  {{ getPaperStatusText(scope.row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="260" fixed="right">
+              <template #default="scope">
+                <el-button link type="primary" @click="handlePreview(scope.row)">预览</el-button>
+                <el-button link type="primary" @click="handleEdit(scope.row)" v-if="scope.row.status !== 'used'">编辑</el-button>
+                <el-button link type="success" @click="handleCreateExam(scope.row)">发布考试</el-button>
+                <el-button link type="danger" @click="handleDelete(scope.row)" v-if="scope.row.status !== 'used'">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 30, 50]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="total"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-card>
+
+        <el-card v-else class="detail-card">
+          <el-empty description="请选择左侧课程查看试卷" />
+        </el-card>
+      </el-col>
+    </el-row>
 
     <el-dialog v-model="previewVisible" title="试卷预览" width="80%" destroy-on-close>
       <div v-loading="previewLoading">
@@ -63,11 +120,11 @@
           style="width: 100%; margin-top: 12px"
         >
           <el-table-column prop="sortOrder" label="序号" width="80" />
-        <el-table-column label="题型" width="120">
-          <template #default="scope">
-            {{ getQuestionTypeLabel(scope.row.type_code || scope.row.typeId || scope.row.type_id) }}
-          </template>
-        </el-table-column>
+          <el-table-column label="题型" width="120">
+            <template #default="scope">
+              {{ getQuestionTypeLabel(scope.row.type_code || scope.row.typeId || scope.row.type_id) }}
+            </template>
+          </el-table-column>
           <el-table-column prop="content" label="题目内容" min-width="300" />
           <el-table-column prop="score" label="分数" width="100" />
           <el-table-column prop="difficulty" label="难度" width="120">
@@ -130,14 +187,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted, inject } from 'vue'
+import { ref, onMounted, inject, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Edit, MagicStick } from '@element-plus/icons-vue'
-import { getPapers, deletePaper, getPaperDetail, getClasses, createExam } from '@/api/teacher'
+import { Edit, MagicStick, Search, Reading } from '@element-plus/icons-vue'
+import { getPapers, deletePaper, getPaperDetail, createExam } from '@/api/teacher'
+import { getCourses, getTeachingClasses } from '@/api/course'
 
 const router = useRouter()
 const showMessage = inject('showMessage')
 const showConfirm = inject('showConfirm')
+
+const courses = ref([])
+const currentCourse = ref(null)
+const loadingCourses = ref(false)
+const courseFilter = ref('')
+const filteredCourses = computed(() => {
+  if (!courseFilter.value) return courses.value
+  return courses.value.filter(c =>
+    String(c.name || '').toLowerCase().includes(courseFilter.value.toLowerCase())
+  )
+})
 
 const loading = ref(false)
 const currentPage = ref(1)
@@ -219,7 +288,11 @@ const getPaperStatusText = (status) => {
 const loadPaperList = async () => {
   loading.value = true
   try {
-    const res = await getPapers({ page: currentPage.value, size: pageSize.value })
+    const params = { page: currentPage.value, size: pageSize.value }
+    if (currentCourse.value?.id) {
+      params.courseId = currentCourse.value.id
+    }
+    const res = await getPapers(params)
     paperList.value = res?.list || []
     total.value = res?.total || 0
   } catch (error) {
@@ -241,10 +314,12 @@ const handleSizeChange = () => {
 
 const handleCreatePaper = (type) => {
   if (type === 'manual') {
-    router.push('/dashboard/teacher/paper-compose')
+    const query = currentCourse.value?.name ? { subject: currentCourse.value.name } : {}
+    router.push({ path: '/dashboard/teacher/paper-compose', query })
     return
   }
-  router.push('/dashboard/teacher/paper-auto')
+  const query = currentCourse.value?.name ? { subject: currentCourse.value.name } : {}
+  router.push({ path: '/dashboard/teacher/paper-auto', query })
 }
 
 const handlePreview = (row) => {
@@ -290,13 +365,35 @@ const handleDelete = (row) => {
     .catch(() => {})
 }
 
+const loadCourses = async () => {
+  loadingCourses.value = true
+  try {
+    const res = await getCourses()
+    courses.value = res || []
+  } catch (e) {
+    courses.value = []
+  } finally {
+    loadingCourses.value = false
+  }
+}
+
+const selectCourse = async (course) => {
+  currentCourse.value = course
+  currentPage.value = 1
+  await Promise.all([loadPaperList(), loadCourseClasses(course.id)])
+}
+
 onMounted(() => {
-  loadPaperList()
+  loadCourses()
 })
 
 const loadPublishClasses = async () => {
   try {
-    const res = await getClasses()
+    if (!currentCourse.value?.id) {
+      publishClasses.value = []
+      return
+    }
+    const res = await getTeachingClasses(currentCourse.value.id)
     publishClasses.value = Array.isArray(res) ? res : (res?.list || [])
   } catch (error) {
     publishClasses.value = []
@@ -320,7 +417,8 @@ const submitPublish = async () => {
         paperId: publishForm.value.paperId,
         startTime: formatDateTime(publishForm.value.startTime),
         duration: publishForm.value.duration,
-        classIds: publishForm.value.classIds
+        classIds: publishForm.value.classIds,
+        courseId: currentCourse.value?.id
       })
       showMessage('考试发布成功', 'success')
       publishVisible.value = false
@@ -334,8 +432,10 @@ const submitPublish = async () => {
 </script>
 
 <style scoped>
-.paper-management-container {
-  padding: 20px;
+.paper-management-container { height: 100%; }
+
+.main-content {
+  height: calc(100vh - 160px);
 }
 
 .page-header {
@@ -343,11 +443,16 @@ const submitPublish = async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #E4E7ED;
 }
 
 .page-title {
-  font-size: 20px;
-  font-weight: bold;
+  margin: 0;
+  font-size: 24px;
+  color: #303133;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  letter-spacing: 1px;
 }
 
 .pagination-container {
@@ -372,5 +477,66 @@ const submitPublish = async () => {
 
 .paper-management-container :deep(.el-rate__icon) {
   font-size: 14px;
+}
+
+.course-list-card,
+.detail-card {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.course-title {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.course-list {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+}
+
+.course-item {
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #ebeef5;
+  margin-bottom: 10px;
+}
+
+.course-item:hover {
+  background-color: #f5f7fa;
+}
+
+.course-item.active {
+  background-color: #ecf5ff;
+  border-color: #409eff;
+}
+
+.course-info {
+  flex: 1;
+}
+
+.course-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.course-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 </style>

@@ -7,6 +7,8 @@ import java.util.List;
 public interface PaperMapper {
   long count(@Param("subject") String subject);
   List<Paper> selectPage(@Param("subject") String subject, @Param("offset") int offset, @Param("limit") int limit);
+  long countBySubjects(@Param("subjects") List<String> subjects);
+  List<Paper> selectPageBySubjects(@Param("subjects") List<String> subjects, @Param("offset") int offset, @Param("limit") int limit);
   int insert(Paper p);
   int updateById(Paper p);
   Paper selectById(@Param("id") Long id);

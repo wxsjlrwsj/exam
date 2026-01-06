@@ -8,6 +8,8 @@ import java.util.Map;
 public interface ExamMapper {
   long count(@Param("status") Integer status);
   List<Exam> selectPage(@Param("status") Integer status, @Param("offset") int offset, @Param("limit") int limit);
+  long countByPaperSubject(@Param("subject") String subject);
+  List<Exam> selectPageByPaperSubject(@Param("subject") String subject, @Param("offset") int offset, @Param("limit") int limit);
   int insert(Exam e);
   int updateById(Exam e);
   Exam selectById(@Param("id") Long id);

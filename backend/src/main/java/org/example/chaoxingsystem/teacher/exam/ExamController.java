@@ -1,6 +1,10 @@
 package org.example.chaoxingsystem.teacher.exam;
 
 import org.example.chaoxingsystem.config.ModuleCheck;
+import org.example.chaoxingsystem.common.Subject;
+import org.example.chaoxingsystem.common.SubjectMapper;
+import org.example.chaoxingsystem.teacher.paper.Paper;
+import org.example.chaoxingsystem.teacher.paper.PaperMapper;
 import org.example.chaoxingsystem.user.UserService;
 import org.example.chaoxingsystem.user.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -19,22 +23,62 @@ import java.util.Map;
 public class ExamController {
   private final ExamService service;
   private final UserService userService;
+  private final SubjectMapper subjectMapper;
+  private final PaperMapper paperMapper;
 
-  public ExamController(ExamService service, UserService userService) {
+  public ExamController(ExamService service, UserService userService, SubjectMapper subjectMapper, PaperMapper paperMapper) {
     this.service = service;
     this.userService = userService;
+    this.subjectMapper = subjectMapper;
+    this.paperMapper = paperMapper;
   }
 
   @GetMapping("/exams")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<HashMap<String, Object>>> list(
     @RequestParam(value = "status", required = false) String status,
+    @RequestParam(value = "subject", required = false) String subject,
+    @RequestParam(value = "courseId", required = false) Long courseId,
     @RequestParam(value = "page", defaultValue = "1") int page,
     @RequestParam(value = "size", defaultValue = "10") int size
   ) {
-    List<Exam> allExams = service.page(null, 1, 10000);
+    String finalSubject = subject;
+    if ((finalSubject == null || finalSubject.isBlank()) && courseId != null) {
+      Subject s = subjectMapper.selectById(courseId);
+      if (s != null && s.getName() != null && !s.getName().isBlank()) {
+        finalSubject = s.getName();
+      }
+    }
 
-    List<Map<String, Object>> examList = allExams.stream().map(exam -> {
+    boolean needInMemoryPagination = status != null && !status.isBlank();
+
+    List<Exam> exams;
+    long total;
+    if (needInMemoryPagination) {
+      if (finalSubject != null && !finalSubject.isBlank()) {
+        exams = service.pageByPaperSubject(finalSubject, 1, 10000);
+      } else {
+        exams = service.page(null, 1, 10000);
+      }
+      total = exams.size();
+    } else {
+      if (finalSubject != null && !finalSubject.isBlank()) {
+        exams = service.pageByPaperSubject(finalSubject, page, size);
+        total = service.countByPaperSubject(finalSubject);
+      } else {
+        exams = service.page(null, page, size);
+        total = service.count(null);
+      }
+    }
+
+    Map<Long, Paper> paperCache = new HashMap<>();
+    for (Exam e : exams) {
+      Long pid = e.getPaperId();
+      if (pid == null || paperCache.containsKey(pid)) continue;
+      paperCache.put(pid, paperMapper.selectById(pid));
+    }
+
+    List<Map<String, Object>> examList = exams.stream().map(exam -> {
       Map<String, Object> map = new HashMap<>();
       map.put("id", exam.getId());
       map.put("name", exam.getName());
@@ -44,6 +88,11 @@ public class ExamController {
       map.put("duration", exam.getDuration());
       String calculatedStatus = service.calculateStatus(exam);
       map.put("status", calculatedStatus);
+      Paper p = exam.getPaperId() != null ? paperCache.get(exam.getPaperId()) : null;
+      if (p != null) {
+        map.put("paperName", p.getName());
+        map.put("subject", p.getSubject());
+      }
       map.put("creatorId", exam.getCreatorId());
       map.put("createTime", exam.getCreateTime());
       return map;
@@ -57,19 +106,17 @@ public class ExamController {
         .toList();
     }
 
-    long total = filteredList.size();
-
-    int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
-    int limit = Math.max(size, 1);
-    List<Map<String, Object>> pagedList = filteredList.stream()
-      .skip(offset)
-      .limit(limit)
-      .toList();
+    if (needInMemoryPagination) {
+      total = filteredList.size();
+      int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
+      int limit = Math.max(size, 1);
+      filteredList = filteredList.stream().skip(offset).limit(limit).toList();
+    }
 
     HashMap<String, Object> data = new HashMap<>();
-    data.put("list", pagedList);
+    data.put("list", filteredList);
     data.put("total", total);
-    return ResponseEntity.ok(ApiResponse.success("Fetched successfully", data));
+    return ResponseEntity.ok(ApiResponse.success("获取成功", data));
   }
 
   @PostMapping("/exams")

@@ -329,7 +329,7 @@ const handleCreateExam = async () => {
   // 加载试卷列表
   try {
     const res = await getPapers({ courseId: currentCourse.value.id })
-    paperList.value = res.data || []
+    paperList.value = Array.isArray(res?.list) ? res.list : (res || [])
   } catch (e) {
     paperList.value = []
   }

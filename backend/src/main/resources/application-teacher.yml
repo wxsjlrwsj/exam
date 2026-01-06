@@ -6,10 +6,10 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3306/chaoxing?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8}
     driverClassName: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
     username: ${DB_USER:root}
-    password: ${DB_PASSWORD:root123}
+    password: ${DB_PASSWORD:root}
   sql:
     init:
-      mode: always
+      mode: ${SPRING_SQL_INIT_MODE:never}
       schema-locations: classpath:schema.sql
 
 mybatis:

@@ -13,7 +13,7 @@
   <select id="count" resultType="long">
     SELECT COUNT(1) 
     FROM biz_exam_student es
-    JOIN sys_user u ON u.id = es.user_id
+    JOIN users u ON u.id = es.user_id
     WHERE es.exam_id = #{examId}
     <if test="keyword != null and keyword != ''">
       AND (u.username LIKE CONCAT('%', #{keyword}, '%') OR u.real_name LIKE CONCAT('%', #{keyword}, '%'))
@@ -31,7 +31,7 @@
       es.status AS status,
       es.add_time AS addTime
     FROM biz_exam_student es
-    JOIN sys_user u ON u.id = es.user_id
+    JOIN users u ON u.id = es.user_id
     LEFT JOIN biz_class_student cs ON cs.user_id = u.id
     LEFT JOIN biz_class c ON c.id = cs.class_id
     WHERE es.exam_id = #{examId}

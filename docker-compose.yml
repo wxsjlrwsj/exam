@@ -28,6 +28,8 @@ services:
       - ./backend/db_patches/20260103_add_academic_year_semester_to_teaching_class.sql:/docker-entrypoint-initdb.d/15-teaching-class-year-semester.sql:ro
       - ./backend/db_patches/20260103_migrate_class_student_to_biz_student.sql:/docker-entrypoint-initdb.d/16-migrate-class-student.sql:ro
       - ./backend/db_patches/20260105_fix_question_audit_schema.sql:/docker-entrypoint-initdb.d/17-fix-question-audit-schema.sql:ro
+      - ./backend/db_patches/20260106_create_biz_teacher_subject.sql:/docker-entrypoint-initdb.d/18-create-teacher-subject.sql:ro
+      - ./backend/db_patches/20260106_delete_finished_exams.sql:/docker-entrypoint-initdb.d/19-delete-finished-exams.sql:ro
 
     command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
     healthcheck:
@@ -35,6 +37,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    ports:
+      - "3307:3306"
 
   backend:
     build: ./backend

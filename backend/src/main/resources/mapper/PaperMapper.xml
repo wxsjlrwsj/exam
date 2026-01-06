@@ -35,6 +35,32 @@
     LIMIT #{offset}, #{limit}
   </select>
 
+  <select id="countBySubjects" resultType="long">
+    SELECT COUNT(*) FROM biz_paper
+    <where>
+      <if test="subjects != null and subjects.size > 0">
+        AND subject IN
+        <foreach collection="subjects" item="s" open="(" separator="," close=")">
+          #{s}
+        </foreach>
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPageBySubjects" resultMap="PaperMap">
+    SELECT * FROM biz_paper
+    <where>
+      <if test="subjects != null and subjects.size > 0">
+        AND subject IN
+        <foreach collection="subjects" item="s" open="(" separator="," close=")">
+          #{s}
+        </foreach>
+      </if>
+    </where>
+    ORDER BY create_time DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
   <select id="selectById" resultMap="PaperMap">
     SELECT * FROM biz_paper WHERE id = #{id}
   </select>

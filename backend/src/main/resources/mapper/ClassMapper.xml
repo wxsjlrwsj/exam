@@ -34,7 +34,7 @@
       (SELECT COUNT(1) FROM biz_class_student cs WHERE cs.class_id = c.id) AS studentCount,
       c.create_time AS createTime
     FROM biz_class c
-    LEFT JOIN sys_user u ON u.id = c.advisor_id
+    LEFT JOIN users u ON u.id = c.advisor_id
     <where>
       <if test="keyword != null and keyword != ''">
         AND (c.class_name LIKE CONCAT('%', #{keyword}, '%') 

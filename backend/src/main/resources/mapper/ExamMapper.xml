@@ -26,6 +26,30 @@
     </where>
   </select>
 
+  <select id="countByPaperSubject" resultType="long">
+    SELECT COUNT(1)
+    FROM biz_exam e
+    JOIN biz_paper p ON p.id = e.paper_id
+    <where>
+      <if test="subject != null and subject != ''">
+        AND p.subject = #{subject}
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPageByPaperSubject" resultMap="ExamMap">
+    SELECT e.*
+    FROM biz_exam e
+    JOIN biz_paper p ON p.id = e.paper_id
+    <where>
+      <if test="subject != null and subject != ''">
+        AND p.subject = #{subject}
+      </if>
+    </where>
+    ORDER BY e.start_time DESC, e.id DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
   <select id="selectPage" resultMap="ExamMap">
     SELECT * FROM biz_exam
     <where>
@@ -109,10 +133,10 @@
   </select>
 
   <insert id="insertWarning">
-    INSERT INTO biz_exam_monitor_event 
-    (exam_id, student_id, event_type, event_data, severity)
-    VALUES 
-    (#{examId}, #{studentId}, #{type}, #{message}, 'WARNING')
+    INSERT INTO biz_monitor_warning
+    (exam_id, student_id, message, type, teacher_id)
+    VALUES
+    (#{examId}, #{studentId}, #{message}, #{type}, #{teacherId})
   </insert>
 
   <update id="forceSubmitExamRecord">

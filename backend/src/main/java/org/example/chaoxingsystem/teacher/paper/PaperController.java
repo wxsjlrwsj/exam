@@ -2,6 +2,9 @@ package org.example.chaoxingsystem.teacher.paper;
 
 import jakarta.validation.Valid;
 import org.example.chaoxingsystem.config.ModuleCheck;
+import org.example.chaoxingsystem.common.Subject;
+import org.example.chaoxingsystem.common.SubjectMapper;
+import org.example.chaoxingsystem.teacher.course.CourseService;
 import org.example.chaoxingsystem.teacher.paper.dto.CreatePaperRequest;
 import org.example.chaoxingsystem.user.UserService;
 import org.example.chaoxingsystem.user.dto.ApiResponse;
@@ -10,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,10 +25,14 @@ import java.util.Map;
 public class PaperController {
   private final PaperService service;
   private final UserService userService;
+  private final CourseService courseService;
+  private final SubjectMapper subjectMapper;
 
-  public PaperController(PaperService service, UserService userService) {
+  public PaperController(PaperService service, UserService userService, CourseService courseService, SubjectMapper subjectMapper) {
     this.service = service;
     this.userService = userService;
+    this.courseService = courseService;
+    this.subjectMapper = subjectMapper;
   }
 
   @GetMapping("/papers")
@@ -32,10 +40,48 @@ public class PaperController {
   public ResponseEntity<ApiResponse<HashMap<String, Object>>> list(
     @RequestParam(value = "page", defaultValue = "1") int page,
     @RequestParam(value = "size", defaultValue = "10") int size,
-    @RequestParam(value = "subject", required = false) String subject
+    @RequestParam(value = "subject", required = false) String subject,
+    @RequestParam(value = "courseId", required = false) Long courseId,
+    Authentication auth
   ) {
-    long total = service.count(subject);
-    List<Paper> list = service.page(subject, page, size);
+    String finalSubject = subject;
+    if ((finalSubject == null || finalSubject.isBlank()) && courseId != null) {
+      Subject s = subjectMapper.selectById(courseId);
+      if (s != null && s.getName() != null && !s.getName().isBlank()) {
+        finalSubject = s.getName();
+      }
+    }
+
+    long total;
+    List<Paper> list;
+
+    var me = userService.getByUsername(auth.getName());
+    boolean isTeacher = me != null && me.getUserType() != null && "teacher".equalsIgnoreCase(me.getUserType());
+
+    if (finalSubject != null && !finalSubject.isBlank()) {
+      total = service.count(finalSubject);
+      list = service.page(finalSubject, page, size);
+    } else if (isTeacher) {
+      List<Map<String, Object>> courses = courseService.listByTeacher(me.getId());
+      List<String> subjects = new ArrayList<>();
+      for (Map<String, Object> c : courses) {
+        Object nameObj = c.get("name");
+        String name = nameObj != null ? String.valueOf(nameObj) : null;
+        if (name != null && !name.isBlank()) {
+          subjects.add(name);
+        }
+      }
+      if (subjects.isEmpty()) {
+        total = 0;
+        list = List.of();
+      } else {
+        total = service.countBySubjects(subjects);
+        list = service.pageBySubjects(subjects, page, size);
+      }
+    } else {
+      total = service.count(null);
+      list = service.page(null, page, size);
+    }
     
     // 将 Paper 对象转换为 Map，并将 status 从数字转换为字符串
     List<Map<String, Object>> paperList = list.stream().map(paper -> {

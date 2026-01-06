@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="paper-compose-container">
     <div class="page-header">
       <h2 class="page-title">手动组卷</h2>
@@ -18,7 +18,14 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="科目" required>
-              <el-input v-model="paperForm.subject" placeholder="请输入科目" />
+              <el-select v-model="paperForm.subject" placeholder="请选择科目" style="width: 100%">
+                <el-option
+                  v-for="s in subjects"
+                  :key="s.id || s.name"
+                  :label="s.name"
+                  :value="s.name"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -90,7 +97,9 @@
           </el-select>
         </el-form-item>
         <el-form-item label="科目">
-          <el-input v-model="filterForm.subject" placeholder="科目" clearable style="width: 150px" />
+          <el-select v-model="filterForm.subject" placeholder="全部" clearable style="width: 150px">
+            <el-option v-for="s in subjects" :key="s.id || s.name" :label="s.name" :value="s.name" />
+          </el-select>
         </el-form-item>
         <el-form-item label="关键词">
           <el-input v-model="filterForm.keyword" placeholder="题目内容" clearable style="width: 200px" />
@@ -150,6 +159,7 @@ import { ref, reactive, computed, inject, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Plus } from '@element-plus/icons-vue'
 import { getExamQuestions, createPaper, getPaperDetail, updatePaper } from '@/api/teacher'
+import { getCourses } from '@/api/course'
 
 const router = useRouter()
 const route = useRoute()
@@ -171,6 +181,7 @@ const paperForm = reactive({
   subject: '',
   passScore: 60
 })
+const subjects = ref([])
 
 const filterForm = reactive({
   typeCode: '',
@@ -330,7 +341,23 @@ const loadPaperDetail = async (paperId) => {
 }
 
 onMounted(() => {
+  const initSubjects = async () => {
+    try {
+      const res = await getCourses()
+      subjects.value = Array.isArray(res) ? res : []
+    } catch (e) {
+      subjects.value = []
+    }
+  }
   const paperId = route.query.paperId
+  const subjectFromRoute = route.query.subject
+  initSubjects().then(() => {
+    if (subjectFromRoute && !paperId) {
+      const found = subjects.value.find(s => s.name === subjectFromRoute)
+      paperForm.subject = found ? found.name : subjectFromRoute
+      filterForm.subject = paperForm.subject
+    }
+  })
   if (paperId) {
     editingPaperId.value = Number(paperId)
     loadPaperDetail(editingPaperId.value)
