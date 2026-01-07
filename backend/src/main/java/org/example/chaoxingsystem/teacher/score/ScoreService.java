@@ -27,7 +27,17 @@ public class ScoreService {
 
   public List<Map<String, Object>> page(Long examId, Long classId, String keyword, int page, int size) {
     int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
-    return mapper.selectPage(examId, classId, keyword, offset, size);
+    List<Map<String, Object>> rows = mapper.selectPage(examId, classId, keyword, offset, size);
+    for (int i = 0; i < rows.size(); i++) {
+      Map<String, Object> row = rows.get(i);
+      String anonymousName = buildAnonymousName(offset + i + 1, row.get("studentId"), row.get("studentNo"));
+      row.put("anonymousName", anonymousName);
+      row.put("name", anonymousName);
+      if (row.containsKey("studentNo")) {
+        row.put("studentNo", "******");
+      }
+    }
+    return rows;
   }
 
   public Map<String, Object> detail(Long examId, Long studentId) {
@@ -198,6 +208,15 @@ public class ScoreService {
       case "PROGRAM", "programming" -> "programming";
       default -> code;
     };
+  }
+
+  private String buildAnonymousName(int index, Object studentId, Object studentNo) {
+    if (studentId != null) return "匿名" + index;
+    if (studentNo != null) {
+      String s = String.valueOf(studentNo);
+      if (s.length() >= 2) return "匿名" + s.substring(s.length() - 2);
+    }
+    return "匿名";
   }
 
   @Transactional

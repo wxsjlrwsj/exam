@@ -571,6 +571,16 @@ const classOptions = ref([
 // 统一的学生数据源
 const allStudents = ref([])
 
+const buildClassOptions = (students) => {
+  const map = new Map()
+  students.forEach((s) => {
+    if (!s || !s.classId || !s.className) return
+    if (!map.has(s.classId)) map.set(s.classId, { id: s.classId, name: s.className })
+  })
+  return Array.from(map.values())
+}
+
+
 const gradedCount = computed(() => allStudents.value.filter(s => s.status === 'graded').length)
 
 // ================= 阅卷管理逻辑 =================
@@ -719,8 +729,7 @@ const scorePageSize = ref(10)
 const filteredScoreList = computed(() => {
     let list = allStudents.value
     if (scoreFilterForm.classId) {
-        const cls = classOptions.value.find(c => c.id === scoreFilterForm.classId)
-        if (cls) list = list.filter(s => s.className === cls.name)
+        list = list.filter(s => s.classId === scoreFilterForm.classId)
     }
     if (scoreFilterForm.keyword) {
         list = list.filter(s => s.name?.includes(scoreFilterForm.keyword) || s.studentNo?.includes(scoreFilterForm.keyword))
@@ -958,6 +967,7 @@ const loadData = async () => {
              } else {
                  allStudents.value = []
              }
+             classOptions.value = buildClassOptions(allStudents.value)
              
              calculateAnalysisData()
              

@@ -27,13 +27,26 @@
   <!-- ===== 列表与统计 ===== -->
   <select id="count" resultType="long">
     SELECT COUNT(1)
-    FROM biz_exam_record er
-    LEFT JOIN users u ON u.id = er.student_id
-    LEFT JOIN biz_student bs ON bs.user_id = er.student_id
-    LEFT JOIN biz_class bc ON bc.id = bs.class_id
+    FROM biz_exam_student es
+    JOIN biz_exam e ON e.id = es.exam_id
+    JOIN biz_paper p ON p.id = e.paper_id
+    LEFT JOIN biz_subject s ON s.name COLLATE utf8mb4_unicode_ci = p.subject
+    JOIN users u ON u.id = es.user_id
+    LEFT JOIN biz_student bs ON bs.user_id = es.user_id
+    LEFT JOIN (
+      SELECT
+        tcs.user_id AS userId,
+        tc.subject_id AS subjectId,
+        MIN(tc.id) AS classId,
+        MIN(tc.name) AS className
+      FROM biz_teaching_class_student tcs
+      JOIN biz_teaching_class tc ON tc.id = tcs.class_id
+      GROUP BY tcs.user_id, tc.subject_id
+    ) tcmap ON tcmap.userId = es.user_id AND tcmap.subjectId = s.id
+    LEFT JOIN biz_exam_record er ON er.exam_id = es.exam_id AND er.student_id = es.user_id
     <where>
-      <if test="examId != null">AND er.exam_id = #{examId}</if>
-      <if test="classId != null">AND bs.class_id = #{classId}</if>
+      <if test="examId != null">AND es.exam_id = #{examId}</if>
+      <if test="classId != null">AND tcmap.classId = #{classId}</if>
       <if test="keyword != null and keyword != ''">
         AND (
           u.username LIKE CONCAT('%', #{keyword}, '%')
@@ -48,25 +61,38 @@
     SELECT
       er.id AS scoreId,
       u.id AS studentId,
-      bs.student_no AS studentNo,
-      COALESCE(bs.real_name, u.real_name) AS name,
-      bs.class_id AS classId,
-      bc.class_name AS className,
+      COALESCE(bs.student_no, u.username) AS studentNo,
+      COALESCE(bs.real_name, u.real_name, u.username) AS name,
+      tcmap.classId AS classId,
+      tcmap.className AS className,
       er.score AS score,
       CASE WHEN er.status &gt;= 2 AND er.score IS NOT NULL THEN 'graded' ELSE 'ungraded' END AS status,
       er.submit_time AS submitTime,
       er.submit_time AS gradingTime
-    FROM biz_exam_record er
-    LEFT JOIN users u ON u.id = er.student_id
-    LEFT JOIN biz_student bs ON bs.user_id = er.student_id
-    LEFT JOIN biz_class bc ON bc.id = bs.class_id
+    FROM biz_exam_student es
+    JOIN biz_exam e ON e.id = es.exam_id
+    JOIN biz_paper p ON p.id = e.paper_id
+    LEFT JOIN biz_subject s ON s.name COLLATE utf8mb4_unicode_ci = p.subject
+    JOIN users u ON u.id = es.user_id
+    LEFT JOIN biz_student bs ON bs.user_id = es.user_id
+    LEFT JOIN (
+      SELECT
+        tcs.user_id AS userId,
+        tc.subject_id AS subjectId,
+        MIN(tc.id) AS classId,
+        MIN(tc.name) AS className
+      FROM biz_teaching_class_student tcs
+      JOIN biz_teaching_class tc ON tc.id = tcs.class_id
+      GROUP BY tcs.user_id, tc.subject_id
+    ) tcmap ON tcmap.userId = es.user_id AND tcmap.subjectId = s.id
+    LEFT JOIN biz_exam_record er ON er.exam_id = es.exam_id AND er.student_id = es.user_id
     <where>
-      <if test="examId != null">AND er.exam_id = #{examId}</if>
-      <if test="classId != null">AND bs.class_id = #{classId}</if>
+      <if test="examId != null">AND es.exam_id = #{examId}</if>
+      <if test="classId != null">AND tcmap.classId = #{classId}</if>
       <if test="keyword != null and keyword != ''">
         AND (
           bs.student_no LIKE CONCAT('%', #{keyword}, '%')
-          OR COALESCE(bs.real_name, u.real_name) LIKE CONCAT('%', #{keyword}, '%')
+          OR COALESCE(bs.real_name, u.real_name, u.username) LIKE CONCAT('%', #{keyword}, '%')
         )
       </if>
     </where>
