@@ -72,6 +72,15 @@ public class ScoreService {
         givenScore = a.getScore();
         comment = a.getComment();
       }
+      boolean autoGraded = "single_choice".equals(type) || "multiple_choice".equals(type) || "true_false".equals(type);
+      if (autoGraded) {
+        Integer autoScore = calcAutoScore(type, correctObj, studentAns, qScore);
+        if (autoScore != null) {
+          givenScore = autoScore;
+        }
+      } else if (givenScore == null) {
+        givenScore = 0;
+      }
       Map<String, Object> row = new HashMap<>();
       row.put("id", qid);
       row.put("type", type);
@@ -82,7 +91,7 @@ public class ScoreService {
       row.put("studentAnswer", studentAns);
       row.put("givenScore", givenScore);
       row.put("comment", comment);
-      row.put("autoGraded", "single_choice".equals(type) || "multiple_choice".equals(type) || "true_false".equals(type));
+      row.put("autoGraded", autoGraded);
       outQs.add(row);
     }
     Map<String, Object> data = new HashMap<>();
@@ -208,6 +217,47 @@ public class ScoreService {
       case "PROGRAM", "programming" -> "programming";
       default -> code;
     };
+  }
+
+  private Integer calcAutoScore(String type, Object correctObj, Object studentAns, Integer fullScore) {
+    int full = fullScore != null ? fullScore : 0;
+    if (full <= 0) return 0;
+    if (studentAns == null) return 0;
+    if ("single_choice".equals(type)) {
+      return String.valueOf(studentAns).equals(String.valueOf(correctObj)) ? full : 0;
+    }
+    if ("true_false".equals(type)) {
+      boolean correct = false;
+      if (correctObj instanceof Boolean b) correct = b;
+      else if (correctObj != null) correct = "true".equalsIgnoreCase(String.valueOf(correctObj)) || "T".equalsIgnoreCase(String.valueOf(correctObj));
+      boolean student = false;
+      if (studentAns instanceof Boolean b) student = b;
+      else if (studentAns != null) student = "true".equalsIgnoreCase(String.valueOf(studentAns)) || "T".equalsIgnoreCase(String.valueOf(studentAns));
+      return correct == student ? full : 0;
+    }
+    if ("multiple_choice".equals(type)) {
+      java.util.List<String> correctList = null;
+      if (correctObj instanceof java.util.List<?> l) {
+        correctList = l.stream().map(String::valueOf).toList();
+      } else if (correctObj != null) {
+        correctList = java.util.Arrays.stream(String.valueOf(correctObj).split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+      }
+      java.util.List<String> studentList = null;
+      if (studentAns instanceof java.util.List<?> l2) {
+        studentList = l2.stream().map(String::valueOf).toList();
+      } else if (studentAns != null) {
+        studentList = java.util.Arrays.stream(String.valueOf(studentAns).split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+      }
+      if (correctList == null || studentList == null || studentList.isEmpty()) return 0;
+      java.util.Set<String> correctSet = new java.util.HashSet<>(correctList);
+      java.util.Set<String> studentSet = new java.util.HashSet<>(studentList);
+      for (String opt : studentSet) {
+        if (!correctSet.contains(opt)) return 0;
+      }
+      if (correctSet.equals(studentSet)) return full;
+      return (int) Math.round(full / 2.0);
+    }
+    return 0;
   }
 
   private String buildAnonymousName(int index, Object studentId, Object studentNo) {

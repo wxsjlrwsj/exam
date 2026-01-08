@@ -106,6 +106,7 @@
                             :step="0.5"
                             size="small"
                           />
+                          <el-button size="small" @click="question.givenScore = question.score" v-text="fullScoreLabel"></el-button>
                           <span class="max-score">/ {{ question.score }}分</span>
                         </div>
                         <div class="comment-input">
@@ -321,7 +322,7 @@
             <el-card class="filter-card">
                 <el-form :inline="true" :model="analysisFilterForm">
                     <el-form-item label="选择考试">
-                        <el-select v-model="analysisFilterForm.examId" placeholder="请选择考试" @change="calculateAnalysisData">
+                        <el-select v-model="analysisFilterForm.examId" placeholder="请选择考试" @change="handleAnalysisExamChange">
                             <el-option v-for="item in examOptions" :key="item.id" :label="item.name" :value="item.id" />
                         </el-select>
                     </el-form-item>
@@ -604,6 +605,8 @@ const hasNextStudent = computed(() => {
 
 // Paper Questions
 const paperQuestions = ref([])
+
+const fullScoreLabel = '\u4E00\u952E\u6EE1\u5206'
 
 const questionTypes = [
   { label: '单选题', value: 'single_choice' },
@@ -929,10 +932,11 @@ const analysisData = ref({
 })
 
 const calculateAnalysisData = async () => {
-    if (!analysisFilterForm.examId) return
+    const examId = Number(analysisFilterForm.examId)
+    if (!examId) return
     
     try {
-        const res = await getExamStats(analysisFilterForm.examId)
+        const res = await getExamStats(examId)
         if (res) {
             analysisData.value = res
         }
@@ -941,12 +945,38 @@ const calculateAnalysisData = async () => {
     }
 }
 
+const handleAnalysisExamChange = async () => {
+    const examId = Number(analysisFilterForm.examId)
+    if (!examId) return
+
+    const localExam = examOptions.value.find(item => item.id === examId)
+    if (localExam) {
+        currentExam.value = {
+            ...currentExam.value,
+            ...localExam,
+            examTime: localExam.startTime || currentExam.value.examTime
+        }
+    } else {
+        try {
+            const examRes = await getExamDetail(examId)
+            if (examRes) currentExam.value = examRes
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    calculateAnalysisData()
+}
+
 const loadData = async () => {
     // Load exam options
     try {
         const examsRes = await getExams({ size: 100 })
         if (examsRes && examsRes.list) {
-            examOptions.value = examsRes.list
+            examOptions.value = examsRes.list.map(item => ({
+                ...item,
+                id: Number(item.id)
+            }))
         }
     } catch (error) {
         console.error(error)
@@ -955,13 +985,14 @@ const loadData = async () => {
     // Load exam info
     const examId = route.query.examId || analysisFilterForm.examId || scoreFilterForm.examId
     if (examId) {
-        analysisFilterForm.examId = Number(examId)
-        scoreFilterForm.examId = Number(examId)
+        const normalizedExamId = Number(examId)
+        analysisFilterForm.examId = normalizedExamId || ''
+        scoreFilterForm.examId = normalizedExamId || ''
         try {
-             const examRes = await getExamDetail(examId)
+             const examRes = await getExamDetail(normalizedExamId)
              if (examRes) currentExam.value = examRes
              
-             const scoresRes = await getScoreList({ examId: examId })
+             const scoresRes = await getScoreList({ examId: normalizedExamId })
              if (scoresRes && scoresRes.list) {
                  allStudents.value = scoresRes.list
              } else {
