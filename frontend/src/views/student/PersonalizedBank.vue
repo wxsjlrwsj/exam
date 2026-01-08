@@ -767,13 +767,51 @@ const handleStartSelfTest = () => {
    testSetupVisible.value = true
 }
 
-const startQuiz = () => {
+const startQuiz = async () => {
+   console.log('[PersonalizedBank] startQuiz called, mode:', testSetupForm.mode)
    const count = testSetupForm.mode === 'all' ? currentCollectionCount.value : testSetupForm.count
-   let questions = [...questionList.value]
-   if (questions.length === 0) {
-     showMessage('当前列表暂无题目', 'warning')
+   console.log('[PersonalizedBank] count:', count, 'collectionId:', currentCollectionId.value)
+   
+   // 获取所有题目（不分页）
+   let questions = []
+   try {
+     const data = await request.get(`/student/collections/${currentCollectionId.value}/questions`, {
+       params: {
+         type: filterForm.type,
+         subject: filterForm.subject,
+         page: 1,
+         size: 9999 // 获取所有题目
+       }
+     })
+     questions = (data?.list || []).map(q => ({
+       ...q,
+       answer: normalizeAnswer(q.answer)
+     }))
+     console.log('[PersonalizedBank] Loaded questions:', questions.length)
+   } catch (error) {
+     console.error('[PersonalizedBank] Error loading questions:', error)
+     showMessage('加载题目失败', 'error')
      return
    }
+   
+   if (questions.length === 0) {
+     showMessage('当前题集暂无题目', 'warning')
+     return
+   }
+   
+   console.log('[PersonalizedBank] Before shuffle, first 3 question IDs:', questions.slice(0, 3).map(q => q.id))
+   
+   // 如果是随机模式，先打乱题目顺序
+   if (testSetupForm.mode === 'random') {
+     console.log('[PersonalizedBank] Applying Fisher-Yates shuffle...')
+     // Fisher-Yates 洗牌算法
+     for (let i = questions.length - 1; i > 0; i--) {
+       const j = Math.floor(Math.random() * (i + 1));
+       [questions[i], questions[j]] = [questions[j], questions[i]]
+     }
+     console.log('[PersonalizedBank] After shuffle, first 3 question IDs:', questions.slice(0, 3).map(q => q.id))
+   }
+   
    quizQuestions.value = questions.slice(0, count).map(q => ({...q}))
    userAnswers.value = {}
    quizQuestions.value.forEach(q => {

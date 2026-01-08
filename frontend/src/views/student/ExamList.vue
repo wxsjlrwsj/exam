@@ -305,7 +305,15 @@
         :close-on-click-modal="false"
         :close-on-press-escape="false"
     >
-        <div class="exam-taking-container" v-if="currentExamTaking">
+        <div 
+            class="exam-taking-container" 
+            v-if="currentExamTaking"
+            @copy.prevent="handleCopyAttempt"
+            @cut.prevent="handleCutAttempt"
+            @paste.prevent="handlePasteAttempt"
+            @contextmenu.prevent="handleContextMenuAttempt"
+            @keydown="handleKeyDown"
+        >
             <!-- Watermark Layer -->
             <div class="watermark-layer">
                 <div v-for="n in 20" :key="n" class="watermark-item">
@@ -423,7 +431,17 @@
                                     </div>
                                  </div>
                                  <div v-else>
-                                     <el-input type="textarea" :rows="6" v-model="examAnswers[currentQuestion.id]" placeholder="请输入答案..." />
+                                     <textarea 
+                                         v-model="examAnswers[currentQuestion.id]"
+                                         rows="6"
+                                         placeholder="请输入答案..."
+                                         class="exam-textarea"
+                                         @copy.prevent="handleCopyAttempt"
+                                         @cut.prevent="handleCutAttempt"
+                                         @paste.prevent="handlePasteAttempt"
+                                         @contextmenu.prevent="handleContextMenuAttempt"
+                                         @selectstart.prevent
+                                     ></textarea>
                                  </div>
                              </div>
                          </div>
@@ -461,7 +479,17 @@
                                           </el-radio-group>
                                       </div>
                                       <div v-else>
-                                          <el-input type="textarea" v-model="examAnswers[q.id]" :rows="3" placeholder="请输入答案" />
+                                          <textarea 
+                                              v-model="examAnswers[q.id]"
+                                              rows="3"
+                                              placeholder="请输入答案"
+                                              class="exam-textarea"
+                                              @copy.prevent="handleCopyAttempt"
+                                              @cut.prevent="handleCutAttempt"
+                                              @paste.prevent="handlePasteAttempt"
+                                              @contextmenu.prevent="handleContextMenuAttempt"
+                                              @selectstart.prevent
+                                          ></textarea>
                                       </div>
                                  </div>
                              </div>
@@ -499,8 +527,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, inject, watch } from 'vue'
-import { VideoCamera, VideoPlay, User, Check } from '@element-plus/icons-vue'
+import { ref, reactive, computed, watch, nextTick, inject, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getExams, getExamPaper, submitExam, getUserProfile } from '@/api/student'
 import { filterValidExams } from '@/utils/dataValidator'
@@ -846,11 +873,14 @@ const handleTakeExam = async (exam, skipCheck = false) => {
         examTakingVisible.value = true
         
         startTimer()
-        startAntiCheat()
-        // Initialize exam camera (wait for DOM)
-        setTimeout(() => {
-            initExamCamera()
-        }, 500)
+        
+        // Wait for DOM to be ready before starting anti-cheat
+        nextTick(() => {
+            setTimeout(() => {
+                startAntiCheat()
+                initExamCamera()
+            }, 300)
+        })
         // enterFullScreen() // Removed as requested
     } catch (error) {
         console.error('获取考试试卷失败:', error)
@@ -907,11 +937,15 @@ const startAntiCheat = () => {
     faceCheckInterval = setInterval(() => {
         captureAndVerifyFace()
     }, 5000)
+    
+    console.log('[AntiCopyPaste] Anti-cheat started - Vue event handlers are active')
 }
 
 const stopAntiCheat = () => {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
     if (faceCheckInterval) clearInterval(faceCheckInterval)
+    
+    console.log('[AntiCopyPaste] Anti-cheat stopped')
 }
 
 // Backend Interface for Face Verification
@@ -946,6 +980,58 @@ const handleVisibilityChange = () => {
     }
 }
 
+// 防复制粘贴功能 - 使用Vue事件处理
+const handleCopyAttempt = () => {
+    console.log('[AntiCopyPaste] Copy attempt detected')
+    ElMessage.warning('考试期间禁止复制内容')
+}
+
+const handleCutAttempt = () => {
+    console.log('[AntiCopyPaste] Cut attempt detected')
+    ElMessage.warning('考试期间禁止剪切内容')
+}
+
+const handlePasteAttempt = () => {
+    console.log('[AntiCopyPaste] Paste attempt detected')
+    ElMessage.warning('考试期间禁止粘贴内容')
+}
+
+const handleContextMenuAttempt = () => {
+    console.log('[AntiCopyPaste] Context menu attempt detected')
+    ElMessage.warning('考试期间禁止使用右键菜单')
+}
+
+const handleKeyDown = (e) => {
+    // 阻止Ctrl+A/Cmd+A全选
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        console.log('[AntiCopyPaste] Select all attempt detected')
+        ElMessage.warning('考试期间禁止全选内容')
+        return
+    }
+    // 阻止Ctrl+C/Cmd+C复制
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        e.preventDefault()
+        console.log('[AntiCopyPaste] Ctrl+C detected')
+        ElMessage.warning('考试期间禁止复制内容')
+        return
+    }
+    // 阻止Ctrl+X/Cmd+X剪切
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+        e.preventDefault()
+        console.log('[AntiCopyPaste] Ctrl+X detected')
+        ElMessage.warning('考试期间禁止剪切内容')
+        return
+    }
+    // 阻止Ctrl+V/Cmd+V粘贴
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault()
+        console.log('[AntiCopyPaste] Ctrl+V detected')
+        ElMessage.warning('考试期间禁止粘贴内容')
+        return
+    }
+}
+
 const toggleFullPaperMode = () => {
     isFullPaperMode.value = !isFullPaperMode.value
     if(isFullPaperMode.value) {
@@ -956,6 +1042,143 @@ const toggleFullPaperMode = () => {
         }, 100)
     }
 }
+
+// Watch examTakingVisible to enable/disable anti-copy-paste
+watch(examTakingVisible, (newVal) => {
+    if (newVal) {
+        // Exam started - enable protection
+        nextTick(() => {
+            setTimeout(() => {
+                enableGlobalAntiCopyPaste()
+            }, 500)
+        })
+    } else {
+        // Exam ended - disable protection
+        disableGlobalAntiCopyPaste()
+    }
+})
+
+// Global anti-copy-paste handlers
+const globalPreventCopy = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.stopImmediatePropagation()
+    console.log('[AntiCopyPaste] Global copy blocked')
+    ElMessage.warning('考试期间禁止复制内容')
+    return false
+}
+
+const globalPreventCut = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.stopImmediatePropagation()
+    console.log('[AntiCopyPaste] Global cut blocked')
+    ElMessage.warning('考试期间禁止剪切内容')
+    return false
+}
+
+const globalPreventPaste = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.stopImmediatePropagation()
+    console.log('[AntiCopyPaste] Global paste blocked')
+    ElMessage.warning('考试期间禁止粘贴内容')
+    return false
+}
+
+const globalPreventContextMenu = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.stopImmediatePropagation()
+    console.log('[AntiCopyPaste] Global context menu blocked')
+    ElMessage.warning('考试期间禁止使用右键菜单')
+    return false
+}
+
+const globalPreventKeyboard = (e) => {
+    const key = e.key.toLowerCase()
+    const ctrl = e.ctrlKey || e.metaKey
+    
+    if (ctrl && (key === 'c' || key === 'x' || key === 'v' || key === 'a')) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        console.log(`[AntiCopyPaste] Keyboard shortcut blocked: Ctrl+${key.toUpperCase()}`)
+        
+        if (key === 'c') ElMessage.warning('考试期间禁止复制内容')
+        else if (key === 'x') ElMessage.warning('考试期间禁止剪切内容')
+        else if (key === 'v') ElMessage.warning('考试期间禁止粘贴内容')
+        else if (key === 'a') ElMessage.warning('考试期间禁止全选内容')
+        
+        return false
+    }
+}
+
+const enableGlobalAntiCopyPaste = () => {
+    console.log('[AntiCopyPaste] Enabling global protection...')
+    
+    // Add event listeners to document with capture phase
+    document.addEventListener('copy', globalPreventCopy, true)
+    document.addEventListener('cut', globalPreventCut, true)
+    document.addEventListener('paste', globalPreventPaste, true)
+    document.addEventListener('contextmenu', globalPreventContextMenu, true)
+    document.addEventListener('keydown', globalPreventKeyboard, true)
+    
+    // Also add to window as backup
+    window.addEventListener('copy', globalPreventCopy, true)
+    window.addEventListener('cut', globalPreventCut, true)
+    window.addEventListener('paste', globalPreventPaste, true)
+    
+    // Disable text selection via CSS
+    document.body.style.userSelect = 'none'
+    document.body.style.webkitUserSelect = 'none'
+    document.body.style.mozUserSelect = 'none'
+    document.body.style.msUserSelect = 'none'
+    
+    // Find and protect all textareas and inputs
+    setTimeout(() => {
+        const textareas = document.querySelectorAll('textarea, input[type="text"]')
+        textareas.forEach(el => {
+            el.addEventListener('copy', globalPreventCopy, true)
+            el.addEventListener('cut', globalPreventCut, true)
+            el.addEventListener('paste', globalPreventPaste, true)
+            el.addEventListener('contextmenu', globalPreventContextMenu, true)
+            el.style.userSelect = 'none'
+            console.log('[AntiCopyPaste] Protected element:', el.tagName)
+        })
+    }, 100)
+    
+    console.log('[AntiCopyPaste] Global protection enabled')
+}
+
+const disableGlobalAntiCopyPaste = () => {
+    console.log('[AntiCopyPaste] Disabling global protection...')
+    
+    // Remove event listeners from document
+    document.removeEventListener('copy', globalPreventCopy, true)
+    document.removeEventListener('cut', globalPreventCut, true)
+    document.removeEventListener('paste', globalPreventPaste, true)
+    document.removeEventListener('contextmenu', globalPreventContextMenu, true)
+    document.removeEventListener('keydown', globalPreventKeyboard, true)
+    
+    // Remove from window
+    window.removeEventListener('copy', globalPreventCopy, true)
+    window.removeEventListener('cut', globalPreventCut, true)
+    window.removeEventListener('paste', globalPreventPaste, true)
+    
+    // Restore text selection
+    document.body.style.userSelect = ''
+    document.body.style.webkitUserSelect = ''
+    document.body.style.mozUserSelect = ''
+    document.body.style.msUserSelect = ''
+    
+    console.log('[AntiCopyPaste] Global protection disabled')
+}
+
+// Cleanup on component unmount
+onUnmounted(() => {
+    disableGlobalAntiCopyPaste()
+})
 
 const jumpToQuestion = (idx) => {
     currentQuestionIndex.value = idx
@@ -1270,6 +1493,11 @@ onUnmounted(() => {
 
 .exam-content-area {
     flex: 1; overflow-y: auto; padding: 30px; scroll-behavior: smooth;
+    /* 防复制粘贴CSS样式 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .exam-sidebar-right {
@@ -1326,5 +1554,33 @@ onUnmounted(() => {
     0% { opacity: 1; }
     50% { opacity: 0.8; }
     100% { opacity: 1; }
+}
+
+/* Native textarea styles for anti-copy-paste */
+.exam-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #606266;
+    background-color: #fff;
+    resize: vertical;
+    transition: border-color 0.2s;
+    font-family: inherit;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.exam-textarea:focus {
+    outline: none;
+    border-color: #409eff;
+}
+
+.exam-textarea::placeholder {
+    color: #c0c4cc;
 }
 </style>
