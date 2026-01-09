@@ -9,8 +9,9 @@ public interface SubjectMapper {
   List<Subject> selectByTeacherId(@Param("teacherId") Long teacherId);
   Subject selectById(@Param("id") Long id);
   Subject selectByCode(@Param("code") String code);
+  int countByNameAndCreatorId(@Param("name") String name, @Param("creatorId") Long creatorId);
+  int countByNameAndTeacherId(@Param("name") String name, @Param("teacherId") Long teacherId);
   int insert(Subject s);
   int updateById(Subject s);
   int deleteById(@Param("id") Long id);
 }
-

@@ -51,6 +51,36 @@
     LIMIT #{offset}, #{limit}
   </select>
 
+  <select id="countByPaperSubjects" resultType="long">
+    SELECT COUNT(1)
+    FROM biz_exam e
+    JOIN biz_paper p ON p.id = e.paper_id
+    <where>
+      <if test="subjects != null and subjects.size > 0">
+        AND p.subject IN
+        <foreach collection="subjects" item="s" open="(" separator="," close=")">
+          #{s}
+        </foreach>
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPageByPaperSubjects" resultMap="ExamMap">
+    SELECT e.*
+    FROM biz_exam e
+    JOIN biz_paper p ON p.id = e.paper_id
+    <where>
+      <if test="subjects != null and subjects.size > 0">
+        AND p.subject IN
+        <foreach collection="subjects" item="s" open="(" separator="," close=")">
+          #{s}
+        </foreach>
+      </if>
+    </where>
+    ORDER BY e.start_time DESC, e.id DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
   <select id="selectPage" resultMap="ExamMap">
     SELECT * FROM biz_exam
     <where>
