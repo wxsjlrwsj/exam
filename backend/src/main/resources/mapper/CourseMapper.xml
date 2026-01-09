@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.teacher.course.CourseMapper">
+
+  <resultMap id="CourseMap" type="org.example.chaoxingsystem.teacher.course.Course">
+    <id property="id" column="id"/>
+    <result property="name" column="name"/>
+    <result property="description" column="description"/>
+    <result property="creatorId" column="creator_id"/>
+    <result property="createTime" column="create_time"/>
+  </resultMap>
+
+  <select id="selectByTeacher" resultType="map">
+    SELECT 
+      s.id, 
+      s.name, 
+      s.description, 
+      s.creator_user_id AS creator_id,
+      s.create_time,
+      CASE WHEN s.creator_user_id = #{teacherId} THEN 1 ELSE 0 END AS isCreator,
+      (SELECT COUNT(1) FROM biz_teaching_class tc WHERE tc.subject_id = s.id) AS classCount,
+      (SELECT COUNT(1) FROM biz_paper p WHERE p.subject COLLATE utf8mb4_unicode_ci = s.name COLLATE utf8mb4_unicode_ci) AS paperCount,
+      (SELECT COUNT(1) 
+         FROM biz_exam e 
+         JOIN biz_paper p2 ON p2.id = e.paper_id 
+        WHERE p2.subject COLLATE utf8mb4_unicode_ci = s.name COLLATE utf8mb4_unicode_ci) AS examCount
+    FROM biz_subject s
+    WHERE EXISTS (SELECT 1 FROM biz_teacher_subject ts WHERE ts.subject_id = s.id AND ts.teacher_id = #{teacherId})
+    ORDER BY s.create_time DESC, s.id DESC
+  </select>
+
+  <select id="selectById" resultMap="CourseMap">
+    SELECT s.id, s.name, s.description, s.creator_user_id AS creator_id, s.create_time
+    FROM biz_subject s WHERE s.id = #{id}
+  </select>
+
+  <insert id="insert" parameterType="org.example.chaoxingsystem.teacher.course.Course" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_subject (name, description, creator_user_id)
+    VALUES (#{name}, #{description}, #{creatorId})
+  </insert>
+
+  <update id="updateById" parameterType="org.example.chaoxingsystem.teacher.course.Course">
+    UPDATE biz_subject
+    SET name = #{name},
+        description = #{description},
+        creator_user_id = #{creatorId}
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM biz_subject WHERE id = #{id}
+  </delete>
+
+  <select id="selectCourseTeachers" resultType="map">
+    SELECT u.id AS id, u.username, u.real_name AS name
+    FROM biz_teacher_subject ts
+    JOIN users u ON u.id = ts.teacher_id
+    JOIN biz_subject s ON s.id = ts.subject_id
+    WHERE ts.subject_id = #{courseId}
+    ORDER BY 
+      CASE WHEN u.id = s.creator_user_id THEN 0 ELSE 1 END,
+      u.id ASC
+  </select>
+
+  <insert id="insertCourseTeacher">
+    INSERT IGNORE INTO biz_teacher_subject (subject_id, teacher_id)
+    VALUES (#{courseId}, #{teacherId})
+  </insert>
+
+  <delete id="deleteCourseTeacher">
+    DELETE FROM biz_teacher_subject
+    WHERE subject_id = #{courseId} AND teacher_id = #{teacherId}
+  </delete>
+
+  <delete id="deleteCourseTeachersByCourse">
+    DELETE FROM biz_teacher_subject WHERE subject_id = #{courseId}
+  </delete>
+</mapper>

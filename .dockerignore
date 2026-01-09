@@ -1,0 +1,10 @@
+.git
+.idea
+**/.idea
+**/.mvn-dist
+**/target
+**/node_modules
+**/dist
+**/mysql-data
+**/*.log
+question_import_template*.xlsx

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.admin.org.ClassTeacherMapper">
+
+  <select id="countByClassAndTeacher" resultType="long">
+    SELECT COUNT(1) FROM biz_class_teacher
+    WHERE class_id = #{classId} AND teacher_id = #{teacherId}
+  </select>
+
+  <insert id="insertMapping">
+    INSERT IGNORE INTO biz_class_teacher (class_id, teacher_id)
+    VALUES (#{classId}, #{teacherId})
+  </insert>
+
+  <delete id="deleteMapping">
+    DELETE FROM biz_class_teacher 
+    WHERE class_id = #{classId} AND teacher_id = #{teacherId}
+  </delete>
+
+  <delete id="deleteByClassIdAndTeacherIds">
+    DELETE FROM biz_class_teacher 
+    WHERE class_id = #{classId} AND teacher_id IN
+    <foreach collection="teacherIds" item="id" open="(" separator="," close=")">
+      #{id}
+    </foreach>
+  </delete>
+
+</mapper>

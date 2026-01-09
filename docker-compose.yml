@@ -1,0 +1,83 @@
+name: chaoxing-system
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: chaoxing-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: chaoxing
+      TZ: Asia/Shanghai
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./backend/complete-init.sql:/docker-entrypoint-initdb.d/00-complete-init.sql:ro
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/src/main/resources/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./backend/db_migration_teacher_college.sql:/docker-entrypoint-initdb.d/03-teacher-college-migration.sql:ro
+      - ./backend/db_migration_teacher.sql:/docker-entrypoint-initdb.d/03-teacher-migration.sql:ro
+      - ./backend/db_migration_error_book.sql:/docker-entrypoint-initdb.d/04-error-book-migration.sql:ro
+      - ./backend/db_patches/20251231_add_biz_teacher_subject.sql:/docker-entrypoint-initdb.d/05-teacher-subject-patch.sql:ro
+      - ./backend/db_patches/20251231_replace_course_with_subject.sql:/docker-entrypoint-initdb.d/06-subject-class-patch.sql:ro
+      - ./backend/db_patches/20251231_add_face_photo_to_biz_student.sql:/docker-entrypoint-initdb.d/07-face-photo-patch.sql:ro
+      - ./backend/db_patches/20251231_hide_tch_audit_for_admin.sql:/docker-entrypoint-initdb.d/08-hide-tch-audit.sql:ro
+      - ./backend/db_patches/20251231_separate_exam_practice_questions.sql:/docker-entrypoint-initdb.d/09-exam-bank-separation.sql:ro
+      - ./backend/db_patches/20251231_seed_exam_questions.sql:/docker-entrypoint-initdb.d/10-exam-bank-seed.sql:ro
+      - ./backend/db_patches/20251231_seed_exam_questions_compiler_database.sql:/docker-entrypoint-initdb.d/11-exam-bank-seed-compiler-db.sql:ro
+      - ./backend/db_patches/20260103_add_creator_user_id_to_biz_subject.sql:/docker-entrypoint-initdb.d/12-subject-creator-user.sql:ro
+      - ./backend/db_patches/20260103_add_assign_time_to_teacher_subject_map.sql:/docker-entrypoint-initdb.d/13-ts-assign-time.sql:ro
+      - ./backend/db_patches/20260103_seed_teachers_4_5.sql:/docker-entrypoint-initdb.d/14-seed-teacher4-5.sql:ro
+      - ./backend/db_patches/20260103_add_academic_year_semester_to_teaching_class.sql:/docker-entrypoint-initdb.d/15-teaching-class-year-semester.sql:ro
+      - ./backend/db_patches/20260103_migrate_class_student_to_biz_student.sql:/docker-entrypoint-initdb.d/16-migrate-class-student.sql:ro
+      - ./backend/db_patches/20260105_fix_question_audit_schema.sql:/docker-entrypoint-initdb.d/17-fix-question-audit-schema.sql:ro
+      - ./backend/db_patches/20260106_create_biz_teacher_subject.sql:/docker-entrypoint-initdb.d/18-create-teacher-subject.sql:ro
+      - ./backend/db_patches/20260106_delete_finished_exams.sql:/docker-entrypoint-initdb.d/19-delete-finished-exams.sql:ro
+      - ./backend/db_patches/20260106_delete_exam_7.sql:/docker-entrypoint-initdb.d/20-delete-exam7.sql:ro
+      - ./backend/db_patches/20260106_delete_used_papers.sql:/docker-entrypoint-initdb.d/21-delete-used-papers.sql:ro
+      - ./backend/db_patches/20260106_fix_exam_student_assignment.sql:/docker-entrypoint-initdb.d/22-fix-exam-student-assignment.sql:ro
+      - ./backend/db_patches/20260106_add_exam_camera_snapshot.sql:/docker-entrypoint-initdb.d/23-exam-camera-snapshot.sql:ro
+      - ./backend/db_patches/20260109_seed_default_my_error_collection.sql:/docker-entrypoint-initdb.d/24-seed-default-error-collection.sql:ro
+
+    command: ["--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "3307:3306"
+
+  backend:
+    build: ./backend
+    container_name: chaoxing-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - JAVA_OPTS=-Duser.timezone=Asia/Shanghai
+      - DB_URL=jdbc:mysql://mysql:3306/chaoxing?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8
+      - DB_DRIVER=com.mysql.cj.jdbc.Driver
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - SPRING_SQL_INIT_MODE=never
+      - SECURITY_TOKEN_SECRET=change-me-dev
+      - SECURITY_CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173
+      - SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME:-}
+      - SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD:-}
+      - BAIDU_FACE_API_KEY=${BAIDU_FACE_API_KEY:-}
+      - BAIDU_FACE_SECRET_KEY=${BAIDU_FACE_SECRET_KEY:-}
+      - BAIDU_FACE_THRESHOLD=${BAIDU_FACE_THRESHOLD:-80.0}
+      - AI_DEEPSEEK_API_KEY=${AI_DEEPSEEK_API_KEY:-}
+    ports:
+      - "8083:8083"
+
+  frontend:
+    build: ./frontend
+    container_name: chaoxing-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:8080"
+
+ 

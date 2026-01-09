@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.teacher.exam.ExamStudentMapper">
+
+  <resultMap id="ExamStudentMap" type="org.example.chaoxingsystem.teacher.exam.ExamStudent">
+    <id property="id" column="id"/>
+    <result property="examId" column="exam_id"/>
+    <result property="userId" column="user_id"/>
+    <result property="status" column="status"/>
+    <result property="addTime" column="add_time"/>
+  </resultMap>
+
+  <select id="count" resultType="long">
+    SELECT COUNT(1) 
+    FROM biz_exam_student es
+    JOIN users u ON u.id = es.user_id
+    LEFT JOIN biz_student s ON s.user_id = u.id
+    WHERE es.exam_id = #{examId}
+    <if test="keyword != null and keyword != ''">
+      AND (
+        u.username LIKE CONCAT('%', #{keyword}, '%') OR 
+        u.real_name LIKE CONCAT('%', #{keyword}, '%') OR
+        s.student_no LIKE CONCAT('%', #{keyword}, '%') OR
+        s.real_name LIKE CONCAT('%', #{keyword}, '%')
+      )
+    </if>
+  </select>
+
+  <select id="selectPage" resultType="java.util.Map">
+    SELECT 
+      es.id AS id,
+      u.id AS userId,
+      COALESCE(s.student_no, u.username) AS studentNo,
+      COALESCE(s.real_name, u.real_name) AS name,
+      COALESCE(tc.name, '未分班') AS className,
+      COALESCE(tc.id, 0) AS classId,
+      es.status AS status,
+      es.add_time AS addTime,
+      er.submit_time AS submitTime
+    FROM biz_exam_student es
+    JOIN users u ON u.id = es.user_id
+    LEFT JOIN biz_student s ON s.user_id = u.id
+    LEFT JOIN biz_teaching_class_student tcs ON tcs.user_id = u.id
+    LEFT JOIN biz_teaching_class tc ON tc.id = tcs.class_id
+    LEFT JOIN biz_exam_record er ON er.exam_id = es.exam_id AND er.student_id = es.user_id
+    WHERE es.exam_id = #{examId}
+    <if test="keyword != null and keyword != ''">
+      AND (
+        u.username LIKE CONCAT('%', #{keyword}, '%') OR 
+        u.real_name LIKE CONCAT('%', #{keyword}, '%') OR
+        s.student_no LIKE CONCAT('%', #{keyword}, '%') OR
+        s.real_name LIKE CONCAT('%', #{keyword}, '%')
+      )
+    </if>
+    ORDER BY u.username
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <insert id="insert" parameterType="org.example.chaoxingsystem.teacher.exam.ExamStudent" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_exam_student (exam_id, user_id, status)
+    VALUES (#{examId}, #{userId}, #{status})
+  </insert>
+
+  <insert id="insertBatch">
+    INSERT INTO biz_exam_student (exam_id, user_id, status)
+    VALUES
+    <foreach collection="userIds" item="uid" separator=",">
+      (#{examId}, #{uid}, 'normal')
+    </foreach>
+    ON DUPLICATE KEY UPDATE status = 'normal'
+  </insert>
+
+  <insert id="insertByClass">
+    INSERT INTO biz_exam_student (exam_id, user_id, status)
+    SELECT #{examId}, tcs.user_id, 'normal'
+    FROM biz_teaching_class_student tcs
+    WHERE tcs.class_id IN
+    <foreach collection="classIds" item="cid" open="(" separator="," close=")">
+      #{cid}
+    </foreach>
+    ON DUPLICATE KEY UPDATE status = 'normal'
+  </insert>
+
+  <delete id="deleteByExamAndUser">
+    DELETE FROM biz_exam_student 
+    WHERE exam_id = #{examId} AND user_id = #{userId}
+  </delete>
+
+  <delete id="deleteBatch">
+    DELETE FROM biz_exam_student 
+    WHERE exam_id = #{examId} 
+    AND user_id IN
+    <foreach collection="userIds" item="uid" open="(" separator="," close=")">
+      #{uid}
+    </foreach>
+  </delete>
+
+  <select id="selectByExamAndUser" resultMap="ExamStudentMap">
+    SELECT * FROM biz_exam_student 
+    WHERE exam_id = #{examId} AND user_id = #{userId}
+  </select>
+
+</mapper>

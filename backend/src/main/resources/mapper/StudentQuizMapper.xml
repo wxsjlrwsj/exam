@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.student.quiz.StudentQuizMapper">
+
+  <resultMap id="QuizMap" type="org.example.chaoxingsystem.student.quiz.StudentQuiz">
+    <id property="id" column="id"/>
+    <result property="studentId" column="student_id"/>
+    <result property="collectionId" column="collection_id"/>
+    <result property="name" column="name"/>
+    <result property="questionCount" column="question_count"/>
+    <result property="score" column="score"/>
+    <result property="totalScore" column="total_score"/>
+    <result property="duration" column="duration"/>
+    <result property="startTime" column="start_time"/>
+    <result property="submitTime" column="submit_time"/>
+    <result property="status" column="status"/>
+  </resultMap>
+
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_student_quiz (student_id, collection_id, name, question_count, status)
+    VALUES (#{studentId}, #{collectionId}, #{name}, #{questionCount}, 0)
+  </insert>
+
+  <select id="selectById" resultMap="QuizMap">
+    SELECT * FROM biz_student_quiz WHERE id = #{id}
+  </select>
+
+  <update id="updateScore">
+    UPDATE biz_student_quiz
+    SET score = #{score}, total_score = #{totalScore}, duration = #{duration}
+    WHERE id = #{id}
+  </update>
+
+  <update id="markCompleted">
+    UPDATE biz_student_quiz
+    SET status = 1, submit_time = CURRENT_TIMESTAMP
+    WHERE id = #{id}
+  </update>
+
+  <insert id="insertAnswer">
+    INSERT INTO biz_quiz_answer (quiz_id, question_id, student_answer, is_correct, score)
+    VALUES (#{quizId}, #{questionId}, #{studentAnswer}, #{isCorrect}, #{score})
+  </insert>
+
+  <select id="selectAnswers" resultType="map">
+    SELECT qa.question_id as questionId, qa.student_answer as studentAnswer,
+           qa.is_correct as isCorrect, qa.score,
+           q.type, q.content, q.options, q.answer, q.analysis, q.subject
+    FROM biz_quiz_answer qa
+    LEFT JOIN biz_question q ON qa.question_id = q.id
+    WHERE qa.quiz_id = #{quizId}
+    ORDER BY qa.id
+  </select>
+
+</mapper>
+

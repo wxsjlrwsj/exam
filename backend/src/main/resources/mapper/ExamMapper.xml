@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.teacher.exam.ExamMapper">
+
+  <resultMap id="ExamMap" type="org.example.chaoxingsystem.teacher.exam.Exam">
+    <id property="id" column="id"/>
+    <result property="name" column="name"/>
+    <result property="paperId" column="paper_id"/>
+    <result property="startTime" column="start_time"/>
+    <result property="endTime" column="end_time"/>
+    <result property="duration" column="duration"/>
+    <result property="totalScore" column="total_score"/>
+    <result property="passScore" column="pass_score"/>
+    <result property="status" column="status"/>
+    <result property="creatorId" column="creator_id"/>
+    <result property="createTime" column="create_time"/>
+  </resultMap>
+
+  <select id="count" resultType="long">
+    SELECT COUNT(*) FROM biz_exam
+    <where>
+      <if test="status != null">
+        AND status = #{status}
+      </if>
+    </where>
+  </select>
+
+  <select id="countByPaperSubject" resultType="long">
+    SELECT COUNT(1)
+    FROM biz_exam e
+    JOIN biz_paper p ON p.id = e.paper_id
+    <where>
+      <if test="subject != null and subject != ''">
+        AND p.subject = #{subject}
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPageByPaperSubject" resultMap="ExamMap">
+    SELECT e.*
+    FROM biz_exam e
+    JOIN biz_paper p ON p.id = e.paper_id
+    <where>
+      <if test="subject != null and subject != ''">
+        AND p.subject = #{subject}
+      </if>
+    </where>
+    ORDER BY e.start_time DESC, e.id DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
+  <select id="selectPage" resultMap="ExamMap">
+    SELECT * FROM biz_exam
+    <where>
+      <if test="status != null">
+        AND status = #{status}
+      </if>
+    </where>
+    ORDER BY create_time DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
+  <select id="selectById" resultMap="ExamMap">
+    SELECT * FROM biz_exam WHERE id = #{id}
+  </select>
+
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_exam (name, paper_id, start_time, end_time, duration, total_score, pass_score, status, creator_id)
+    VALUES (#{name}, #{paperId}, #{startTime}, #{endTime}, #{duration}, #{totalScore}, #{passScore}, #{status}, #{creatorId})
+  </insert>
+
+  <update id="updateById">
+    UPDATE biz_exam
+    SET name = #{name}, paper_id = #{paperId}, start_time = #{startTime},
+        end_time = #{endTime}, duration = #{duration}, status = #{status}
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM biz_exam WHERE id = #{id}
+  </delete>
+
+  <!-- 考试统计相关 -->
+  <select id="countExamStudents" resultType="long">
+    SELECT COUNT(DISTINCT er.student_id)
+    FROM biz_exam_record er
+    WHERE er.exam_id = #{examId}
+  </select>
+
+  <select id="countSubmittedStudents" resultType="long">
+    SELECT COUNT(DISTINCT er.student_id)
+    FROM biz_exam_record er
+    WHERE er.exam_id = #{examId}
+    AND er.status >= 1
+  </select>
+
+  <select id="countGradedStudents" resultType="long">
+    SELECT COUNT(DISTINCT er.student_id)
+    FROM biz_exam_record er
+    WHERE er.exam_id = #{examId}
+    AND er.status >= 2
+    AND er.score IS NOT NULL
+  </select>
+
+  <!-- 监考相关 -->
+  <select id="selectMonitorStudents" resultType="map">
+    SELECT
+      es.user_id AS id,
+      u.username AS studentId,
+      COALESCE(bs.real_name, u.real_name, u.username) AS name,
+      bs.student_no AS studentNo,
+      er.start_time AS startTime,
+      er.submit_time AS submitTime,
+      CASE
+        WHEN er.id IS NULL THEN 'not_started'
+        WHEN er.status = 1 AND er.submit_time IS NULL THEN 'online'
+        WHEN er.submit_time IS NOT NULL THEN 'submitted'
+        ELSE 'unknown'
+      END AS status,
+      COALESCE(er.switch_count, 0) AS switchCount,
+      COALESCE(er.progress, 0) AS progress,
+      er.last_active_time AS lastActiveTime,
+      (
+        SELECT COUNT(1)
+        FROM biz_monitor_warning w
+        WHERE w.exam_id = es.exam_id
+          AND w.student_id = es.user_id
+      ) AS warningCount,
+      (
+        SELECT s.image_data
+        FROM biz_exam_camera_snapshot s
+        WHERE s.exam_id = es.exam_id AND s.student_id = es.user_id
+        ORDER BY s.capture_time DESC
+        LIMIT 1
+      ) AS lastSnapshotData,
+      (
+        SELECT s.content_type
+        FROM biz_exam_camera_snapshot s
+        WHERE s.exam_id = es.exam_id AND s.student_id = es.user_id
+        ORDER BY s.capture_time DESC
+        LIMIT 1
+      ) AS lastSnapshotContentType,
+      (
+        SELECT s.capture_time
+        FROM biz_exam_camera_snapshot s
+        WHERE s.exam_id = es.exam_id AND s.student_id = es.user_id
+        ORDER BY s.capture_time DESC
+        LIMIT 1
+      ) AS lastSnapshotTime
+    FROM biz_exam_student es
+    LEFT JOIN biz_exam_record er ON er.exam_id = es.exam_id AND er.student_id = es.user_id
+    LEFT JOIN users u ON es.user_id = u.id
+    LEFT JOIN biz_student bs ON bs.user_id = es.user_id
+    WHERE es.exam_id = #{examId}
+    ORDER BY COALESCE(er.start_time, '1970-01-01 00:00:00') DESC, es.user_id DESC
+  </select>
+
+  <insert id="insertWarning">
+    INSERT INTO biz_monitor_warning
+    (exam_id, student_id, message, type, teacher_id)
+    VALUES
+    (#{examId}, #{studentId}, #{message}, #{type}, #{teacherId})
+  </insert>
+
+  <update id="forceSubmitExamRecord">
+    UPDATE biz_exam_record
+    SET status = 1, submit_time = NOW()
+    WHERE exam_id = #{examId} AND student_id = #{studentId}
+    AND submit_time IS NULL
+  </update>
+  
+  <update id="createCameraSnapshotTableIfNotExists">
+    CREATE TABLE IF NOT EXISTS biz_exam_camera_snapshot (
+      id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      exam_id BIGINT NOT NULL,
+      student_id BIGINT NOT NULL,
+      image_data LONGBLOB NOT NULL,
+      content_type VARCHAR(50) NOT NULL,
+      capture_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_exam_student_time (exam_id, student_id, capture_time)
+    )
+  </update>
+
+  <select id="countByStudent" resultType="long">
+    SELECT COUNT(1) FROM biz_exam e
+    JOIN biz_exam_student es ON es.exam_id = e.id
+    <where>
+      es.user_id = #{studentId}
+      <if test="status != null">AND e.status = #{status}</if>
+    </where>
+  </select>
+
+  <select id="selectPageByStudent" resultMap="ExamMap">
+    SELECT e.* FROM biz_exam e
+    JOIN biz_exam_student es ON es.exam_id = e.id
+    <where>
+      es.user_id = #{studentId}
+      <if test="status != null">AND e.status = #{status}</if>
+    </where>
+    ORDER BY e.start_time DESC, e.id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="selectPageByStudentWithSubject" resultType="java.util.Map">
+    SELECT 
+      e.id AS id,
+      e.name AS name,
+      e.paper_id AS paperId,
+      e.start_time AS startTime,
+      e.end_time AS endTime,
+      e.duration AS duration,
+      <![CDATA[
+      CASE
+        WHEN NOW() < e.start_time THEN 'not_started'
+        WHEN e.end_time IS NOT NULL AND NOW() > e.end_time THEN 'completed'
+        WHEN e.end_time IS NULL AND e.duration IS NOT NULL AND NOW() > TIMESTAMPADD(MINUTE, e.duration, e.start_time) THEN 'completed'
+        ELSE 'in_progress'
+      END
+      ]]> AS status,
+      e.creator_id AS creatorId,
+      e.create_time AS createTime,
+      p.subject AS subject,
+      <![CDATA[
+      CASE 
+        WHEN MONTH(e.start_time) BETWEEN 3 AND 8 THEN CONCAT(YEAR(e.start_time), '_spring')
+        ELSE CONCAT(YEAR(e.start_time), '_autumn')
+      END
+      ]]> AS semester,
+      er.status AS recordStatus,
+      er.score AS score,
+      TIMESTAMPDIFF(SECOND, er.start_time, er.submit_time) AS timeTaken
+    FROM biz_exam e
+    JOIN biz_exam_student es ON es.exam_id = e.id
+    LEFT JOIN biz_paper p ON p.id = e.paper_id
+    LEFT JOIN biz_exam_record er ON er.exam_id = e.id AND er.student_id = es.user_id
+    <where>
+      es.user_id = #{studentId}
+      <if test="status != null">
+        <choose>
+          <when test="status == 0">
+            <![CDATA[
+            AND NOW() < e.start_time
+            ]]>
+          </when>
+          <when test="status == 1">
+            <![CDATA[
+            AND e.start_time <= NOW()
+            AND (
+              (e.end_time IS NOT NULL AND e.end_time >= NOW())
+              OR (e.end_time IS NULL AND e.duration IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duration, e.start_time) >= NOW())
+              OR (e.end_time IS NULL AND e.duration IS NULL AND e.start_time <= NOW())
+            )
+            ]]>
+          </when>
+          <otherwise>
+            <![CDATA[
+            AND (
+              (e.end_time IS NOT NULL AND e.end_time < NOW())
+              OR (e.end_time IS NULL AND e.duration IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duration, e.start_time) < NOW())
+            )
+            ]]>
+          </otherwise>
+        </choose>
+      </if>
+      <if test="subject != null and subject != ''">AND p.subject = #{subject}</if>
+      <if test="semester != null and semester != ''">
+        <![CDATA[
+        AND (
+          CASE 
+            WHEN MONTH(e.start_time) BETWEEN 3 AND 8 THEN CONCAT(YEAR(e.start_time), '_spring')
+            ELSE CONCAT(YEAR(e.start_time), '_autumn')
+          END = #{semester}
+        )
+        ]]>
+      </if>
+    </where>
+    ORDER BY e.start_time DESC, e.id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+  
+  <select id="countByStudentWithFilters" resultType="long">
+    SELECT COUNT(1)
+    FROM biz_exam e
+    JOIN biz_exam_student es ON es.exam_id = e.id
+    LEFT JOIN biz_paper p ON p.id = e.paper_id
+    <where>
+      es.user_id = #{studentId}
+      <if test="status != null">
+        <choose>
+          <when test="status == 0">
+            <![CDATA[
+            AND NOW() < e.start_time
+            ]]>
+          </when>
+          <when test="status == 1">
+            <![CDATA[
+            AND e.start_time <= NOW()
+            AND (
+              (e.end_time IS NOT NULL AND e.end_time >= NOW())
+              OR (e.end_time IS NULL AND e.duration IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duration, e.start_time) >= NOW())
+              OR (e.end_time IS NULL AND e.duration IS NULL AND e.start_time <= NOW())
+            )
+            ]]>
+          </when>
+          <otherwise>
+            <![CDATA[
+            AND (
+              (e.end_time IS NOT NULL AND e.end_time < NOW())
+              OR (e.end_time IS NULL AND e.duration IS NOT NULL AND TIMESTAMPADD(MINUTE, e.duration, e.start_time) < NOW())
+            )
+            ]]>
+          </otherwise>
+        </choose>
+      </if>
+      <if test="subject != null and subject != ''">AND p.subject = #{subject}</if>
+      <if test="semester != null and semester != ''">
+        <![CDATA[
+        AND (
+          CASE 
+            WHEN MONTH(e.start_time) BETWEEN 3 AND 8 THEN CONCAT(YEAR(e.start_time), '_spring')
+            ELSE CONCAT(YEAR(e.start_time), '_autumn')
+          END = #{semester}
+        )
+        ]]>
+      </if>
+    </where>
+  </select>
+
+  <select id="existsStudentAssignment" resultType="long">
+    SELECT COUNT(1) FROM biz_exam_student WHERE exam_id = #{examId} AND user_id = #{studentId}
+  </select>
+  
+  <select id="selectWarnings" resultType="java.util.Map">
+    SELECT 
+      id,
+      exam_id AS examId,
+      student_id AS studentId,
+      message,
+      type,
+      teacher_id AS teacherId,
+      send_time AS sendTime
+    FROM biz_monitor_warning
+    WHERE exam_id = #{examId}
+      AND student_id = #{studentId}
+    <if test="since != null and since != ''">
+      AND send_time > #{since}
+    </if>
+    ORDER BY id DESC
+    LIMIT 50
+  </select>
+
+</mapper>

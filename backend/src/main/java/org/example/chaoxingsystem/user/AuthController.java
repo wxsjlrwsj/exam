@@ -1,0 +1,203 @@
+package org.example.chaoxingsystem.user;
+
+import jakarta.validation.Valid;
+import org.example.chaoxingsystem.user.dto.ApiResponse;
+import org.example.chaoxingsystem.user.dto.LoginData;
+import org.example.chaoxingsystem.user.dto.LoginRequest;
+import org.example.chaoxingsystem.user.dto.RegisterRequest;
+import org.example.chaoxingsystem.user.dto.ResetPasswordRequest;
+import org.example.chaoxingsystem.user.dto.UserInfo;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import java.util.List;
+import org.example.chaoxingsystem.user.dto.UserResponse;
+import org.example.chaoxingsystem.user.dto.SendCodeRequest;
+import org.example.chaoxingsystem.user.dto.VerifyCodeRequest;
+
+/**
+ * 鉴权接口：注册、登录、重置密码、获取当前用户信息、管理员用户列表
+ */
+@RestController
+@RequestMapping("/api")
+@CrossOrigin(origins = "*")
+public class AuthController {
+  private final UserService userService;
+  private final TokenService tokenService;
+  private final EmailVerificationService verificationService;
+  private final MailService mailService;
+
+  public AuthController(UserService userService, TokenService tokenService, EmailVerificationService verificationService, MailService mailService) {
+    this.userService = userService;
+    this.tokenService = tokenService;
+    this.verificationService = verificationService;
+    this.mailService = mailService;
+  }
+
+  @PostMapping("/register")
+  public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
+    userService.register(request);
+    return ResponseEntity.ok(ApiResponse.success("注册成功", null));
+  }
+
+  @PostMapping("/auth/register")
+  public ResponseEntity<ApiResponse<Void>> registerAlias(@Valid @RequestBody RegisterRequest request) {
+    return register(request);
+  }
+
+  @PostMapping("/auth/send-code")
+  public ResponseEntity<ApiResponse<Void>> sendCode(@Valid @RequestBody SendCodeRequest request) {
+    var r = verificationService.generate(request.getEmail());
+    if (!r.ok) {
+      return ResponseEntity.status(429).body(ApiResponse.error(429, "发送过于频繁，请稍后再试"));
+    }
+    try {
+      mailService.sendCode(request.getEmail(), r.code);
+    } catch (Exception ex) {
+      return ResponseEntity.status(502).body(ApiResponse.error(502, "邮件发送失败"));
+    }
+    return ResponseEntity.ok(ApiResponse.success("验证码已发送", null));
+  }
+
+  @PostMapping("/auth/verify-code")
+  public ResponseEntity<ApiResponse<Void>> verifyCode(@Valid @RequestBody VerifyCodeRequest request) {
+    boolean ok = verificationService.verify(request.getEmail(), request.getCode());
+    if (!ok) {
+      return ResponseEntity.status(400).body(ApiResponse.error(400, "验证码错误或已失效"));
+    }
+    return ResponseEntity.ok(ApiResponse.success("验证通过", null));
+  }
+
+  @PostMapping("/login")
+  public ResponseEntity<ApiResponse<LoginData>> login(@Valid @RequestBody LoginRequest request) {
+    User user = userService.authenticate(request.getUsername(), request.getPassword());
+    if (user == null) {
+      return ResponseEntity.status(401).body(ApiResponse.error(401, "用户名或密码错误"));
+    }
+    String token = tokenService.generateToken(user);
+    String resolvedType = userService.resolveUserType(user);
+    UserInfo info = new UserInfo(user.getId(), user.getUsername(), user.getRealName(), resolvedType, user.getAvatar());
+    LoginData data = new LoginData(token, info);
+    // 设置刷新令牌 Cookie
+    boolean remember = request.getRememberMe() != null && request.getRememberMe();
+    long expires = remember ? 7L * 24L * 60L * 60L : 24L * 60L * 60L;
+    String refresh = tokenService.generateRefreshToken(user, expires);
+    org.springframework.http.ResponseCookie.ResponseCookieBuilder cookieBuilder = org.springframework.http.ResponseCookie.from("refresh_token", refresh)
+      .httpOnly(true)
+      .secure(false)
+      .path("/")
+      .sameSite("Lax");
+    if (remember) {
+      cookieBuilder.maxAge(expires);
+    }
+    org.springframework.http.ResponseCookie cookie = cookieBuilder.build();
+    return ResponseEntity.ok()
+      .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
+      .body(ApiResponse.success("登录成功", data));
+  }
+
+  @PostMapping("/auth/login")
+  public ResponseEntity<ApiResponse<LoginData>> loginAlias(@Valid @RequestBody LoginRequest request) {
+    return login(request);
+  }
+
+  @PostMapping("/reset-password")
+  public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    boolean ok = userService.resetPassword(request);
+    if (!ok) {
+      return ResponseEntity.status(404).body(ApiResponse.error(404, "用户不存在"));
+    }
+    return ResponseEntity.ok(ApiResponse.success("密码重置成功", null));
+  }
+
+  @PostMapping("/auth/reset-password")
+  public ResponseEntity<ApiResponse<Void>> resetPasswordAlias(@Valid @RequestBody ResetPasswordRequest request) {
+    return resetPassword(request);
+  }
+
+  // 临时测试端点 - 验证密码哈希
+  @PostMapping("/auth/test-password")
+  public ResponseEntity<ApiResponse<String>> testPassword(@RequestBody java.util.Map<String, String> body) {
+    String username = body.get("username");
+    String password = body.get("password");
+    User user = userService.getByUsername(username);
+    if (user == null) {
+      return ResponseEntity.ok(ApiResponse.error(404, "用户不存在"));
+    }
+    boolean matches = userService.testPasswordMatch(password, user.getPasswordHash());
+    String result = String.format("用户: %s, 密码匹配: %s, 哈希前缀: %s", 
+      username, matches, user.getPasswordHash().substring(0, 30));
+    return ResponseEntity.ok(ApiResponse.success(result, result));
+  }
+
+  @PostMapping("/auth/hash")
+  public ResponseEntity<ApiResponse<String>> hash(@RequestBody java.util.Map<String, String> body) {
+    String password = body.get("password");
+    String hash = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password);
+    return ResponseEntity.ok(ApiResponse.success("生成成功", hash));
+  }
+
+  @GetMapping("/me")
+  @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<UserInfo>> me(Authentication authentication) {
+    String username = authentication.getName();
+    UserInfo info = userService.getUserInfoByUsername(username);
+    if (info == null) {
+      return ResponseEntity.status(404).body(ApiResponse.error(404, "用户不存在"));
+    }
+    return ResponseEntity.ok(ApiResponse.success("获取成功", info));
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<ApiResponse<Void>> logout() {
+    org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("refresh_token", "")
+      .httpOnly(true)
+      .secure(false)
+      .path("/")
+      .sameSite("Lax")
+      .maxAge(0)
+      .build();
+    return ResponseEntity.ok()
+      .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
+      .body(ApiResponse.success("已退出登录", null));
+  }
+
+  @PostMapping("/auth/refresh")
+  public ResponseEntity<ApiResponse<LoginData>> refresh(jakarta.servlet.http.HttpServletRequest req) {
+    jakarta.servlet.http.Cookie[] cookies = req.getCookies();
+    if (cookies == null) {
+      return ResponseEntity.status(401).body(ApiResponse.error(401, "未登录"));
+    }
+    String rt = null;
+    for (jakarta.servlet.http.Cookie c : cookies) {
+      if ("refresh_token".equals(c.getName())) {
+        rt = c.getValue();
+        break;
+      }
+    }
+    if (rt == null || rt.isEmpty()) {
+      return ResponseEntity.status(401).body(ApiResponse.error(401, "未登录"));
+    }
+    TokenService.TokenData td = tokenService.parseAndValidateRefresh(rt);
+    if (td == null) {
+      return ResponseEntity.status(401).body(ApiResponse.error(401, "令牌失效"));
+    }
+    UserInfo info = userService.getUserInfoByUsername(td.getUsername());
+    if (info == null) {
+      return ResponseEntity.status(404).body(ApiResponse.error(404, "用户不存在"));
+    }
+    // 重新生成访问令牌（保持原先无过期的行为）
+    User user = userService.getByUsername(td.getUsername());
+    String token = tokenService.generateToken(user);
+    LoginData data = new LoginData(token, info);
+    return ResponseEntity.ok(ApiResponse.success("刷新成功", data));
+  }
+
+  @GetMapping("/admin/users")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<ApiResponse<List<UserResponse>>> listUsers() {
+    List<UserResponse> users = userService.listAllUsers();
+    return ResponseEntity.ok(ApiResponse.success("获取成功", users));
+  }
+}

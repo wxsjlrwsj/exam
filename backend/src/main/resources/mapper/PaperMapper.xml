@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.teacher.paper.PaperMapper">
+
+  <resultMap id="PaperMap" type="org.example.chaoxingsystem.teacher.paper.Paper">
+    <id property="id" column="id"/>
+    <result property="name" column="name"/>
+    <result property="subject" column="subject"/>
+    <result property="totalScore" column="total_score"/>
+    <result property="passScore" column="pass_score"/>
+    <result property="questionCount" column="question_count"/>
+    <result property="status" column="status"/>
+    <result property="creatorId" column="creator_id"/>
+    <result property="createTime" column="create_time"/>
+  </resultMap>
+
+  <select id="count" resultType="long">
+    SELECT COUNT(*) FROM biz_paper
+    <where>
+      <if test="subject != null and subject != ''">
+        AND subject = #{subject}
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPage" resultMap="PaperMap">
+    SELECT * FROM biz_paper
+    <where>
+      <if test="subject != null and subject != ''">
+        AND subject = #{subject}
+      </if>
+    </where>
+    ORDER BY create_time DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
+  <select id="countBySubjects" resultType="long">
+    SELECT COUNT(*) FROM biz_paper
+    <where>
+      <if test="subjects != null and subjects.size > 0">
+        AND subject IN
+        <foreach collection="subjects" item="s" open="(" separator="," close=")">
+          #{s}
+        </foreach>
+      </if>
+    </where>
+  </select>
+
+  <select id="selectPageBySubjects" resultMap="PaperMap">
+    SELECT * FROM biz_paper
+    <where>
+      <if test="subjects != null and subjects.size > 0">
+        AND subject IN
+        <foreach collection="subjects" item="s" open="(" separator="," close=")">
+          #{s}
+        </foreach>
+      </if>
+    </where>
+    ORDER BY create_time DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
+  <select id="selectById" resultMap="PaperMap">
+    SELECT * FROM biz_paper WHERE id = #{id}
+  </select>
+
+  <select id="selectPaperQuestionViews" resultType="map">
+    SELECT q.id AS id, pq.question_id AS questionId, pq.score, pq.sort_order AS sortOrder,
+           t.type_code AS type_code, q.content, q.options, q.answer, q.analysis,
+           q.subject, q.difficulty
+    FROM biz_paper_question pq
+    LEFT JOIN biz_exam_question q ON pq.question_id = q.id
+    LEFT JOIN biz_question_type t ON t.type_id = q.type_id
+    WHERE pq.paper_id = #{paperId}
+    ORDER BY pq.sort_order
+  </select>
+
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_paper (name, subject, total_score, pass_score, question_count, status, creator_id)
+    VALUES (#{name}, #{subject}, #{totalScore}, #{passScore}, #{questionCount}, #{status}, #{creatorId})
+  </insert>
+
+  <update id="updateById">
+    UPDATE biz_paper
+    SET name = #{name}, subject = #{subject}, total_score = #{totalScore},
+        pass_score = #{passScore}, question_count = #{questionCount}, status = #{status}
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM biz_paper WHERE id = #{id}
+  </delete>
+
+  <delete id="deletePaperQuestions">
+    DELETE FROM biz_paper_question WHERE paper_id = #{paperId}
+  </delete>
+
+  <insert id="insertPaperQuestions">
+    INSERT INTO biz_paper_question (paper_id, question_id, score, sort_order)
+    VALUES
+    <foreach collection="items" item="item" separator=",">
+      (#{paperId}, #{item.questionId}, #{item.score}, #{item.sortOrder})
+    </foreach>
+  </insert>
+
+  <select id="countExamsByPaperId" resultType="long">
+    SELECT COUNT(*) FROM biz_exam WHERE paper_id = #{paperId}
+  </select>
+
+</mapper>

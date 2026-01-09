@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.student.error.StudentErrorMapper">
+
+  <resultMap id="ErrorMap" type="org.example.chaoxingsystem.student.error.StudentError">
+    <id property="id" column="id"/>
+    <result property="studentId" column="student_id"/>
+    <result property="questionId" column="question_id"/>
+    <result property="examId" column="exam_id"/>
+    <result property="errorCount" column="error_count"/>
+    <result property="firstErrorTime" column="first_error_time"/>
+    <result property="lastErrorTime" column="last_error_time"/>
+    <result property="isSolved" column="is_solved"/>
+    <result property="solveTime" column="solve_time"/>
+    <result property="studentAnswer" column="student_answer"/>
+    <result property="correctAnswer" column="correct_answer"/>
+  </resultMap>
+
+  <select id="count" resultType="long">
+    SELECT COUNT(*)
+    FROM biz_student_error e
+    LEFT JOIN biz_question q ON e.question_id = q.id
+    WHERE e.student_id = #{studentId}
+    <if test="type != null and type != ''">
+      AND q.type = #{type}
+    </if>
+    <if test="keyword != null and keyword != ''">
+      AND q.content LIKE CONCAT('%', #{keyword}, '%')
+    </if>
+  </select>
+
+  <select id="selectPage" resultType="map">
+    SELECT e.id, e.question_id as questionId, e.error_count as errorCount,
+           e.last_error_time as lastErrorTime, e.is_solved as isSolved,
+           q.type, q.content, q.options, q.answer, q.analysis, q.subject, q.difficulty
+    FROM biz_student_error e
+    LEFT JOIN biz_question q ON e.question_id = q.id
+    WHERE e.student_id = #{studentId}
+    <if test="type != null and type != ''">
+      AND q.type = #{type}
+    </if>
+    <if test="keyword != null and keyword != ''">
+      AND q.content LIKE CONCAT('%', #{keyword}, '%')
+    </if>
+    ORDER BY e.last_error_time DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
+  <select id="selectById" resultMap="ErrorMap">
+    SELECT * FROM biz_student_error WHERE id = #{id}
+  </select>
+
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_student_error (student_id, question_id, exam_id, error_count, 
+                                    student_answer, correct_answer)
+    VALUES (#{studentId}, #{questionId}, #{examId}, #{errorCount}, 
+            #{studentAnswer}, #{correctAnswer})
+  </insert>
+
+  <update id="incrementErrorCount">
+    UPDATE biz_student_error
+    SET error_count = error_count + 1, last_error_time = CURRENT_TIMESTAMP
+    WHERE student_id = #{studentId} AND question_id = #{questionId}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM biz_student_error WHERE id = #{id}
+  </delete>
+
+  <update id="markSolved">
+    UPDATE biz_student_error
+    SET is_solved = 1, solve_time = CURRENT_TIMESTAMP
+    WHERE id = #{id}
+  </update>
+
+  <select id="selectStats" resultType="map">
+    SELECT 
+      COUNT(*) as total,
+      SUM(CASE WHEN is_solved = 1 THEN 1 ELSE 0 END) as solved,
+      SUM(CASE WHEN is_solved = 0 THEN 1 ELSE 0 END) as unsolved
+    FROM biz_student_error
+    WHERE student_id = #{studentId}
+  </select>
+
+  <select id="exists" resultType="int">
+    SELECT COUNT(*)
+    FROM biz_student_error
+    WHERE student_id = #{studentId} AND question_id = #{questionId}
+  </select>
+
+</mapper>
+

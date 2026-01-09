@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.student.collection.StudentCollectionMapper">
+  
+  <resultMap id="CollectionMap" type="org.example.chaoxingsystem.student.collection.StudentCollection">
+    <id property="id" column="id"/>
+    <result property="studentId" column="student_id"/>
+    <result property="name" column="name"/>
+    <result property="isDefault" column="is_default"/>
+    <result property="questionCount" column="question_count"/>
+    <result property="createTime" column="create_time"/>
+    <result property="updateTime" column="update_time"/>
+  </resultMap>
+
+  <select id="selectByStudentId" resultMap="CollectionMap">
+    SELECT * FROM biz_student_collection
+    WHERE student_id = #{studentId}
+    ORDER BY is_default DESC, create_time DESC
+  </select>
+
+  <select id="selectById" resultMap="CollectionMap">
+    SELECT * FROM biz_student_collection WHERE id = #{id}
+  </select>
+
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO biz_student_collection (student_id, name, is_default, question_count)
+    VALUES (#{studentId}, #{name}, #{isDefault}, #{questionCount})
+  </insert>
+
+  <update id="updateById">
+    UPDATE biz_student_collection
+    SET name = #{name}
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM biz_student_collection WHERE id = #{id}
+  </delete>
+
+  <update id="incrementQuestionCount">
+    UPDATE biz_student_collection
+    SET question_count = question_count + 1
+    WHERE id = #{id}
+  </update>
+
+  <update id="decrementQuestionCount">
+    UPDATE biz_student_collection
+    SET question_count = GREATEST(question_count - 1, 0)
+    WHERE id = #{id}
+  </update>
+
+</mapper>
+

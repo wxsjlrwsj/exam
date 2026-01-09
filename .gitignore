@@ -1,0 +1,66 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+.kotlin
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Node.js ###
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+### Frontend Build ###
+dist/
+dist-ssr/
+*.local
+
+### Backend Build ###
+backend/target/
+backend/*.jar
+backend/*.war
+
+### MySQL Data ###
+# Git无法索引Unix域套接字文件，排除以避免报错
+mysql-data/
+mysql-data/*.sock
+mysql-data/*.socket
+mysql-data-backup-*/
+mysql-data-moved-*/
+~$*.xlsx
+
+### Maven / Bundled Tools ###
+backend/.mvn-dist/
+backend/maven.zip
+backend/mysql-connector-j-9.1.0.jar

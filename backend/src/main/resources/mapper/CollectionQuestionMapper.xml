@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.chaoxingsystem.student.collection.CollectionQuestionMapper">
+
+  <select id="countByCollection" resultType="long">
+    SELECT COUNT(*)
+    FROM biz_collection_question cq
+    LEFT JOIN biz_question q ON cq.question_id = q.id
+    LEFT JOIN biz_question_type t ON q.type_id = t.type_id
+    WHERE cq.collection_id = #{collectionId}
+    <if test="type != null and type != ''">
+      AND t.type_code = #{type}
+    </if>
+    <if test="subject != null and subject != ''">
+      AND q.subject LIKE CONCAT('%', #{subject}, '%')
+    </if>
+  </select>
+
+  <select id="selectQuestionsByCollection" resultType="map">
+    SELECT q.id, t.type_code AS type_code, q.content, q.options, q.answer, q.analysis,
+           q.difficulty, q.subject, cq.add_time as addTime
+    FROM biz_collection_question cq
+    LEFT JOIN biz_question q ON cq.question_id = q.id
+    LEFT JOIN biz_question_type t ON q.type_id = t.type_id
+    WHERE cq.collection_id = #{collectionId}
+    <if test="type != null and type != ''">
+      AND t.type_code = #{type}
+    </if>
+    <if test="subject != null and subject != ''">
+      AND q.subject LIKE CONCAT('%', #{subject}, '%')
+    </if>
+    ORDER BY cq.add_time DESC
+    LIMIT #{offset}, #{limit}
+  </select>
+
+  <insert id="insert">
+    INSERT INTO biz_collection_question (collection_id, question_id)
+    VALUES (#{collectionId}, #{questionId})
+  </insert>
+
+  <delete id="delete">
+    DELETE FROM biz_collection_question
+    WHERE collection_id = #{collectionId} AND question_id = #{questionId}
+  </delete>
+
+  <delete id="deleteByCollection">
+    DELETE FROM biz_collection_question WHERE collection_id = #{collectionId}
+  </delete>
+
+  <select id="exists" resultType="int">
+    SELECT COUNT(*)
+    FROM biz_collection_question
+    WHERE collection_id = #{collectionId} AND question_id = #{questionId}
+  </select>
+
+</mapper>
+
