@@ -34,6 +34,13 @@
     FROM biz_subject s WHERE s.id = #{id}
   </select>
 
+  <select id="selectByName" resultMap="CourseMap">
+    SELECT s.id, s.name, s.description, s.creator_user_id AS creator_id, s.create_time
+    FROM biz_subject s
+    WHERE s.name COLLATE utf8mb4_unicode_ci = #{name} COLLATE utf8mb4_unicode_ci
+    LIMIT 1
+  </select>
+
   <insert id="insert" parameterType="org.example.chaoxingsystem.teacher.course.Course" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO biz_subject (name, description, creator_user_id)
     VALUES (#{name}, #{description}, #{creatorId})

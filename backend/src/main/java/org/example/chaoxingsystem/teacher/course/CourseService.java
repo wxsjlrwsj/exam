@@ -2,6 +2,8 @@ package org.example.chaoxingsystem.teacher.course;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +27,31 @@ public class CourseService {
       }
     }
     return rows;
+  }
+
+  public Course getByIdOrThrow(Long id) {
+    Course c = courseMapper.selectById(id);
+    if (c == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "课程不存在");
+    return c;
+  }
+
+  public Course getByNameOrThrow(String name) {
+    if (name == null || name.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "课程名称不能为空");
+    Course c = courseMapper.selectByName(name);
+    if (c == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "课程不存在");
+    return c;
+  }
+
+  public boolean isCreator(Long courseId, Long teacherUserId) {
+    if (courseId == null || teacherUserId == null) return false;
+    Course c = getByIdOrThrow(courseId);
+    return c.getCreatorId() != null && c.getCreatorId().longValue() == teacherUserId.longValue();
+  }
+
+  public boolean isCreatorByName(String courseName, Long teacherUserId) {
+    if (courseName == null || courseName.isBlank() || teacherUserId == null) return false;
+    Course c = getByNameOrThrow(courseName);
+    return c.getCreatorId() != null && c.getCreatorId().longValue() == teacherUserId.longValue();
   }
 
   public Map<String, Object> getDetail(Long id) {

@@ -56,7 +56,7 @@
               <el-button @click="router.push('/dashboard/teacher/paper-management')">
                 试卷管理
               </el-button>
-              <el-button type="primary" @click="handleCreateExam">
+              <el-button type="primary" :disabled="!canCreateExam" @click="handleCreateExam">
                 <el-icon><Plus /></el-icon> 创建考试
               </el-button>
             </div>
@@ -328,6 +328,18 @@ const currentCourse = ref(null)
 const loadingCourses = ref(false)
 const courseFilter = ref('')
 
+const isCreatorCourse = (course) => {
+  const v = course?.isCreator
+  if (typeof v === 'number') return v === 1
+  if (typeof v === 'boolean') return v
+  if (typeof v === 'string') return v === '1' || v.toLowerCase() === 'true'
+  return false
+}
+
+const canCreateExam = computed(() => {
+  return isCreatorCourse(currentCourse.value)
+})
+
 const filteredCourses = computed(() => {
   if (!courseFilter.value) return courses.value
   return courses.value.filter(c =>
@@ -405,6 +417,7 @@ const examRules = {
 
 const handleCreateExam = async () => {
   if (!currentCourse.value) return
+  if (!canCreateExam.value) return
   
   // 加载试卷列表
   try {

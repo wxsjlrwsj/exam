@@ -47,6 +47,14 @@ public class PaperService {
     return paperMapper.selectPageBySubjects(subjects, offset, size);
   }
 
+  public Paper getByIdOrThrow(Long id) {
+    Paper paper = paperMapper.selectById(id);
+    if (paper == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "试卷不存在");
+    }
+    return paper;
+  }
+
   @Transactional
   public Long create(Long creatorId, String name, String subject, List<QuestionItem> items, Integer passScore) {
     if (items == null || items.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "试题不能为空");

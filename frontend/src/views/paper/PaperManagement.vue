@@ -201,9 +201,23 @@ const courses = ref([])
 const currentCourse = ref(null)
 const loadingCourses = ref(false)
 const courseFilter = ref('')
+
+const isCreatorCourse = (course) => {
+  const v = course?.isCreator
+  if (typeof v === 'number') return v === 1
+  if (typeof v === 'boolean') return v
+  if (typeof v === 'string') return v === '1' || v.toLowerCase() === 'true'
+  return false
+}
+
+const creatorCourses = computed(() => {
+  return courses.value.filter(isCreatorCourse)
+})
+
 const filteredCourses = computed(() => {
-  if (!courseFilter.value) return courses.value
-  return courses.value.filter(c =>
+  const base = creatorCourses.value
+  if (!courseFilter.value) return base
+  return base.filter(c =>
     String(c.name || '').toLowerCase().includes(courseFilter.value.toLowerCase())
   )
 })
@@ -296,6 +310,9 @@ const loadPaperList = async () => {
     paperList.value = res?.list || []
     total.value = res?.total || 0
   } catch (error) {
+    if (error?.response?.status === 403) {
+      showMessage(error.response?.data?.message || '无权限查看该课程试卷', 'error')
+    }
     paperList.value = []
     total.value = 0
   } finally {
@@ -370,6 +387,11 @@ const loadCourses = async () => {
   try {
     const res = await getCourses()
     courses.value = res || []
+    if (currentCourse.value && !courses.value.some(c => c.id === currentCourse.value.id && isCreatorCourse(c))) {
+      currentCourse.value = null
+      paperList.value = []
+      total.value = 0
+    }
   } catch (e) {
     courses.value = []
   } finally {

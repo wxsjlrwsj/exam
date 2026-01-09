@@ -183,7 +183,7 @@
                   <span>批阅统计</span>
                 </div>
               </template>
-              <el-table :data="allStudents" border style="width: 100%">
+              <el-table :data="anonymousParticipatedStudents" border style="width: 100%">
                 <el-table-column prop="studentNo" label="学号" width="120" />
                 <el-table-column prop="name" label="姓名" width="100" />
                 <el-table-column prop="className" label="班级" width="120" />
@@ -275,7 +275,7 @@
                 @selection-change="handleSelectionChange"
               >
                 <el-table-column type="selection" width="55" />
-                <el-table-column prop="studentId" label="学号" width="120" sortable />
+                <el-table-column prop="studentNo" label="学号" width="120" sortable />
                 <el-table-column prop="name" label="姓名" width="100" />
                 <el-table-column prop="className" label="班级" width="120" sortable />
                 <el-table-column prop="score" label="成绩" width="100" sortable>
@@ -549,7 +549,7 @@ const goBack = () => {
 }
 
 const isAllGraded = computed(() => {
-  return allStudents.value.length > 0 && allStudents.value.every(s => s.status === 'graded')
+  return participatedStudents.value.length > 0 && participatedStudents.value.every(s => s.status === 'graded')
 })
 
 const registerScores = () => {
@@ -604,8 +604,28 @@ const buildClassOptions = (students) => {
   return Array.from(map.values())
 }
 
+const participatedStudents = computed(() => {
+  return allStudents.value.filter(s => s && (s.scoreId !== null && s.scoreId !== undefined))
+})
 
-const gradedCount = computed(() => allStudents.value.filter(s => s.status === 'graded').length)
+const buildAnonymousName = (index, studentNo) => {
+  if (studentNo !== null && studentNo !== undefined) {
+    const s = String(studentNo)
+    if (s.length >= 2) return `匿名${s.slice(-2)}`
+  }
+  return `匿名${index + 1}`
+}
+
+const anonymousParticipatedStudents = computed(() => {
+  return participatedStudents.value.map((s, idx) => ({
+    ...s,
+    name: buildAnonymousName(idx, s.studentNo),
+    studentNo: '******'
+  }))
+})
+
+
+const gradedCount = computed(() => participatedStudents.value.filter(s => s.status === 'graded').length)
 
 // ================= 阅卷管理逻辑 =================
 const isGrading = ref(false)
@@ -614,16 +634,30 @@ const gradingFilterStatus = ref('')
 
 // 映射 id -> studentId
 const filteredGradingStudents = computed(() => {
-  let list = allStudents.value
+  let list = anonymousParticipatedStudents.value
   if (gradingFilterStatus.value) {
     list = list.filter(student => student.status === gradingFilterStatus.value)
   }
   return list
 })
 
+const getNextGradingStudent = () => {
+  if (gradingFilterStatus.value) {
+    const list = filteredGradingStudents.value
+    const currentIndex = list.findIndex(s => s.studentId === currentGradingStudent.value.studentId)
+    if (currentIndex >= 0 && currentIndex < list.length - 1) return list[currentIndex + 1]
+    if (currentIndex === -1 && list.length > 0) return list[0]
+    return null
+  }
+
+  const list = anonymousParticipatedStudents.value
+  const currentIndex = list.findIndex(s => s.studentId === currentGradingStudent.value.studentId)
+  if (currentIndex >= 0 && currentIndex < list.length - 1) return list[currentIndex + 1]
+  return null
+}
+
 const hasNextStudent = computed(() => {
-  const currentIndex = allStudents.value.findIndex(s => s.studentId === currentGradingStudent.value.studentId)
-  return currentIndex < allStudents.value.length - 1
+  return !!getNextGradingStudent()
 })
 
 // Paper Questions
@@ -657,11 +691,12 @@ const formatCorrectAnswer = (question) => {
 
 const startGrading = () => {
     // Find first ungraded student or first student
-    const firstUngraded = allStudents.value.find(s => s.status === 'ungraded')
+    const list = filteredGradingStudents.value
+    const firstUngraded = list.find(s => s.status === 'ungraded')
     if (firstUngraded) {
         handleGradeStudent(firstUngraded)
-    } else if (allStudents.value.length > 0) {
-        handleGradeStudent(allStudents.value[0])
+    } else if (list.length > 0) {
+        handleGradeStudent(list[0])
     } else {
         showMessage('暂无学生数据', 'warning')
     }
@@ -685,9 +720,9 @@ const handleGradeStudent = async (row) => {
 }
 
 const handleNextStudent = () => {
-    const currentIndex = allStudents.value.findIndex(s => s.studentId === currentGradingStudent.value.studentId)
-    if (currentIndex < allStudents.value.length - 1) {
-        handleGradeStudent(allStudents.value[currentIndex + 1])
+    const next = getNextGradingStudent()
+    if (next) {
+        handleGradeStudent(next)
     }
 }
 
