@@ -236,7 +236,7 @@
           <el-descriptions-item label="总分">{{ paperPreview.totalScore }}</el-descriptions-item>
         </el-descriptions>
         <el-table :data="paperPreviewQuestions" border style="width: 100%" max-height="420">
-          <el-table-column prop="id" label="ID" width="80" />
+          <el-table-column type="index" label="序号" width="80" align="center" />
           <el-table-column prop="type" label="题型" width="120">
             <template #default="scope">
               {{ getQuestionTypeLabel(scope.row.type) }}

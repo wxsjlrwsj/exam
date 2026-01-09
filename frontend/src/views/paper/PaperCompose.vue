@@ -119,7 +119,11 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="id" label="ID" width="80" align="center" />
+        <el-table-column label="序号" width="80" align="center">
+          <template #default="scope">
+            {{ (questionPage - 1) * questionPageSize + scope.$index + 1 }}
+          </template>
+        </el-table-column>
         <el-table-column label="题型" width="100" align="center">
           <template #default="scope">
             <el-tag>{{ getQuestionTypeLabel(scope.row.typeId) }}</el-tag>

@@ -31,7 +31,7 @@
     <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="24">
         <el-table v-loading="loading" :data="questionList" border style="width: 100%">
-          <el-table-column prop="id" label="ID" width="80" align="center" />
+          <el-table-column type="index" label="序号" width="80" align="center" :index="indexMethod" />
           <el-table-column prop="type" label="题型" width="120" align="center">
             <template #default="scope">
               <el-tag :type="getTypeTagEffect(scope.row.type)">{{ getQuestionTypeLabel(scope.row.type) }}</el-tag>
@@ -235,6 +235,8 @@ const total = ref(0)
 const questionList = ref([])
 const detailDialogVisible = ref(false)
 const currentQuestion = ref(null)
+
+const indexMethod = (index) => (currentPage.value - 1) * pageSize.value + index + 1
 
 // AI助手引用
 const aiAssistantRef = ref(null)

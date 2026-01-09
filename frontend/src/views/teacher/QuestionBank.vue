@@ -64,7 +64,11 @@
     </el-card>
 
     <el-table v-loading="loading" :data="questionList" border style="width: 100%">
-      <el-table-column prop="id" label="ID" width="80" align="center" />
+      <el-table-column label="序号" width="80" align="center">
+        <template #default="scope">
+          {{ (currentPage - 1) * pageSize + scope.$index + 1 }}
+        </template>
+      </el-table-column>
       <el-table-column prop="type" label="题型" width="100" align="center">
         <template #default="scope">
           <el-tag :type="getQuestionTypeTag(scope.row.type)">{{ getQuestionTypeLabel(scope.row.type) }}</el-tag>

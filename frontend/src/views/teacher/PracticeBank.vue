@@ -50,7 +50,7 @@
         </el-card>
         
         <el-table v-loading="loading" :data="questionList" border style="width: 100%">
-          <el-table-column prop="id" label="ID" width="80" />
+          <el-table-column type="index" label="序号" width="80" align="center" :index="indexMethod" />
           <el-table-column prop="type" label="题型" width="120">
             <template #default="scope">
               {{ getQuestionTypeLabel(scope.row.type) }}
@@ -90,7 +90,7 @@
             </span>
           </template>
          <el-table v-loading="loading" :data="auditList" border style="width: 100%">
-          <el-table-column prop="id" label="ID" width="80" />
+          <el-table-column type="index" label="序号" width="80" align="center" :index="indexMethod" />
           <el-table-column prop="typeCode" label="题型" width="120">
             <template #default="scope">
               {{ getQuestionTypeLabel(scope.row.type || scope.row.typeCode) }}
@@ -189,6 +189,8 @@ const previewVisible = ref(false)
 const dialogType = ref('add')
 const currentQuestionData = ref({})
 const currentQuestion = ref(null)
+
+const indexMethod = (index) => (currentPage.value - 1) * pageSize.value + index + 1
 
 const questionTypes = [
   { label: '单选题', value: 'single_choice' },
