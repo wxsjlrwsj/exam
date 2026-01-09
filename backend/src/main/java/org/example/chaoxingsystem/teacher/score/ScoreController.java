@@ -16,8 +16,12 @@ import java.util.Map;
 @ModuleCheck(moduleCode = "tch_score")
 public class ScoreController {
   private final ScoreService service;
+  private final AiGradingService aiGradingService;
 
-  public ScoreController(ScoreService service) { this.service = service; }
+  public ScoreController(ScoreService service, AiGradingService aiGradingService) {
+    this.service = service;
+    this.aiGradingService = aiGradingService;
+  }
 
   @GetMapping("/scores")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -113,6 +117,18 @@ public class ScoreController {
     data.put("imported", 0);
     data.put("filename", file.getOriginalFilename());
     return ResponseEntity.ok(ApiResponse.success("导入成功", data));
+  }
+
+  @PostMapping("/scores/ai-grade")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> aiGrade(@RequestBody Map<String, Object> body) {
+    String question = body.get("question") != null ? String.valueOf(body.get("question")) : "";
+    String studentAnswer = body.get("studentAnswer") != null ? String.valueOf(body.get("studentAnswer")) : "";
+    String correctAnswer = body.get("correctAnswer") != null ? String.valueOf(body.get("correctAnswer")) : "";
+    Integer fullScore = body.get("fullScore") instanceof Number ? ((Number) body.get("fullScore")).intValue() : null;
+    String questionType = body.get("questionType") != null ? String.valueOf(body.get("questionType")) : "";
+    Map<String, Object> result = aiGradingService.grade(question, studentAnswer, correctAnswer, fullScore, questionType);
+    return ResponseEntity.ok(ApiResponse.success("AI评分完成", result));
   }
 
   @GetMapping("/scores/export")

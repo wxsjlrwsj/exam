@@ -303,6 +303,14 @@ export function submitGrading(examId, studentId, data) {
   })
 }
 
+export function aiGradeQuestion(data) {
+  return request({
+    url: '/scores/ai-grade',
+    method: 'post',
+    data
+  })
+}
+
 export function batchPublishScores(scoreIds, published) {
   return request({
     url: '/scores/batch-publish',

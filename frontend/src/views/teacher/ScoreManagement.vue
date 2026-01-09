@@ -107,6 +107,7 @@
                             size="small"
                           />
                           <el-button size="small" @click="question.givenScore = question.score" v-text="fullScoreLabel"></el-button>
+                          <el-button size="small" type="primary" :loading="question.aiLoading" @click="handleAiGrade(question)">AI评分</el-button>
                           <span class="max-score">/ {{ question.score }}分</span>
                         </div>
                         <div class="comment-input">
@@ -497,7 +498,7 @@
 import { ref, reactive, onMounted, computed, inject } from 'vue'
 import { ArrowLeft, Edit, Upload, Check, Download, Search, Document } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getScoreList, getExamStats, adjustScore, getStudentPaperDetail, submitGrading, getExamDetail, getExams, batchPublishScores, exportScores, importScores } from '@/api/teacher'
+import { getScoreList, getExamStats, adjustScore, getStudentPaperDetail, submitGrading, getExamDetail, getExams, batchPublishScores, exportScores, importScores, aiGradeQuestion } from '@/api/teacher'
 
 const router = useRouter()
 const route = useRoute()
@@ -605,7 +606,7 @@ const hasNextStudent = computed(() => {
 // Paper Questions
 const paperQuestions = ref([])
 
-const fullScoreLabel = '\u4E00\u952E\u6EE1\u5206'
+const fullScoreLabel = '一键满分'
 
 const questionTypes = [
   { label: '单选题', value: 'single_choice' },
@@ -629,6 +630,40 @@ const formatStudentAnswer = (question) => {
 const formatCorrectAnswer = (question) => {
     if (Array.isArray(question.correctAnswer)) return question.correctAnswer.join(', ')
     return question.correctAnswer
+}
+
+const formatAiText = (value) => {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'string') return value
+    try {
+        return JSON.stringify(value)
+    } catch (e) {
+        return String(value)
+    }
+}
+
+const handleAiGrade = async (question) => {
+    if (!question || question.autoGraded) return
+    question.aiLoading = true
+    try {
+        const res = await aiGradeQuestion({
+            question: question.content || '',
+            studentAnswer: formatAiText(question.studentAnswer),
+            correctAnswer: formatAiText(question.correctAnswer),
+            fullScore: question.score || 0,
+            questionType: question.type || ''
+        })
+        if (res) {
+            question.givenScore = res.score
+            question.comment = res.comment || ''
+            showMessage('AI评分完成', 'success')
+        }
+    } catch (error) {
+        console.error(error)
+        showMessage('AI评分失败', 'error')
+    } finally {
+        question.aiLoading = false
+    }
 }
 
 const startGrading = () => {
