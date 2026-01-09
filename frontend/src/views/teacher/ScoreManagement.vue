@@ -38,6 +38,15 @@
                 <span class="value">{{ currentExam.subject }}</span>
               </div>
               <div class="info-item">
+                <span class="label">开放查看：</span>
+                <el-switch
+                  v-model="currentExam.allowReview"
+                  :active-value="1"
+                  :inactive-value="0"
+                  @change="handleAllowReviewChange"
+                />
+              </div>
+              <div class="info-item">
                 <span class="label">考试时间：</span>
                 <span class="value">{{ currentExam.examTime }}</span>
               </div>
@@ -497,7 +506,7 @@
 import { ref, reactive, onMounted, computed, inject } from 'vue'
 import { ArrowLeft, Edit, Upload, Check, Download, Search, Document } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getScoreList, getExamStats, adjustScore, getStudentPaperDetail, submitGrading, getExamDetail, getExams, batchPublishScores, exportScores, importScores } from '@/api/teacher'
+import { getScoreList, getExamStats, adjustScore, getStudentPaperDetail, submitGrading, getExamDetail, getExams, batchPublishScores, exportScores, importScores, setExamAllowReview } from '@/api/teacher'
 
 const router = useRouter()
 const route = useRoute()
@@ -549,11 +558,26 @@ const registerScores = () => {
   activeTab.value = 'score'
 }
 
+const handleAllowReviewChange = async (val) => {
+  const examId = Number(currentExam.value.id)
+  if (!examId) return
+  const prev = currentExam.value.allowReview
+  try {
+    await setExamAllowReview(examId, val)
+    showMessage(val ? '已开放学生查看试卷' : '已关闭学生查看试卷', 'success')
+  } catch (e) {
+    console.error(e)
+    currentExam.value.allowReview = prev
+    showMessage('更新开放查看失败', 'error')
+  }
+}
+
 // ================= 核心数据 (Shared Data) =================
 const currentExam = ref({
   id: 1,
   name: '加载中...',
   subject: '',
+  allowReview: 0,
   examTime: '',
   duration: 0,
   totalScore: 0,

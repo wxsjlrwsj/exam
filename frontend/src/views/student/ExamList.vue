@@ -529,7 +529,7 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, inject, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getExams, getExamPaper, submitExam, getUserProfile } from '@/api/student'
+import { getExams, getExamPaper, getExamResult, submitExam, getUserProfile } from '@/api/student'
 import { filterValidExams } from '@/utils/dataValidator'
 import FaceVerification from '@/components/FaceVerification.vue'
 
@@ -769,12 +769,18 @@ const realStartExam = () => {
 const examReviewVisible = ref(false)
 const currentExamReview = ref(null)
 
-const handleViewPaper = (exam) => {
-    currentExamReview.value = exam
-    // Load questions and answers
-    examQuestions.value = [...mockReviewQuestions]
-    examAnswers.value = {...mockUserAnswers}
-    examReviewVisible.value = true
+const handleViewPaper = async (exam) => {
+    if (!exam || !exam.id) return
+    try {
+        const res = await getExamResult(exam.id)
+        currentExamReview.value = exam
+        examQuestions.value = Array.isArray(res?.questions) ? res.questions : []
+        examAnswers.value = res?.answers && typeof res.answers === 'object' ? res.answers : {}
+        examReviewVisible.value = true
+    } catch (error) {
+        console.error('获取试卷详情失败:', error)
+        showMessage('获取试卷详情失败', 'error')
+    }
 }
 
 const getReviewAnswer = (q) => {

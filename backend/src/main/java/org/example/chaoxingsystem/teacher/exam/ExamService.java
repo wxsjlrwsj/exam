@@ -118,6 +118,7 @@ public class ExamService {
     data.put("endTime", exam.getEndTime());
     data.put("duration", exam.getDuration());
     data.put("status", calculateStatus(exam));
+    data.put("allowReview", exam.getAllowReview());
     data.put("creatorId", exam.getCreatorId());
     data.put("createTime", exam.getCreateTime());
 
@@ -139,6 +140,16 @@ public class ExamService {
     data.put("gradedCount", gradedCount);
 
     return data;
+  }
+
+  @Transactional
+  public void setAllowReview(Long id, Integer allowReview) {
+    Exam exam = mapper.selectById(id);
+    if (exam == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Exam not found");
+    }
+    int val = (allowReview != null && allowReview != 0) ? 1 : 0;
+    mapper.updateAllowReviewById(id, val);
   }
 
   @Transactional

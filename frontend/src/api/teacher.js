@@ -251,6 +251,14 @@ export function getExamDetail(id) {
   })
 }
 
+export function setExamAllowReview(id, allowReview) {
+  return request({
+    url: `/exams/${id}/allow-review`,
+    method: 'put',
+    data: { allowReview }
+  })
+}
+
 // Exam Students
 export function getExamStudents(examId, params) {
   return request({

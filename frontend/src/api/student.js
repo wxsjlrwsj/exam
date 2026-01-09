@@ -28,6 +28,20 @@ export function getExamPaper(examId) {
   })
 }
 
+export function getExamResult(examId) {
+  return request({
+    url: `/student/exams/${examId}/result`,
+    method: 'get'
+  })
+}
+
+export function getExamReview(examId) {
+  return request({
+    url: `/student/exams/${examId}/review`,
+    method: 'get'
+  })
+}
+
 /**
  * 提交考试答案
  * @param {Number} examId - 考试ID
@@ -288,4 +302,3 @@ export function changePassword(data) {
     data
   })
 }
-

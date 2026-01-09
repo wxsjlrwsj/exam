@@ -52,4 +52,6 @@ public interface ExamMapper {
     @Param("studentId") Long studentId,
     @Param("since") String since
   );
+
+  int updateAllowReviewById(@Param("id") Long id, @Param("allowReview") Integer allowReview);
 }

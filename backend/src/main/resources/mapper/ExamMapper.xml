@@ -12,6 +12,7 @@
     <result property="duration" column="duration"/>
     <result property="totalScore" column="total_score"/>
     <result property="passScore" column="pass_score"/>
+    <result property="allowReview" column="allow_review"/>
     <result property="status" column="status"/>
     <result property="creatorId" column="creator_id"/>
     <result property="createTime" column="create_time"/>
@@ -229,6 +230,7 @@
       ]]> AS semester,
       er.status AS recordStatus,
       er.score AS score,
+      CASE WHEN e.allow_review = 1 AND er.status >= 2 THEN 1 ELSE 0 END AS allowReview,
       TIMESTAMPDIFF(SECOND, er.start_time, er.submit_time) AS timeTaken
     FROM biz_exam e
     JOIN biz_exam_student es ON es.exam_id = e.id
@@ -278,6 +280,12 @@
     ORDER BY e.start_time DESC, e.id DESC
     LIMIT #{limit} OFFSET #{offset}
   </select>
+
+  <update id="updateAllowReviewById">
+    UPDATE biz_exam
+    SET allow_review = #{allowReview}
+    WHERE id = #{id}
+  </update>
   
   <select id="countByStudentWithFilters" resultType="long">
     SELECT COUNT(1)

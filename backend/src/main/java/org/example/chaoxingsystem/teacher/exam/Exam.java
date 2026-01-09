@@ -12,6 +12,7 @@ public class Exam {
   private Integer duration;
   private Integer totalScore;
   private Integer passScore;
+  private Integer allowReview;
   private Integer status;
   private Long creatorId;
   private Instant createTime;
@@ -32,6 +33,8 @@ public class Exam {
   public void setTotalScore(Integer totalScore) { this.totalScore = totalScore; }
   public Integer getPassScore() { return passScore; }
   public void setPassScore(Integer passScore) { this.passScore = passScore; }
+  public Integer getAllowReview() { return allowReview; }
+  public void setAllowReview(Integer allowReview) { this.allowReview = allowReview; }
   public Integer getStatus() { return status; }
   public void setStatus(Integer status) { this.status = status; }
   public Long getCreatorId() { return creatorId; }
@@ -39,4 +42,3 @@ public class Exam {
   public Instant getCreateTime() { return createTime; }
   public void setCreateTime(Instant createTime) { this.createTime = createTime; }
 }
-

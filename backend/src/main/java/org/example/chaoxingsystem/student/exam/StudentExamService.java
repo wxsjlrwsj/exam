@@ -183,8 +183,18 @@ public class StudentExamService {
 
 
   public Map<String, Object> getReview(Long examId, Long studentId) {
+    Exam exam = examMapper.selectById(examId);
+    if (exam == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "考试不存在");
+    long assigned = examMapper.existsStudentAssignment(examId, studentId);
+    if (assigned <= 0L) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "无权限");
+
     var record = scoreMapper.selectRecord(examId, studentId);
-    if (record == null) return Map.of();
+    if (record == null || record.getStatus() == null || record.getStatus() < 2) {
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "暂不可查看试卷");
+    }
+    if (exam.getAllowReview() == null || exam.getAllowReview() == 0) {
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "暂不可查看试卷");
+    }
     
     List<org.example.chaoxingsystem.teacher.score.ExamAnswer> answers = scoreMapper.selectAnswersByRecordId(record.getId());
     List<Map<String, Object>> questionDetails = new java.util.ArrayList<>();
@@ -198,7 +208,6 @@ public class StudentExamService {
       questionDetails.add(detail);
     }
     
-    Exam exam = examMapper.selectById(examId);
     Map<String, Object> result = new HashMap<>();
     result.put("examName", exam != null ? exam.getName() : null);
     result.put("score", record.getScore());
@@ -288,6 +297,9 @@ public class StudentExamService {
     if (assigned <= 0L) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "无权限");
     var recordCheck = scoreMapper.selectRecord(examId, studentId);
     if (recordCheck == null || recordCheck.getStatus() == null || recordCheck.getStatus() < 2) {
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "暂不可查看试卷");
+    }
+    if (e.getAllowReview() == null || e.getAllowReview() == 0) {
       throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "暂不可查看试卷");
     }
     var p = paperMapper.selectById(e.getPaperId());

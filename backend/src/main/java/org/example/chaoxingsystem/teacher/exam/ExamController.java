@@ -182,6 +182,23 @@ public class ExamController {
     return ResponseEntity.ok(ApiResponse.success("Updated successfully", null));
   }
 
+  @PutMapping("/exams/{id}/allow-review")
+  @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+  public ResponseEntity<ApiResponse<Void>> setAllowReview(@PathVariable("id") Long id, @RequestBody Map<String, Object> body) {
+    Integer allowReview = null;
+    Object v = body != null ? body.get("allowReview") : null;
+    if (v instanceof Boolean b) {
+      allowReview = b ? 1 : 0;
+    } else if (v instanceof Number n) {
+      allowReview = n.intValue();
+    } else if (v instanceof String s && !s.isBlank()) {
+      if ("true".equalsIgnoreCase(s) || "1".equals(s)) allowReview = 1;
+      else if ("false".equalsIgnoreCase(s) || "0".equals(s)) allowReview = 0;
+    }
+    service.setAllowReview(id, allowReview);
+    return ResponseEntity.ok(ApiResponse.success("Updated successfully", null));
+  }
+
   @GetMapping("/monitor/{examId}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> monitor(@PathVariable("examId") Long examId) {
