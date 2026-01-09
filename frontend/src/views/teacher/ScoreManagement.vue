@@ -377,12 +377,27 @@
                             <div class="card-header"><span>分数段分布</span></div>
                             </template>
                             <div class="chart-placeholder">
-                            <div class="chart-mock">
-                                <div class="chart-bar" :style="{height: analysisData.dist[4] + '%', backgroundColor: '#67C23A'}"><div class="chart-label">90-100<br>({{analysisData.distCount[4]}}人)</div></div>
-                                <div class="chart-bar" :style="{height: analysisData.dist[3] + '%', backgroundColor: '#409EFF'}"><div class="chart-label">80-89<br>({{analysisData.distCount[3]}}人)</div></div>
-                                <div class="chart-bar" :style="{height: analysisData.dist[2] + '%', backgroundColor: '#E6A23C'}"><div class="chart-label">70-79<br>({{analysisData.distCount[2]}}人)</div></div>
-                                <div class="chart-bar" :style="{height: analysisData.dist[1] + '%', backgroundColor: '#F56C6C'}"><div class="chart-label">60-69<br>({{analysisData.distCount[1]}}人)</div></div>
-                                <div class="chart-bar" :style="{height: analysisData.dist[0] + '%', backgroundColor: '#909399'}"><div class="chart-label">0-59<br>({{analysisData.distCount[0]}}人)</div></div>
+                            <div class="score-dist-chart">
+                                <div class="score-dist-item">
+                                  <div class="score-dist-bar" :style="{height: distHeights[0] + '%', backgroundColor: '#909399'}"></div>
+                                  <div class="score-dist-label">0-59<br>({{analysisData.distCount[0]}}人)</div>
+                                </div>
+                                <div class="score-dist-item">
+                                  <div class="score-dist-bar" :style="{height: distHeights[1] + '%', backgroundColor: '#F56C6C'}"></div>
+                                  <div class="score-dist-label">60-69<br>({{analysisData.distCount[1]}}人)</div>
+                                </div>
+                                <div class="score-dist-item">
+                                  <div class="score-dist-bar" :style="{height: distHeights[2] + '%', backgroundColor: '#E6A23C'}"></div>
+                                  <div class="score-dist-label">70-79<br>({{analysisData.distCount[2]}}人)</div>
+                                </div>
+                                <div class="score-dist-item">
+                                  <div class="score-dist-bar" :style="{height: distHeights[3] + '%', backgroundColor: '#409EFF'}"></div>
+                                  <div class="score-dist-label">80-89<br>({{analysisData.distCount[3]}}人)</div>
+                                </div>
+                                <div class="score-dist-item">
+                                  <div class="score-dist-bar" :style="{height: distHeights[4] + '%', backgroundColor: '#67C23A'}"></div>
+                                  <div class="score-dist-label">90-100<br>({{analysisData.distCount[4]}}人)</div>
+                                </div>
                             </div>
                             </div>
                         </el-card>
@@ -393,10 +408,12 @@
                             <div class="card-header"><span>班级平均分对比</span></div>
                             </template>
                             <div class="chart-placeholder">
-                            <div class="chart-mock horizontal">
-                                <div class="chart-row" v-for="cls in analysisData.classStats" :key="cls.name">
-                                  <div class="chart-label">{{cls.name}}</div>
-                                  <div class="chart-bar-h" :style="{width: cls.avg + '%', backgroundColor: '#409EFF'}">{{cls.avg}}</div>
+                            <div class="class-avg-chart">
+                                <div class="class-avg-item" v-for="cls in analysisData.classStats" :key="cls.name">
+                                  <div class="class-avg-bar" :style="{height: classAvgHeight(cls.avg) + '%'}">
+                                    <span class="class-avg-value">{{ cls.avg }}</span>
+                                  </div>
+                                  <div class="class-avg-label">{{ cls.name }}</div>
                                 </div>
                             </div>
                             </div>
@@ -404,24 +421,6 @@
                         </el-col>
                     </el-row>
                     
-                    <el-row :gutter="20" style="margin-top: 20px;">
-                        <el-col :span="24">
-                           <el-card class="chart-card">
-                            <template #header>
-                            <div class="card-header"><span>知识点掌握情况分析</span></div>
-                            </template>
-                             <el-table :data="analysisData.knowledgePoints" border>
-                                <el-table-column prop="name" label="知识点" />
-                                <el-table-column label="错误率" width="200">
-                                   <template #default="scope">
-                                      <el-progress :percentage="scope.row.errorRate" status="exception" />
-                                   </template>
-                                </el-table-column>
-                                <el-table-column prop="suggestion" label="教学建议" />
-                             </el-table>
-                           </el-card>
-                        </el-col>
-                    </el-row>
                  </div>
             </div>
              <div class="no-exam-selected" v-else>
@@ -1014,6 +1013,21 @@ const handleTabChange = (tab) => {
     }
 }
 
+const distHeights = computed(() => {
+    const counts = Array.isArray(analysisData.value.distCount) ? analysisData.value.distCount : [0, 0, 0, 0, 0]
+    const maxCount = Math.max(1, ...counts)
+    return counts.map((count) => {
+        const pct = (count / maxCount) * 100
+        return Math.max(6, Math.round(pct))
+    })
+})
+
+const classAvgHeight = (avg) => {
+    const maxAvg = Math.max(1, ...analysisData.value.classStats.map((item) => Number(item.avg) || 0))
+    const pct = (Number(avg) || 0) / maxAvg * 100
+    return Math.max(8, Math.round(pct))
+}
+
 onMounted(() => {
   if (route.query.activeTab) {
     activeTab.value = route.query.activeTab
@@ -1039,6 +1053,92 @@ onMounted(() => {
 }
 .score-summary-row {
   margin-bottom: 20px;
+}
+.score-dist-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 220px;
+  padding: 10px 10px 0;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  background: #fafafa;
+}
+.score-dist-item {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.score-dist-bar {
+  width: 70%;
+  min-height: 6px;
+  border-radius: 6px 6px 0 0;
+}
+.score-dist-label {
+  font-size: 12px;
+  color: #606266;
+  text-align: center;
+  line-height: 1.2;
+}
+.class-avg-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 16px;
+  height: 220px;
+  padding: 10px;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  background: #fafafa;
+  overflow-x: auto;
+}
+.class-avg-item {
+  width: 90px;
+  min-width: 90px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.class-avg-bar {
+  width: 100%;
+  min-height: 8px;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #5b8ff9, #3b6ee6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  padding-top: 4px;
+  box-sizing: border-box;
+  margin-top: auto;
+}
+.class-avg-value {
+  line-height: 1;
+}
+.class-avg-label {
+  font-size: 12px;
+  color: #606266;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-all;
+}
+.chart-row {
+  align-items: center;
+  gap: 8px;
+}
+.chart-bar-h {
+  height: 18px;
+  line-height: 18px;
+  border-radius: 6px;
 }
 .summary-card {
   text-align: center;

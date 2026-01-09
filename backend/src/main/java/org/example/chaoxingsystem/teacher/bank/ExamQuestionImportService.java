@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.example.chaoxingsystem.common.Subject;
+import org.example.chaoxingsystem.common.SubjectMapper;
 import org.example.chaoxingsystem.teacher.bank.dto.OptionItem;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,11 +25,13 @@ public class ExamQuestionImportService {
 
   private final ExamQuestionMapper questionMapper;
   private final QuestionTypeMapper typeMapper;
+  private final SubjectMapper subjectMapper;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public ExamQuestionImportService(ExamQuestionMapper questionMapper, QuestionTypeMapper typeMapper) {
+  public ExamQuestionImportService(ExamQuestionMapper questionMapper, QuestionTypeMapper typeMapper, SubjectMapper subjectMapper) {
     this.questionMapper = questionMapper;
     this.typeMapper = typeMapper;
+    this.subjectMapper = subjectMapper;
   }
 
   public ImportResult importExcel(MultipartFile file, Long creatorId) {
@@ -86,7 +90,7 @@ public class ExamQuestionImportService {
 
   private Question parseRow(Row row, Map<String, Integer> columnMap, DataFormatter formatter, Long creatorId) throws Exception {
     String typeRaw = readCell(row, columnMap.get("type"), formatter);
-    String subject = readCell(row, columnMap.get("subject"), formatter);
+    String subjectRaw = readCell(row, columnMap.get("subject"), formatter);
     String content = readCell(row, columnMap.get("content"), formatter);
     String difficultyRaw = readCell(row, columnMap.get("difficulty"), formatter);
     String optionsRaw = readCell(row, columnMap.get("options"), formatter);
@@ -98,18 +102,16 @@ public class ExamQuestionImportService {
     if (content == null || content.trim().isEmpty()) {
       return null;
     }
+    String subject = resolveSubject(subjectRaw);
     if (subject == null || subject.trim().isEmpty()) {
       throw new IllegalArgumentException("subject is required");
     }
 
-    String typeCode = normalizeTypeCode(typeRaw);
-    if (typeCode == null || typeCode.isEmpty()) {
+    QuestionType type = resolveType(typeRaw);
+    if (type == null) {
       throw new IllegalArgumentException("type is required");
     }
-    QuestionType type = typeMapper.selectByCode(typeCode);
-    if (type == null) {
-      throw new IllegalArgumentException("unknown type: " + typeCode);
-    }
+    String typeCode = type.getTypeCode();
 
     Integer difficulty = parseDifficulty(difficultyRaw);
     if (difficulty == null) {
@@ -180,6 +182,91 @@ public class ExamQuestionImportService {
       return upper;
     }
     return TYPE_CODE_MAP.get(upper);
+  }
+
+  private QuestionType resolveType(String raw) {
+    if (raw == null) {
+      return null;
+    }
+    String trimmed = raw.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    if (trimmed.matches("\\d+")) {
+      try {
+        int typeId = Integer.parseInt(trimmed);
+        QuestionType byId = typeMapper.selectById(typeId);
+        if (byId != null) {
+          return byId;
+        }
+      } catch (NumberFormatException ignore) {
+        // fall through
+      }
+    }
+    String typeCode = normalizeTypeCode(trimmed);
+    if (typeCode == null || typeCode.isEmpty()) {
+      return null;
+    }
+    return typeMapper.selectByCode(typeCode);
+  }
+
+  private String resolveSubject(String raw) {
+    if (raw == null) {
+      return null;
+    }
+    String trimmed = raw.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    if (trimmed.matches("\\d+")) {
+      try {
+        long id = Long.parseLong(trimmed);
+        Subject subject = subjectMapper.selectById(id);
+        if (subject != null && subject.getName() != null && !subject.getName().isBlank()) {
+          return subject.getName();
+        }
+      } catch (NumberFormatException ignore) {
+        // fall through
+      }
+    }
+    String normalized = normalizeSubjectKey(trimmed);
+    List<Subject> subjects = subjectMapper.selectAll();
+    for (Subject subject : subjects) {
+      if (subject == null || subject.getName() == null) {
+        continue;
+      }
+      String name = subject.getName().trim();
+      if (name.equals(trimmed)) {
+        return name;
+      }
+      if (!normalized.isEmpty() && normalizeSubjectKey(name).equals(normalized)) {
+        return name;
+      }
+      if (subject.getCode() != null && subject.getCode().equalsIgnoreCase(trimmed)) {
+        return name;
+      }
+    }
+    Subject created = new Subject();
+    created.setName(trimmed);
+    created.setCode(generateSubjectCode(trimmed));
+    created.setDescription("");
+    subjectMapper.insert(created);
+    return trimmed;
+  }
+
+  private String normalizeSubjectKey(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+  }
+
+  private String generateSubjectCode(String name) {
+    String base = name == null ? "" : name.replaceAll("[^A-Za-z0-9]", "");
+    if (base.isEmpty()) {
+      return "SUBJECT_" + System.currentTimeMillis();
+    }
+    return base.toUpperCase(Locale.ROOT) + "_" + System.currentTimeMillis();
   }
 
   private String normalizeOptionsJson(String raw) throws Exception {
@@ -387,12 +474,29 @@ public class ExamQuestionImportService {
     map.put("SINGLE_CHOICE", "SINGLE");
     map.put("MULTIPLE_CHOICE", "MULTI");
     map.put("TRUEFALSE", "TRUE_FALSE");
+    map.put("SINGLE", "SINGLE");
+    map.put("MULTI", "MULTI");
+    map.put("TRUE_FALSE", "TRUE_FALSE");
+    map.put("FILL", "FILL");
+    map.put("SHORT", "SHORT");
+    map.put("PROGRAM", "PROGRAM");
     map.put("\u5355\u9009\u9898", "SINGLE");
+    map.put("\u5355\u9009", "SINGLE");
+    map.put("\u5355\u9879\u9009\u62e9", "SINGLE");
+    map.put("\u5355\u9879\u9009\u62e9\u9898", "SINGLE");
     map.put("\u591a\u9009\u9898", "MULTI");
+    map.put("\u591a\u9009", "MULTI");
+    map.put("\u591a\u9879\u9009\u62e9", "MULTI");
+    map.put("\u591a\u9879\u9009\u62e9\u9898", "MULTI");
     map.put("\u5224\u65ad\u9898", "TRUE_FALSE");
+    map.put("\u5224\u65ad", "TRUE_FALSE");
+    map.put("\u6b63\u8bef\u9898", "TRUE_FALSE");
     map.put("\u586b\u7a7a\u9898", "FILL");
+    map.put("\u586b\u7a7a", "FILL");
     map.put("\u7b80\u7b54\u9898", "SHORT");
+    map.put("\u7b80\u7b54", "SHORT");
     map.put("\u7f16\u7a0b\u9898", "PROGRAM");
+    map.put("\u7f16\u7a0b", "PROGRAM");
     return map;
   }
 

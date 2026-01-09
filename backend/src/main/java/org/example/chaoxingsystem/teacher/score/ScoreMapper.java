@@ -13,6 +13,7 @@ public interface ScoreMapper {
   int updateRecordScore(@Param("recordId") Long recordId, @Param("score") Integer score, @Param("status") Integer status);
   int updateAnswerScore(@Param("recordId") Long recordId, @Param("questionId") Long questionId, @Param("score") Integer score, @Param("comment") String comment);
   Map<String, Object> selectStats(@Param("examId") Long examId);
+  List<Map<String, Object>> selectClassStats(@Param("examId") Long examId);
   
   ExamRecord selectRecordById(@Param("id") Long id);
   int insertScoreAdjustment(@Param("scoreId") Long scoreId, @Param("originalScore") Integer originalScore, 

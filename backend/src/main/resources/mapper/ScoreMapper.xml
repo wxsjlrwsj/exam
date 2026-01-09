@@ -114,6 +114,37 @@
     </where>
   </select>
 
+  <select id="selectClassStats" resultType="java.util.Map">
+    SELECT
+      tcmap.classId AS classId,
+      tcmap.className AS name,
+      AVG(er.score) AS avgScore,
+      COUNT(1) AS count
+    FROM biz_exam_student es
+    JOIN biz_exam e ON e.id = es.exam_id
+    JOIN biz_paper p ON p.id = e.paper_id
+    LEFT JOIN biz_subject s ON s.name COLLATE utf8mb4_unicode_ci = p.subject
+    JOIN users u ON u.id = es.user_id
+    LEFT JOIN biz_student bs ON bs.user_id = es.user_id
+    LEFT JOIN (
+      SELECT
+        tcs.user_id AS userId,
+        tc.subject_id AS subjectId,
+        MIN(tc.id) AS classId,
+        MIN(tc.name) AS className
+      FROM biz_teaching_class_student tcs
+      JOIN biz_teaching_class tc ON tc.id = tcs.class_id
+      GROUP BY tcs.user_id, tc.subject_id
+    ) tcmap ON tcmap.userId = es.user_id AND tcmap.subjectId = s.id
+    LEFT JOIN biz_exam_record er ON er.exam_id = es.exam_id AND er.student_id = es.user_id
+    <where>
+      es.exam_id = #{examId}
+      AND tcmap.classId IS NOT NULL
+    </where>
+    GROUP BY tcmap.classId, tcmap.className
+    ORDER BY tcmap.className
+  </select>
+
   <select id="selectScoreValuesByExamId" resultType="java.lang.Double">
     SELECT er.score
     FROM biz_exam_record er

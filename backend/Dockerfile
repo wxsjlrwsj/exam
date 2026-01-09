@@ -5,7 +5,7 @@ RUN mvn -q -DskipTests dependency:go-offline --no-transfer-progress
 COPY src ./src
 RUN mvn -q -DskipTests clean package --no-transfer-progress
 
-FROM eclipse-temurin:17-jre
+FROM maven:3.9.8-eclipse-temurin-17
 WORKDIR /app
 COPY --from=build /app/target/backend.jar /app/app.jar
 ENV JAVA_OPTS=""

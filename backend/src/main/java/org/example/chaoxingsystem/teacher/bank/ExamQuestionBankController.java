@@ -3,6 +3,7 @@ package org.example.chaoxingsystem.teacher.bank;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.chaoxingsystem.config.ModuleCheck;
 import org.example.chaoxingsystem.user.UserService;
+import org.example.chaoxingsystem.teacher.bank.ExamQuestionImportService;
 import org.example.chaoxingsystem.user.dto.ApiResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -27,11 +28,13 @@ import java.util.Map;
 public class ExamQuestionBankController {
   private final ExamQuestionService service;
   private final UserService userService;
+  private final ExamQuestionImportService importService;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public ExamQuestionBankController(ExamQuestionService service, UserService userService) {
+  public ExamQuestionBankController(ExamQuestionService service, UserService userService, ExamQuestionImportService importService) {
     this.service = service;
     this.userService = userService;
+    this.importService = importService;
   }
 
   @GetMapping("/exam-questions")
@@ -127,11 +130,15 @@ public class ExamQuestionBankController {
   @PostMapping(value = "/exam-questions/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<HashMap<String, Object>>> importFile(Authentication auth, @RequestParam("file") MultipartFile file) {
-    // 复用后端导入逻辑可在后续迭代中实现；此处先返回基本信息以便前端验证功能
+    var me = userService.getByUsername(auth.getName());
+    ExamQuestionImportService.ImportResult result = importService.importExcel(file, me.getId());
     HashMap<String, Object> data = new HashMap<>();
+    data.put("total", result.total);
+    data.put("imported", result.imported);
+    data.put("failed", result.failed);
+    data.put("errors", result.errors);
     data.put("filename", file.getOriginalFilename());
-    data.put("size", file.getSize());
-    return ResponseEntity.ok(ApiResponse.success("上传成功，后续实现解析与入库", data));
+    return ResponseEntity.ok(ApiResponse.success("import finished", data));
   }
 
   private String asString(Object v) { return v == null ? null : String.valueOf(v); }

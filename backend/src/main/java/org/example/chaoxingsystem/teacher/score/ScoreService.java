@@ -149,7 +149,18 @@ public class ScoreService {
     data.putIfAbsent("avgScore", m.get("avgScore"));
     data.putIfAbsent("maxScore", m.get("maxScore"));
     data.putIfAbsent("minScore", m.get("minScore"));
-    data.put("classStats", java.util.Collections.emptyList());
+    List<Map<String, Object>> classStats = mapper.selectClassStats(examId);
+    List<Map<String, Object>> classOut = new java.util.ArrayList<>();
+    for (Map<String, Object> row : classStats) {
+      String name = row.get("name") != null ? String.valueOf(row.get("name")) : "";
+      Number avgScore = row.get("avgScore") instanceof Number ? (Number) row.get("avgScore") : null;
+      int avg = avgScore != null ? (int) Math.round(avgScore.doubleValue()) : 0;
+      Map<String, Object> out = new HashMap<>();
+      out.put("name", name);
+      out.put("avg", avg);
+      classOut.add(out);
+    }
+    data.put("classStats", classOut);
     data.put("knowledgePoints", java.util.Collections.emptyList());
     return data;
   }
