@@ -52,10 +52,10 @@
                 <span>{{ currentCourse.name }} - 试卷管理</span>
               </div>
               <div>
-                <el-button v-if="currentCourse.isCreator" type="primary" @click="handleCreatePaper('manual')">
+                <el-button type="primary" @click="handleCreatePaper('manual')">
                   <el-icon><Edit /></el-icon>手动组卷
                 </el-button>
-                <el-button v-if="currentCourse.isCreator" type="success" @click="handleCreatePaper('auto')">
+                <el-button type="success" @click="handleCreatePaper('auto')">
                   <el-icon><MagicStick /></el-icon>智能组卷
                 </el-button>
               </div>
@@ -313,10 +313,6 @@ const handleSizeChange = () => {
 }
 
 const handleCreatePaper = (type) => {
-  if (!currentCourse.value?.isCreator) {
-    showMessage('仅课程创建者可创建试卷', 'warning')
-    return
-  }
   if (type === 'manual') {
     const query = currentCourse.value?.name ? { subject: currentCourse.value.name } : {}
     router.push({ path: '/dashboard/teacher/paper-compose', query })
@@ -347,10 +343,6 @@ const handleEdit = (row) => {
 }
 
 const handleCreateExam = (row) => {
-  if (!currentCourse.value?.isCreator) {
-    showMessage('仅课程创建者可发布考试', 'warning')
-    return
-  }
   publishPaper.value = row
   publishForm.value = {
     name: `${row.name}（考试）`,
@@ -377,7 +369,7 @@ const loadCourses = async () => {
   loadingCourses.value = true
   try {
     const res = await getCourses()
-    courses.value = (res || []).filter(c => c && c.isCreator)
+    courses.value = res || []
   } catch (e) {
     courses.value = []
   } finally {

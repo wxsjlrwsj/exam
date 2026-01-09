@@ -30,21 +30,6 @@
     SELECT * FROM biz_subject WHERE code = #{code}
   </select>
 
-  <select id="countByNameAndCreatorId" resultType="int">
-    SELECT COUNT(1)
-    FROM biz_subject
-    WHERE creator_user_id = #{creatorId}
-      AND name COLLATE utf8mb4_unicode_ci = #{name} COLLATE utf8mb4_unicode_ci
-  </select>
-
-  <select id="countByNameAndTeacherId" resultType="int">
-    SELECT COUNT(1)
-    FROM biz_subject s
-    JOIN biz_teacher_subject ts ON ts.subject_id = s.id
-    WHERE ts.teacher_id = #{teacherId}
-      AND s.name COLLATE utf8mb4_unicode_ci = #{name} COLLATE utf8mb4_unicode_ci
-  </select>
-
   <insert id="insert" parameterType="org.example.chaoxingsystem.common.Subject" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO biz_subject (name, code, description)
     VALUES (#{name}, #{code}, #{description})

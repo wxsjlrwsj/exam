@@ -6,15 +6,12 @@ import org.example.chaoxingsystem.common.Subject;
 import org.example.chaoxingsystem.common.SubjectMapper;
 import org.example.chaoxingsystem.teacher.course.CourseService;
 import org.example.chaoxingsystem.teacher.paper.dto.CreatePaperRequest;
-import org.example.chaoxingsystem.user.User;
 import org.example.chaoxingsystem.user.UserService;
 import org.example.chaoxingsystem.user.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,21 +35,6 @@ public class PaperController {
     this.subjectMapper = subjectMapper;
   }
 
-  private boolean isTeacherUser(User me) {
-    return me != null && me.getUserType() != null && "teacher".equalsIgnoreCase(me.getUserType());
-  }
-
-  private void assertCourseCreatorIfTeacher(User me, String subject) {
-    if (!isTeacherUser(me)) return;
-    if (subject == null || subject.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "课程参数错误");
-    }
-    int cnt = subjectMapper.countByNameAndCreatorId(subject, me.getId());
-    if (cnt <= 0) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "仅课程创建者可操作");
-    }
-  }
-
   @GetMapping("/papers")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<HashMap<String, Object>>> list(
@@ -74,28 +56,15 @@ public class PaperController {
     List<Paper> list;
 
     var me = userService.getByUsername(auth.getName());
-    boolean isTeacher = isTeacherUser(me);
+    boolean isTeacher = me != null && me.getUserType() != null && "teacher".equalsIgnoreCase(me.getUserType());
 
     if (finalSubject != null && !finalSubject.isBlank()) {
-      assertCourseCreatorIfTeacher(me, finalSubject);
       total = service.count(finalSubject);
       list = service.page(finalSubject, page, size);
     } else if (isTeacher) {
       List<Map<String, Object>> courses = courseService.listByTeacher(me.getId());
       List<String> subjects = new ArrayList<>();
       for (Map<String, Object> c : courses) {
-        Object isCreatorObj = c.get("isCreator");
-        boolean isCreator = false;
-        if (isCreatorObj instanceof Number n) {
-          isCreator = n.intValue() != 0;
-        } else if (isCreatorObj instanceof Boolean b) {
-          isCreator = b;
-        } else if (isCreatorObj != null) {
-          isCreator = "1".equals(String.valueOf(isCreatorObj)) || "true".equalsIgnoreCase(String.valueOf(isCreatorObj));
-        }
-        if (!isCreator) {
-          continue;
-        }
         Object nameObj = c.get("name");
         String name = nameObj != null ? String.valueOf(nameObj) : null;
         if (name != null && !name.isBlank()) {
@@ -140,7 +109,6 @@ public class PaperController {
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<HashMap<String, Object>>> create(Authentication auth, @Valid @RequestBody CreatePaperRequest req) {
     var me = userService.getByUsername(auth.getName());
-    assertCourseCreatorIfTeacher(me, req.getSubject());
     List<PaperService.QuestionItem> items = req.getQuestions().stream().map(q -> new PaperService.QuestionItem(q.getId(), q.getScore())).toList();
     Long id = service.create(me.getId(), req.getName(), req.getSubject(), items, req.getPassScore());
     HashMap<String, Object> data = new HashMap<>();
@@ -153,7 +121,6 @@ public class PaperController {
   public ResponseEntity<ApiResponse<HashMap<String, Object>>> autoGenerate(Authentication auth, @RequestBody Map<String, Object> body) {
     var me = userService.getByUsername(auth.getName());
     String subject = (String) body.get("subject");
-    assertCourseCreatorIfTeacher(me, subject);
     Integer difficulty = body.get("difficulty") instanceof Number ? ((Number) body.get("difficulty")).intValue() : null;
     Integer totalScore = body.get("totalScore") instanceof Number ? ((Number) body.get("totalScore")).intValue() : null;
     @SuppressWarnings("unchecked")
@@ -169,37 +136,21 @@ public class PaperController {
 
   @GetMapping("/papers/{id}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Map<String, Object>>> detail(@PathVariable("id") Long id, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Paper p = service.getById(id);
-    if (p != null) {
-      assertCourseCreatorIfTeacher(me, p.getSubject());
-    }
+  public ResponseEntity<ApiResponse<Map<String, Object>>> detail(@PathVariable("id") Long id) {
     Map<String, Object> data = service.getDetail(id);
     return ResponseEntity.ok(ApiResponse.success("获取成功", data));
   }
 
   @DeleteMapping("/papers/{id}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Paper p = service.getById(id);
-    if (p != null) {
-      assertCourseCreatorIfTeacher(me, p.getSubject());
-    }
+  public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {
     service.delete(id);
     return ResponseEntity.ok(ApiResponse.success("删除成功", null));
   }
 
   @PutMapping("/papers/{id}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Void>> update(@PathVariable("id") Long id, @Valid @RequestBody CreatePaperRequest req, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Paper p = service.getById(id);
-    if (p != null) {
-      assertCourseCreatorIfTeacher(me, p.getSubject());
-    }
-    assertCourseCreatorIfTeacher(me, req.getSubject());
+  public ResponseEntity<ApiResponse<Void>> update(@PathVariable("id") Long id, @Valid @RequestBody CreatePaperRequest req) {
     List<PaperService.QuestionItem> items = req.getQuestions().stream()
       .map(q -> new PaperService.QuestionItem(q.getId(), q.getScore())).toList();
     service.update(id, req.getName(), req.getSubject(), items, req.getPassScore());
@@ -208,12 +159,7 @@ public class PaperController {
 
   @PutMapping("/papers/{id}/publish")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Map<String, Object>>> publish(@PathVariable("id") Long id, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Paper p = service.getById(id);
-    if (p != null) {
-      assertCourseCreatorIfTeacher(me, p.getSubject());
-    }
+  public ResponseEntity<ApiResponse<Map<String, Object>>> publish(@PathVariable("id") Long id) {
     service.publish(id);
     Map<String, Object> data = new HashMap<>();
     data.put("id", id);
@@ -223,12 +169,7 @@ public class PaperController {
 
   @PutMapping("/papers/{id}/unpublish")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Map<String, Object>>> unpublish(@PathVariable("id") Long id, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Paper p = service.getById(id);
-    if (p != null) {
-      assertCourseCreatorIfTeacher(me, p.getSubject());
-    }
+  public ResponseEntity<ApiResponse<Map<String, Object>>> unpublish(@PathVariable("id") Long id) {
     service.unpublish(id);
     Map<String, Object> data = new HashMap<>();
     data.put("id", id);
@@ -236,3 +177,4 @@ public class PaperController {
     return ResponseEntity.ok(ApiResponse.success("已取消发布", data));
   }
 }
+

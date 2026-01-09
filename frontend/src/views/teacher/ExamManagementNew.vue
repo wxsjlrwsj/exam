@@ -53,10 +53,10 @@
               <div class="course-title">
                 <span>{{ currentCourse.name }} - 考试管理</span>
               </div>
-              <el-button v-if="currentCourse.isCreator" @click="router.push('/dashboard/teacher/paper-management')">
+              <el-button @click="router.push('/dashboard/teacher/paper-management')">
                 试卷管理
               </el-button>
-              <el-button v-if="currentCourse.isCreator" type="primary" @click="handleCreateExam">
+              <el-button type="primary" @click="handleCreateExam">
                 <el-icon><Plus /></el-icon> 创建考试
               </el-button>
             </div>
@@ -78,8 +78,8 @@
                 <el-table-column label="操作" width="200" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" size="small" @click="handleViewDetail(row)">详情</el-button>
-                    <el-button v-if="currentCourse?.isCreator" link type="primary" size="small" @click="handleManageStudents(row)">考生</el-button>
-                    <el-button v-if="currentCourse?.isCreator" link type="danger" size="small" @click="handleDeleteExam(row)">删除</el-button>
+                    <el-button link type="primary" size="small" @click="handleManageStudents(row)">考生</el-button>
+                    <el-button link type="danger" size="small" @click="handleDeleteExam(row)">删除</el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -100,7 +100,7 @@
                 <el-table-column label="操作" width="200" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" size="small" @click="handleViewDetail(row)">详情</el-button>
-                    <el-button v-if="currentCourse?.isCreator" link type="success" size="small" @click="handleMonitor(row)">监考</el-button>
+                    <el-button link type="success" size="small" @click="handleMonitor(row)">监考</el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -126,8 +126,8 @@
                 </el-table-column>
                 <el-table-column label="操作" width="220" fixed="right">
                   <template #default="{ row }">
-                    <el-button v-if="currentCourse?.isCreator" link type="warning" size="small" @click="handleGrade(row)">批阅</el-button>
-                    <el-button v-if="currentCourse?.isCreator" link type="info" size="small" @click="handleViewResults(row)">成绩</el-button>
+                    <el-button link type="warning" size="small" @click="handleGrade(row)">批阅</el-button>
+                    <el-button link type="info" size="small" @click="handleViewResults(row)">成绩</el-button>
                     <el-button link type="primary" size="small" @click="handleViewDetail(row)">详情</el-button>
                   </template>
                 </el-table-column>
@@ -405,10 +405,6 @@ const examRules = {
 
 const handleCreateExam = async () => {
   if (!currentCourse.value) return
-  if (!currentCourse.value.isCreator) {
-    showMessage('仅课程创建者可创建考试', 'warning')
-    return
-  }
   
   // 加载试卷列表
   try {

@@ -3,18 +3,14 @@ package org.example.chaoxingsystem.teacher.exam;
 import org.example.chaoxingsystem.config.ModuleCheck;
 import org.example.chaoxingsystem.common.Subject;
 import org.example.chaoxingsystem.common.SubjectMapper;
-import org.example.chaoxingsystem.teacher.course.CourseService;
 import org.example.chaoxingsystem.teacher.paper.Paper;
 import org.example.chaoxingsystem.teacher.paper.PaperMapper;
-import org.example.chaoxingsystem.user.User;
 import org.example.chaoxingsystem.user.UserService;
 import org.example.chaoxingsystem.user.dto.ApiResponse;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,40 +25,12 @@ public class ExamController {
   private final UserService userService;
   private final SubjectMapper subjectMapper;
   private final PaperMapper paperMapper;
-  private final CourseService courseService;
 
-  public ExamController(ExamService service, UserService userService, SubjectMapper subjectMapper, PaperMapper paperMapper, CourseService courseService) {
+  public ExamController(ExamService service, UserService userService, SubjectMapper subjectMapper, PaperMapper paperMapper) {
     this.service = service;
     this.userService = userService;
     this.subjectMapper = subjectMapper;
     this.paperMapper = paperMapper;
-    this.courseService = courseService;
-  }
-
-  private boolean isTeacherUser(User me) {
-    return me != null && me.getUserType() != null && "teacher".equalsIgnoreCase(me.getUserType());
-  }
-
-  private void assertCourseMemberIfTeacher(User me, String subject) {
-    if (!isTeacherUser(me)) return;
-    if (subject == null || subject.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "课程参数错误");
-    }
-    int cnt = subjectMapper.countByNameAndTeacherId(subject, me.getId());
-    if (cnt <= 0) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "仅任课教师可查看");
-    }
-  }
-
-  private void assertCourseCreatorIfTeacher(User me, String subject) {
-    if (!isTeacherUser(me)) return;
-    if (subject == null || subject.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "课程参数错误");
-    }
-    int cnt = subjectMapper.countByNameAndCreatorId(subject, me.getId());
-    if (cnt <= 0) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "仅课程创建者可操作");
-    }
   }
 
   @GetMapping("/exams")
@@ -72,8 +40,7 @@ public class ExamController {
     @RequestParam(value = "subject", required = false) String subject,
     @RequestParam(value = "courseId", required = false) Long courseId,
     @RequestParam(value = "page", defaultValue = "1") int page,
-    @RequestParam(value = "size", defaultValue = "10") int size,
-    Authentication auth
+    @RequestParam(value = "size", defaultValue = "10") int size
   ) {
     String finalSubject = subject;
     if ((finalSubject == null || finalSubject.isBlank()) && courseId != null) {
@@ -87,42 +54,17 @@ public class ExamController {
 
     List<Exam> exams;
     long total;
-    var me = userService.getByUsername(auth.getName());
-    boolean isTeacher = isTeacherUser(me);
-
-    if (finalSubject != null && !finalSubject.isBlank()) {
-      assertCourseMemberIfTeacher(me, finalSubject);
-      if (needInMemoryPagination) {
+    if (needInMemoryPagination) {
+      if (finalSubject != null && !finalSubject.isBlank()) {
         exams = service.pageByPaperSubject(finalSubject, 1, 10000);
-        total = exams.size();
       } else {
+        exams = service.page(null, 1, 10000);
+      }
+      total = exams.size();
+    } else {
+      if (finalSubject != null && !finalSubject.isBlank()) {
         exams = service.pageByPaperSubject(finalSubject, page, size);
         total = service.countByPaperSubject(finalSubject);
-      }
-    } else if (isTeacher) {
-      List<Map<String, Object>> courses = courseService.listByTeacher(me.getId());
-      java.util.List<String> subjects = new java.util.ArrayList<>();
-      for (Map<String, Object> c : courses) {
-        Object nameObj = c.get("name");
-        String name = nameObj != null ? String.valueOf(nameObj) : null;
-        if (name != null && !name.isBlank()) {
-          subjects.add(name);
-        }
-      }
-      if (subjects.isEmpty()) {
-        exams = List.of();
-        total = 0;
-      } else if (needInMemoryPagination) {
-        exams = service.pageByPaperSubjects(subjects, 1, 10000);
-        total = exams.size();
-      } else {
-        exams = service.pageByPaperSubjects(subjects, page, size);
-        total = service.countByPaperSubjects(subjects);
-      }
-    } else {
-      if (needInMemoryPagination) {
-        exams = service.page(null, 1, 10000);
-        total = exams.size();
       } else {
         exams = service.page(null, page, size);
         total = service.count(null);
@@ -183,12 +125,6 @@ public class ExamController {
     var me = userService.getByUsername(auth.getName());
     String name = (String) body.get("name");
     Long paperId = body.get("paperId") instanceof Number ? ((Number) body.get("paperId")).longValue() : null;
-    if (paperId != null) {
-      Paper p = paperMapper.selectById(paperId);
-      if (p != null) {
-        assertCourseCreatorIfTeacher(me, p.getSubject());
-      }
-    }
     String startTime = (String) body.get("startTime");
     Integer duration = body.get("duration") instanceof Number ? ((Number) body.get("duration")).intValue() : null;
     List<Long> classIds = toLongList(body.get("classIds"));
@@ -223,45 +159,21 @@ public class ExamController {
 
   @GetMapping("/exams/{id}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Map<String, Object>>> detail(@PathVariable("id") Long id, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Exam e = service.getById(id);
-    if (e != null && e.getPaperId() != null) {
-      Paper p = paperMapper.selectById(e.getPaperId());
-      if (p != null) {
-        assertCourseMemberIfTeacher(me, p.getSubject());
-      }
-    }
+  public ResponseEntity<ApiResponse<Map<String, Object>>> detail(@PathVariable("id") Long id) {
     Map<String, Object> data = service.getDetail(id);
     return ResponseEntity.ok(ApiResponse.success("Fetched successfully", data));
   }
 
   @DeleteMapping("/exams/{id}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Exam e = service.getById(id);
-    if (e != null && e.getPaperId() != null) {
-      Paper p = paperMapper.selectById(e.getPaperId());
-      if (p != null) {
-        assertCourseCreatorIfTeacher(me, p.getSubject());
-      }
-    }
+  public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {
     service.delete(id);
     return ResponseEntity.ok(ApiResponse.success("Deleted successfully", null));
   }
 
   @PutMapping("/exams/{id}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Void>> update(@PathVariable("id") Long id, @RequestBody Map<String, Object> body, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Exam e = service.getById(id);
-    if (e != null && e.getPaperId() != null) {
-      Paper p = paperMapper.selectById(e.getPaperId());
-      if (p != null) {
-        assertCourseCreatorIfTeacher(me, p.getSubject());
-      }
-    }
+  public ResponseEntity<ApiResponse<Void>> update(@PathVariable("id") Long id, @RequestBody Map<String, Object> body) {
     String name = (String) body.get("name");
     String startTime = (String) body.get("startTime");
     Integer duration = body.get("duration") instanceof Number ? ((Number) body.get("duration")).intValue() : null;
@@ -272,15 +184,7 @@ public class ExamController {
 
   @PutMapping("/exams/{id}/allow-review")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Void>> setAllowReview(@PathVariable("id") Long id, @RequestBody Map<String, Object> body, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Exam e = service.getById(id);
-    if (e != null && e.getPaperId() != null) {
-      Paper p = paperMapper.selectById(e.getPaperId());
-      if (p != null) {
-        assertCourseCreatorIfTeacher(me, p.getSubject());
-      }
-    }
+  public ResponseEntity<ApiResponse<Void>> setAllowReview(@PathVariable("id") Long id, @RequestBody Map<String, Object> body) {
     Integer allowReview = null;
     Object v = body != null ? body.get("allowReview") : null;
     if (v instanceof Boolean b) {
@@ -297,15 +201,7 @@ public class ExamController {
 
   @GetMapping("/monitor/{examId}")
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-  public ResponseEntity<ApiResponse<Map<String, Object>>> monitor(@PathVariable("examId") Long examId, Authentication auth) {
-    var me = userService.getByUsername(auth.getName());
-    Exam e = service.getById(examId);
-    if (e != null && e.getPaperId() != null) {
-      Paper p = paperMapper.selectById(e.getPaperId());
-      if (p != null) {
-        assertCourseCreatorIfTeacher(me, p.getSubject());
-      }
-    }
+  public ResponseEntity<ApiResponse<Map<String, Object>>> monitor(@PathVariable("examId") Long examId) {
     Map<String, Object> data = service.getMonitorData(examId);
     return ResponseEntity.ok(ApiResponse.success("Fetched successfully", data));
   }
@@ -318,13 +214,6 @@ public class ExamController {
     @RequestBody Map<String, Object> body
   ) {
     var me = userService.getByUsername(auth.getName());
-    Exam e = service.getById(examId);
-    if (e != null && e.getPaperId() != null) {
-      Paper p = paperMapper.selectById(e.getPaperId());
-      if (p != null) {
-        assertCourseCreatorIfTeacher(me, p.getSubject());
-      }
-    }
     Long studentId = body.get("studentId") instanceof Number ? ((Number) body.get("studentId")).longValue() : null;
     String message = (String) body.get("message");
     String type = (String) body.get("type");
@@ -340,13 +229,6 @@ public class ExamController {
     @RequestBody Map<String, Object> body
   ) {
     var me = userService.getByUsername(auth.getName());
-    Exam e = service.getById(examId);
-    if (e != null && e.getPaperId() != null) {
-      Paper p = paperMapper.selectById(e.getPaperId());
-      if (p != null) {
-        assertCourseCreatorIfTeacher(me, p.getSubject());
-      }
-    }
     String message = (String) body.get("message");
     String type = (String) body.get("type");
     Map<String, Object> data = service.broadcast(examId, me.getId(), message, type);
@@ -357,17 +239,8 @@ public class ExamController {
   @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> forceSubmit(
     @PathVariable("examId") Long examId,
-    @RequestBody Map<String, Object> body,
-    Authentication auth
+    @RequestBody Map<String, Object> body
   ) {
-    var me = userService.getByUsername(auth.getName());
-    Exam e = service.getById(examId);
-    if (e != null && e.getPaperId() != null) {
-      Paper p = paperMapper.selectById(e.getPaperId());
-      if (p != null) {
-        assertCourseCreatorIfTeacher(me, p.getSubject());
-      }
-    }
     @SuppressWarnings("unchecked")
     List<Number> studentIds = (List<Number>) body.get("studentIds");
     String reason = (String) body.get("reason");

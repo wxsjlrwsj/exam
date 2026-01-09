@@ -29,10 +29,6 @@ public class ExamService {
 
   public long count(Integer status) { return mapper.count(status); }
 
-  public Exam getById(Long id) {
-    return mapper.selectById(id);
-  }
-
   public List<Exam> page(Integer status, int page, int size) {
     int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
     return mapper.selectPage(status, offset, size);
@@ -45,15 +41,6 @@ public class ExamService {
   public List<Exam> pageByPaperSubject(String subject, int page, int size) {
     int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
     return mapper.selectPageByPaperSubject(subject, offset, size);
-  }
-
-  public long countByPaperSubjects(List<String> subjects) {
-    return mapper.countByPaperSubjects(subjects);
-  }
-
-  public List<Exam> pageByPaperSubjects(List<String> subjects, int page, int size) {
-    int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
-    return mapper.selectPageByPaperSubjects(subjects, offset, size);
   }
 
   public long countByStudent(Long studentId, Integer status) { return mapper.countByStudent(studentId, status); }

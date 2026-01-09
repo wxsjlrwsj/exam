@@ -42,10 +42,6 @@ public class PaperService {
     return paperMapper.countBySubjects(subjects);
   }
 
-  public Paper getById(Long id) {
-    return paperMapper.selectById(id);
-  }
-
   public List<Paper> pageBySubjects(List<String> subjects, int page, int size) {
     int offset = (Math.max(page, 1) - 1) * Math.max(size, 1);
     return paperMapper.selectPageBySubjects(subjects, offset, size);
